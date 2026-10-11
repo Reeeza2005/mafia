@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بازی مافیا | دورهمی آنلاین</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { --bg: #121214; --card: #1c1c21; --accent: #e50914; --text: #f4f4f5; --sub: #a1a1aa; --border: #2e2e38; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; }
+        .app { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 14px; }
+        .box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+        h1, h2, h3 { text-align: center; }
+        h1 { color: var(--accent); margin-bottom: 8px; font-size: 26px; }
+        button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 8px; }
+        button:active { transform: scale(0.97); }
+        button.sec { background: #27272a; }
+        input { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid var(--border); background: #121214; color: white; font-size: 15px; margin-bottom: 10px; }
+        .hidden { display: none !important; }
+        .flip-box { perspective: 1000px; width: 100%; height: 350px; margin: 15px 0; }
+        .flip-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); cursor: pointer; }
+        .flip-inner.flipped { transform: rotateY(180deg); }
+        .card-face { width: 100%; height: 100%; position: absolute; backface-visibility: hidden; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .card-front { background: linear-gradient(145deg, #1f1f26, #16161a); border: 2px dashed #3f3f46; }
+        .card-back { background: linear-gradient(145deg, #272730, #18181c); border: 2px solid var(--accent); transform: rotateY(180deg); }
+        .role-svg { width: 80px; height: 80px; fill: var(--accent); margin-bottom: 14px; }
+        .role-desc { font-size: 13.5px; color: var(--sub); line-height: 1.6; margin-top: 10px; }
+        .role-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .num-box { display: flex; gap: 8px; align-items: center; }
+        .num-box button { width: 32px; height: 32px; padding: 0; margin: 0; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13.5px; }
+        th, td { padding: 8px; text-align: center; border-bottom: 1px solid var(--border); }
+        #qr-box { display: flex; justify-content: center; margin: 12px auto; background: white; padding: 8px; border-radius: 8px; width: fit-content; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <h1>🎭 بازی مافیا</h1>
+
+        <div id="view-home" class="box">
+            <h2>ورود به بازی</h2>
+            <button onclick="startHost()">گرداننده بازی (Host)</button>
+            <button class="sec" onclick="showJoin()">ورود به عنوان بازیکن</button>
+        </div>
+
+        <div id="view-join" class="box hidden">
+            <h2>اتصال بازیکن</h2>
+            <input id="in-name" type="text" placeholder="نام خود را وارد کنید...">
+            <input id="in-room" type="text" placeholder="کد اتاق">
+            <button onclick="joinGame()">ورود به اتاق</button>
+            <button class="sec" onclick="location.reload()">بازگشت</button>
+        </div>
+
+        <div id="view-card" class="box hidden">
+            <h2>کارت نقش شما</h2>
+            <p style="text-align: center; color: var(--sub); font-size: 12px; margin-top: 4px;">برای دیدن یا بستن نقش ضربه بزنید</p>
+            <div class="flip-box" onclick="toggleCard()">
+                <div class="flip-inner" id="flipper">
+                    <div class="card-face card-front">
+                        <svg class="role-svg" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg>
+                        <h3>لمس برای مشاهده نقش</h3>
+                    </div>
+                    <div class="card-face card-back">
+                        <svg class="role-svg" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <h2 id="card-title">در انتظار...</h2>
+                        <p class="role-desc" id="card-desc">گرداننده هنوز کارت‌ها را پخش نکرده است.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-host" class="box hidden">
+            <h2>داشبورد گرداننده</h2>
+            <p id="room-code-txt" style="text-align:center; font-weight:bold; color:var(--accent); margin:6px 0;">در حال دریافت شناسه اتاق...</p>
+            <div id="qr-box"></div>
+
+            <div style="margin: 10px 0;">
+                <div class="role-row">
+                    <span>شهروند ساده</span>
+                    <div class="num-box">
+                        <button onclick="changeRole('cit', -1)">-</button>
+                        <span id="c-cit">3</span>
+                        <button onclick="changeRole('cit', 1)">+</button>
+                    </div>
+                </div>
+                <div class="role-row">
+                    <span>مافیا ساده</span>
+                    <div class="num-box">
+                        <button onclick="changeRole('maf', -1)">-</button>
+                        <span id="c-maf">1</span>
+                        <button onclick="changeRole('maf', 1)">+</button>
+                    </div>
+                </div>
+                <div class="role-row">
+                    <span>پزشک</span>
+                    <input type="checkbox" id="chk-doc" style="width:20px; height:20px; margin:0;">
+                </div>
+                <div class="role-row">
+                    <span>کارآگاه</span>
+                    <input type="checkbox" id="chk-det" style="width:20px; height:20px; margin:0;">
+                </div>
+                <div class="role-row">
+                    <span>پدرخوانده</span>
+                    <input type="checkbox" id="chk-gf" style="width:20px; height:20px; margin:0;">
+                </div>
+            </div>
+
+            <button onclick="distributeCards()">پخش کارت‌ها و شروع</button>
+
+            <h3 style="margin-top: 14px;">بازیکنان متصل (<span id="p-count">0</span>)</h3>
+            <table>
+                <thead><tr><th>نام</th><th>نقش</th></tr></thead>
+                <tbody id="p-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let peer, conns = [], players = [];
+        let counts = { cit: 3, maf: 1 };
+
+        function changeRole(type, d) {
+            counts[type] = Math.max(0, counts[type] + d);
+            document.getElementById('c-' + type).innerText = counts[type];
+        }
+
+        function toggleCard() {
+            document.getElementById('flipper').classList.toggle('flipped');
+        }
+
+        function showJoin() {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-join').classList.remove('hidden');
+            const urlRoom = new URLSearchParams(location.search).get('room');
+            if (urlRoom) document.getElementById('in-room').value = urlRoom;
+        }
+
+        function startHost() {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-host').classList.remove('hidden');
+
+            peer = new Peer();
+            peer.on('open', id => {
+                document.getElementById('room-code-txt').innerText = 'کد اتاق: ' + id;
+                const link = location.origin + location.pathname + '?room=' + id;
+                new QRCode(document.getElementById("qr-box"), { text: link, width: 120, height: 120 });
+            });
+
+            peer.on('connection', conn => {
+                conn.on('data', data => {
+                    if (data.type === 'join') {
+                        players.push({ id: conn.peer, name: data.name, role: null });
+                        conns.push(conn);
+                        updateTable();
+                    }
+                });
+            });
+        }
+
+        function updateTable() {
+            document.getElementById('p-count').innerText = players.length;
+            const tbody = document.getElementById('p-table');
+            tbody.innerHTML = '';
+            players.forEach(p => {
+                tbody.innerHTML += `<tr><td>${p.name}</td><td>${p.role ? p.role.title : 'در انتظار'}</td></tr>`;
+            });
+        }
+
+        function joinGame() {
+            const name = document.getElementById('in-name').value.trim();
+            const room = document.getElementById('in-room').value.trim() || new URLSearchParams(location.search).get('room');
+            if (!name || !room) return alert('نام و کد اتاق الزامی است');
+
+            document.getElementById('view-join').classList.add('hidden');
+            document.getElementById('view-card').classList.remove('hidden');
+
+            peer = new Peer();
+            peer.on('open', () => {
+                const conn = peer.connect(room);
+                conn.on('open', () => {
+                    conn.send({ type: 'join', name: name });
+                });
+                conn.on('data', data => {
+                    if (data.type === 'role') {
+                        document.getElementById('card-title').innerText = data.role.title;
+                        document.getElementById('card-desc').innerText = data.role.desc;
+                    }
+                });
+            });
+        }
+
+        function distributeCards() {
+            let deck = [];
+            for (let i = 0; i < counts.cit; i++) deck.push({ title: 'شهروند ساده', desc: 'تلاش برای پیدا کردن مافیا در روز.' });
+            for (let i = 0; i < counts.maf; i++) deck.push({ title: 'مافیا ساده', desc: 'همکاری با تیم مافیا و فریب شهروندان.' });
+            if (document.getElementById('chk-doc').checked) deck.push({ title: 'پزشک', desc: 'نجات جان یکی از شهروندان در هر شب.' });
+            if (document.getElementById('chk-det').checked) deck.push({ title: 'کارآگاه', desc: 'استعلام هویت یک بازیکن در هر شب.' });
+            if (document.getElementById('chk-gf').checked) deck.push({ title: 'پدرخوانده', desc: 'فرمانده تیم مافیا، استعلام منفی برای کارآگاه.' });
+
+            if (deck.length !== players.length) {
+                return alert(`تعداد کارت‌ها (${deck.length}) با تعداد بازیکنان (${players.length}) برابر نیست!`);
+            }
+
+            deck.sort(() => Math.random() - 0.5);
+            players.forEach((p, idx) => {
+                p.role = deck[idx];
+                conns[idx].send({ type: 'role', role: p.role });
+            });
+            updateTable();
+        }
+    </script>
+</body>
+</html>
