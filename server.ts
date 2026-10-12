@@ -199,11 +199,19 @@ app.get('/api/room/:code', (req, res) => {
 app.post('/api/room/:code/join', (req, res) => {
   const room = getOrCreateRoom(req.params.code);
   const { playerName, playerId } = req.body;
+  const cleanName = (playerName || '').trim();
+  if (!cleanName) {
+    return res.status(400).json({ error: 'نام بازیکن الزامی است.' });
+  }
+
   const id = playerId || `http-${Math.random().toString(36).substring(2, 9)}`;
   if (!room.players[id]) {
+    if (Object.keys(room.players).length >= 50) {
+      return res.status(400).json({ error: 'ظرفیت اتاق تکمیل است (حداکثر ۵۰ بازیکن).' });
+    }
     room.players[id] = {
       id,
-      name: playerName || `بازیکن ${Object.keys(room.players).length + 1}`,
+      name: cleanName,
       isAlive: true,
       isSilenced: false,
       hasArmor: false,
@@ -213,13 +221,16 @@ app.post('/api/room/:code/join', (req, res) => {
     room.logs.push({
       id: Math.random().toString(36).substring(2, 9),
       time: new Date().toLocaleTimeString('fa-IR'),
-      text: `«${room.players[id].name}» متصل شد.`,
+      text: `«${cleanName}» متصل شد.`,
       type: 'info',
     });
     io.to(room.code).emit('players_updated', {
       players: Object.values(room.players),
       logs: room.logs,
     });
+  } else {
+    room.players[id].name = cleanName;
+    room.players[id].connected = true;
   }
   res.json({ player: room.players[id], roomCode: room.code });
 });
@@ -250,41 +261,98 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Player joining
-    const playerId = existingPlayerId || socket.id;
-    const existing = room.players[playerId];
-
-    if (existing) {
-      existing.connected = true;
-      existing.name = playerName || existing.name;
-      // Map new socket id if reconnected
-      if (existingPlayerId && existingPlayerId !== socket.id) {
-        room.players[socket.id] = { ...existing, id: socket.id };
-        delete room.players[existingPlayerId];
-      }
-    } else {
-      room.players[socket.id] = {
-        id: socket.id,
-        name: playerName || `بازیکن ${Object.keys(room.players).length + 1}`,
-        isAlive: true,
-        isSilenced: false,
-        hasArmor: false,
-        connected: true,
-        joinedAt: Date.now(),
-      };
-      room.logs.push({
-        id: Math.random().toString(36).substring(2, 9),
-        time: new Date().toLocaleTimeString('fa-IR'),
-        text: `«${playerName || 'بازیکن جدید'}» وارد بازی شد.`,
-        type: 'info',
-      });
+    // Player joining - require non-empty name
+    const cleanName = (playerName || '').trim();
+    if (!cleanName) {
+      // Do not create empty/phantom players!
+      socket.emit('error_message', 'لطفاً برای ورود به بازی نام خود را وارد کنید.');
+      return;
     }
 
-    const playerObj = room.players[socket.id];
+    // 1. If this exact socket.id is already registered in this room
+    if (room.players[socket.id]) {
+      const existingPlayer = room.players[socket.id];
+      const isDuplicate = existingPlayer.name === cleanName && existingPlayer.connected;
+
+      // Update player info
+      existingPlayer.name = cleanName;
+      existingPlayer.connected = true;
+
+      // Send current state back to this client
+      socket.emit('player_state', {
+        player: existingPlayer,
+        roomCode: room.code,
+        gameStarted: room.gameStarted,
+        cardsDistributed: room.cardsDistributed,
+        timer: room.timer,
+        secretVote: room.secretVote,
+      });
+
+      // If it's a duplicate request from the same connected socket, return immediately
+      if (isDuplicate) {
+        return;
+      }
+
+      // If name or connection changed, notify room
+      io.to(room.code).emit('players_updated', {
+        players: Object.values(room.players),
+        logs: room.logs,
+      });
+      return;
+    }
+
+    // 2. If reconnecting with an existing player ID (e.g. from previous socket)
+    if (existingPlayerId && room.players[existingPlayerId]) {
+      const existing = room.players[existingPlayerId];
+      existing.connected = true;
+      existing.name = cleanName;
+      existing.id = socket.id;
+      room.players[socket.id] = existing;
+      delete room.players[existingPlayerId];
+
+      socket.emit('player_state', {
+        player: existing,
+        roomCode: room.code,
+        gameStarted: room.gameStarted,
+        cardsDistributed: room.cardsDistributed,
+        timer: room.timer,
+        secretVote: room.secretVote,
+      });
+
+      io.to(room.code).emit('players_updated', {
+        players: Object.values(room.players),
+        logs: room.logs,
+      });
+      return;
+    }
+
+    // 3. New player joining - check room capacity limit: 50 players max
+    if (Object.keys(room.players).length >= 50) {
+      socket.emit('error_message', 'ظرفیت این اتاق تکمیل است (حداکثر ۵۰ بازیکن مجاز است).');
+      return;
+    }
+
+    const newPlayer: Player = {
+      id: socket.id,
+      name: cleanName,
+      isAlive: true,
+      isSilenced: false,
+      hasArmor: false,
+      connected: true,
+      joinedAt: Date.now(),
+    };
+    room.players[socket.id] = newPlayer;
+
+    room.logs.push({
+      id: Math.random().toString(36).substring(2, 9),
+      time: new Date().toLocaleTimeString('fa-IR'),
+      text: `«${cleanName}» وارد اتاق بازی شد.`,
+      type: 'info',
+    });
 
     // Inform the joined player
     socket.emit('player_state', {
-      player: playerObj,
+      player: newPlayer,
       roomCode: room.code,
       gameStarted: room.gameStarted,
       cardsDistributed: room.cardsDistributed,

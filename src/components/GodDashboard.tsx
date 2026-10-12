@@ -40,6 +40,7 @@ interface GodDashboardProps {
   logs: GameLog[];
   rolesInGame: string[];
   cardsDistributed: boolean;
+  roomCode?: string;
   onUpdatePlayer: (playerId: string, updates: Partial<Player>) => void;
   onKickPlayer: (playerId: string) => void;
   onTimerControl: (
@@ -60,6 +61,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   logs,
   rolesInGame,
   cardsDistributed,
+  roomCode,
   onUpdatePlayer,
   onKickPlayer,
   onTimerControl,
@@ -345,6 +347,26 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 {requiredEliminationVotes} رأی
               </span>
             </div>
+
+            {/* Room Invite Code Badge */}
+            {roomCode && (
+              <div className="px-3 py-2 rounded-2xl bg-neutral-950 border border-amber-500/40 text-right flex items-center gap-2">
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">کد دعوت ({players.length}/50):</span>
+                  <span className="text-sm font-black text-amber-400 font-mono tracking-wider">
+                    {roomCode}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenQr}
+                  className="p-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-850 text-neutral-300 hover:text-white transition-colors"
+                  title="نمایش QR کد اتاق"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-rose-400" />
+                </button>
+              </div>
+            )}
 
             {/* Global Buzz Button */}
             <button

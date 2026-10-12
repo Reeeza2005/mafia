@@ -1,8 +1,23 @@
 import React, { useState, useMemo } from 'react';
 import { ALL_ROLES, PRESETS } from '../data/roles';
-import { Role, Team } from '../types/mafia';
+import { Role, Team, Player } from '../types/mafia';
 import { RoleIcon } from './RoleIcons';
-import { Plus, Minus, Check, Sparkles, Shield, Skull, Eye, Info, Users, AlertCircle } from 'lucide-react';
+import {
+  Plus,
+  Minus,
+  Check,
+  Sparkles,
+  Shield,
+  Skull,
+  Eye,
+  Info,
+  Users,
+  AlertCircle,
+  RefreshCw,
+  Share2,
+  Smartphone,
+  Crown,
+} from 'lucide-react';
 import { audio } from '../utils/audio';
 
 interface RoleSelectionPanelProps {
@@ -12,6 +27,11 @@ interface RoleSelectionPanelProps {
   connectedPlayersCount: number;
   onDistribute: () => void;
   disabled?: boolean;
+  roomCode?: string;
+  players?: Player[];
+  onOpenQr?: () => void;
+  onGenerateNewCode?: () => void;
+  onKickPlayer?: (playerId: string) => void;
 }
 
 export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
@@ -21,10 +41,24 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
   connectedPlayersCount,
   onDistribute,
   disabled = false,
+  roomCode = '1234',
+  players = [],
+  onOpenQr,
+  onGenerateNewCode,
+  onKickPlayer,
 }) => {
   const [filterTeam, setFilterTeam] = useState<Team | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [inspectingRole, setInspectingRole] = useState<Role | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareUrl = `${origin}?room=${roomCode}&role=player`;
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Total selected roles
   const totalSelectedCount = useMemo(() => {
@@ -77,6 +111,116 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* 1. ROOM INVITE CODE & PLAYER ROSTER CARD (BEFORE GAME STARTS) */}
+      <div className="bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-950 border border-amber-600/40 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 flex items-center gap-1">
+                <Crown className="w-3.5 h-3.5 text-amber-400" />
+                <span>پنل گرداننده (God)</span>
+              </span>
+              <span className="text-xs text-neutral-400">
+                ظرفیت اتاق: <strong className="text-amber-400 font-mono font-bold">{players.length}/50</strong> نفر
+              </span>
+            </div>
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              <span className="text-sm font-bold text-neutral-300">کد دعوت اتاق:</span>
+              <span className="font-mono text-3xl font-black text-amber-400 tracking-widest bg-neutral-950 px-4 py-1 rounded-2xl border border-amber-500/50 shadow-inner">
+                {roomCode}
+              </span>
+            </div>
+            <p className="text-xs text-neutral-400 mt-1">
+              بازیکنان با وارد کردن این کد ۴ رقمی و نام خود در گوشی وارد اتاق شما می‌شوند.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {onGenerateNewCode && (
+              <button
+                type="button"
+                onClick={onGenerateNewCode}
+                className="px-3 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-200 border border-neutral-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                title="تولید کد ۴ رقمی جدید برای اتاق"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                <span>تولید کد جدید</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-neutral-950 font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-amber-950/40 active:scale-95"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>{copied ? 'کپی شد!' : 'کپی لینک و کد'}</span>
+            </button>
+            {onOpenQr && (
+              <button
+                type="button"
+                onClick={onOpenQr}
+                className="px-3.5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-white border border-neutral-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-rose-400" />
+                <span>نمایش QR کد</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Real-time Connected Players list before distribution */}
+        <div>
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-amber-400" />
+              <span>بازیکنان متصل به این اتاق ({players.length} از ۵۰ نفر):</span>
+            </span>
+            {players.length > 0 && (
+              <span className="text-[11px] text-emerald-400 font-mono">
+                {players.filter((p) => p.connected).length} بازیکن آنلاین
+              </span>
+            )}
+          </div>
+
+          {players.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-neutral-950/70 border border-neutral-800 text-center text-xs text-neutral-500">
+              ⏳ هیچ بازیکنی هنوز وارد اتاق نشده است. بازیکنان باید با اسکن QR کد یا وارد کردن کد «{roomCode}» و نام خود در صفحه ورود متصل شوند (هیچ بازیکن فیک یا خودکاری ایجاد نمی‌شود).
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {players.map((p, idx) => (
+                <div
+                  key={p.id}
+                  className="bg-neutral-950 border border-neutral-800 hover:border-neutral-700 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs transition-all shadow-sm"
+                >
+                  <span className="w-5 h-5 rounded-full bg-neutral-800 text-neutral-300 font-mono text-[10px] flex items-center justify-center font-bold">
+                    {idx + 1}
+                  </span>
+                  <span className="font-bold text-white">{p.name}</span>
+                  {p.connected ? (
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" title="آنلاین" />
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-neutral-600" title="آفلاین" />
+                  )}
+                  {onKickPlayer && (
+                    <button
+                      type="button"
+                      onClick={() => onKickPlayer(p.id)}
+                      className="text-neutral-500 hover:text-rose-400 text-xs mr-1 p-0.5 transition-colors cursor-pointer"
+                      title="اخراج این بازیکن از اتاق"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Top Banner & Scenario Presets */}
       <div className="bg-gradient-to-r from-neutral-900 via-neutral-900/90 to-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">

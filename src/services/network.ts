@@ -12,10 +12,11 @@ class NetworkService {
   private godConnection: DataConnection | null = null;
   private listeners: Map<string, Set<EventCallback>> = new Map();
 
-  private roomCode: string = 'MAFIA';
-  private clientType: 'god' | 'player' = 'player';
+  private roomCode: string = '';
+  private clientType: 'god' | 'player' | null = null;
   private playerName: string = '';
   private myPlayerId: string = '';
+  private hasExplicitlyJoined: boolean = false;
 
   // Local simulated state for PeerJS God mode
   private peerGodState: {
@@ -64,6 +65,9 @@ class NetworkService {
 
   // Initialize Socket.io connection
   public initSocket(serverUrl?: string) {
+    if (this.socket && this.socket.connected) {
+      return;
+    }
     if (this.socket) {
       this.socket.disconnect();
     }
@@ -82,14 +86,16 @@ class NetworkService {
     this.socket.on('connect', () => {
       this.myPlayerId = this.socket?.id || '';
       this.emitLocal('connected', { id: this.myPlayerId, mode: 'socket' });
-      // If we had already joined, rejoin
-      if (this.roomCode) {
-        this.socket?.emit('join_room', {
-          roomCode: this.roomCode,
-          clientType: this.clientType,
-          playerName: this.playerName,
-          existingPlayerId: this.myPlayerId,
-        });
+      // Re-emit join ONLY if user has explicitly pressed submit earlier and reconnected
+      if (this.hasExplicitlyJoined && this.roomCode) {
+        if (this.clientType === 'god' || (this.clientType === 'player' && this.playerName.trim())) {
+          this.socket?.emit('join_room', {
+            roomCode: this.roomCode,
+            clientType: this.clientType,
+            playerName: this.playerName,
+            existingPlayerId: this.myPlayerId,
+          });
+        }
       }
     });
 
@@ -229,11 +235,23 @@ class NetworkService {
   private handlePeerGodIncoming(conn: DataConnection, msg: { type: string; payload: any }) {
     if (msg.type === 'join_room') {
       const { playerName, playerId } = msg.payload;
+      const cleanName = (playerName || '').trim();
+      if (!cleanName) return;
+
       const pid = playerId || conn.peer;
+
+      // 50 players max limit
+      if (!this.peerGodState.players[pid] && Object.keys(this.peerGodState.players).length >= 50) {
+        conn.send({
+          type: 'error_message',
+          payload: 'ظرفیت اتاق تکمیل است (حداکثر ۵۰ بازیکن).',
+        });
+        return;
+      }
 
       this.peerGodState.players[pid] = {
         id: pid,
-        name: playerName || `بازیکن ${Object.keys(this.peerGodState.players).length + 1}`,
+        name: cleanName,
         isAlive: true,
         isSilenced: false,
         hasArmor: false,
@@ -243,7 +261,7 @@ class NetworkService {
       this.peerGodState.logs.push({
         id: Math.random().toString(36).substring(2, 9),
         time: new Date().toLocaleTimeString('fa-IR'),
-        text: `«${playerName}» متصل شد (P2P).`,
+        text: `«${cleanName}» متصل شد (P2P).`,
         type: 'info',
       });
 
@@ -282,19 +300,48 @@ class NetworkService {
 
   // Unified Actions
   public joinRoom(roomCode: string, clientType: 'god' | 'player', playerName: string) {
-    this.roomCode = (roomCode || 'MAFIA').toUpperCase();
-    this.clientType = clientType;
-    this.playerName = playerName;
+    const cleanRoom = (roomCode || '').trim().toUpperCase();
+    const cleanName = (playerName || '').trim();
 
-    if (this.mode === 'socket' && this.socket) {
-      this.socket.emit('join_room', {
-        roomCode: this.roomCode,
-        clientType,
-        playerName,
-      });
+    if (!cleanRoom) return;
+    if (clientType === 'player' && !cleanName) return;
+
+    this.roomCode = cleanRoom;
+    this.clientType = clientType;
+    this.playerName = cleanName;
+    this.hasExplicitlyJoined = true;
+
+    if (this.mode === 'socket') {
+      if (!this.socket) {
+        this.initSocket();
+      }
+      if (this.socket) {
+        if (this.socket.connected) {
+          this.socket.emit('join_room', {
+            roomCode: this.roomCode,
+            clientType,
+            playerName: this.playerName,
+            existingPlayerId: this.socket.id,
+          });
+        } else {
+          this.socket.once('connect', () => {
+            this.socket?.emit('join_room', {
+              roomCode: this.roomCode,
+              clientType,
+              playerName: this.playerName,
+              existingPlayerId: this.socket?.id,
+            });
+          });
+          this.socket.connect();
+        }
+      }
     } else if (this.mode === 'peer') {
-      this.initPeer(this.roomCode, clientType === 'god', playerName);
+      this.initPeer(this.roomCode, clientType === 'god', this.playerName);
     }
+  }
+
+  public resetJoined() {
+    this.hasExplicitlyJoined = false;
   }
 
   public distributeRoles(selectedRoleIds: string[]) {

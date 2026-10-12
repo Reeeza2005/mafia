@@ -8,6 +8,7 @@ interface HeaderProps {
   clientType: 'god' | 'player';
   networkMode: NetworkMode;
   isConnected: boolean;
+  playersCount?: number;
   onOpenQr: () => void;
   onOpenExport: () => void;
   onOpenAudio: () => void;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   clientType,
   networkMode,
   isConnected,
+  playersCount,
   onOpenQr,
   onOpenExport,
   onOpenAudio,
@@ -73,10 +75,15 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={copyRoomCode}
             title="کلیک برای کپی کد اتاق"
-            className="flex items-center gap-1.5 bg-neutral-900 hover:bg-neutral-850 px-2.5 py-1.5 rounded-lg border border-neutral-700/60 text-xs font-mono transition-all"
+            className="flex items-center gap-1.5 bg-neutral-900 hover:bg-neutral-850 px-2.5 py-1.5 rounded-xl border border-neutral-700/60 text-xs font-mono transition-all"
           >
             <span className="text-neutral-400 text-[11px]">اتاق:</span>
-            <span className="text-rose-400 font-bold tracking-wider">{roomCode}</span>
+            <span className="text-amber-400 font-black tracking-wider">{roomCode}</span>
+            {playersCount !== undefined && (
+              <span className="text-[10px] text-neutral-400 border-r border-neutral-700 pr-1.5 mr-0.5 font-bold font-mono">
+                {playersCount}/50
+              </span>
+            )}
             {copied ? (
               <span className="text-[10px] text-emerald-400 mr-1">کپی شد!</span>
             ) : (

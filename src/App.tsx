@@ -2,7 +2,7 @@
  * Mafia Game - Universal Web Application
  * بازی مافیا: دستیار و گرداننده آنلاین و محلی
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { network } from './services/network';
 import { Player, GameTimer, GameLog, NetworkMode } from './types/mafia';
@@ -11,16 +11,26 @@ import { Header } from './components/Header';
 import { RoleSelectionPanel } from './components/RoleSelectionPanel';
 import { GodDashboard } from './components/GodDashboard';
 import { PlayerView } from './components/PlayerView';
+import { JoinCard } from './components/JoinCard';
 import { QrCodeModal } from './components/QrCodeModal';
 import { OfflineExportModal } from './components/OfflineExportModal';
 import { AudioPlayerModal } from './components/AudioPlayerModal';
 import { audio } from './utils/audio';
 import { Crown, User, Smartphone, Wifi, Play, Sparkles, RefreshCw } from 'lucide-react';
 
+const generate4DigitCode = () => Math.floor(1000 + Math.random() * 9000).toString();
+
 export default function App() {
   // App view state: 'welcome' | 'god' | 'player'
   const [clientType, setClientType] = useState<'god' | 'player' | null>(null);
-  const [roomCode, setRoomCode] = useState<string>('MAFIA');
+  const [roomCode, setRoomCode] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const r = urlParams.get('room');
+      if (r && r.trim()) return r.trim().toUpperCase();
+    }
+    return Math.floor(1000 + Math.random() * 9000).toString();
+  });
   const [networkMode, setNetworkMode] = useState<NetworkMode>('socket');
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
@@ -36,6 +46,8 @@ export default function App() {
 
   // Player state
   const [myPlayer, setMyPlayer] = useState<Player | null>(null);
+  const [isJoining, setIsJoining] = useState<boolean>(false);
+  const hasJoinedRef = useRef<boolean>(false);
 
   // Modals
   const [isQrOpen, setIsQrOpen] = useState(false);
@@ -46,8 +58,10 @@ export default function App() {
   // URL query parameter parsing on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const rCode = urlParams.get('room') || 'MAFIA';
-    setRoomCode(rCode.toUpperCase());
+    const rCode = urlParams.get('room');
+    if (rCode && rCode.trim()) {
+      setRoomCode(rCode.trim().toUpperCase());
+    }
 
     const roleParam = urlParams.get('role');
     if (roleParam === 'god') {
@@ -57,7 +71,7 @@ export default function App() {
     }
   }, []);
 
-  // Setup networking listeners
+  // Setup networking listeners - depends strictly only on networkMode, NEVER on myPlayer
   useEffect(() => {
     network.setMode(networkMode);
     if (networkMode === 'socket') {
@@ -77,6 +91,7 @@ export default function App() {
     });
 
     const unPlayerState = network.on('player_state', (data: any) => {
+      setIsJoining(false);
       if (data.player) setMyPlayer(data.player);
       if (data.cardsDistributed !== undefined) setCardsDistributed(data.cardsDistributed);
       if (data.gameStarted !== undefined) setGameStarted(data.gameStarted);
@@ -86,11 +101,12 @@ export default function App() {
     const unPlayersUpdated = network.on('players_updated', (data: any) => {
       if (data.players) {
         setPlayers(data.players);
-        // Update myPlayer if I am in the list
-        if (myPlayer) {
-          const updatedSelf = data.players.find((p: Player) => p.id === myPlayer.id);
-          if (updatedSelf) setMyPlayer(updatedSelf);
-        }
+        // Use functional state updater so myPlayer is never a stale closure or effect dependency
+        setMyPlayer((prev) => {
+          if (!prev) return null;
+          const updatedSelf = (data.players as Player[]).find((p) => p.id === prev.id);
+          return updatedSelf ? { ...prev, ...updatedSelf } : prev;
+        });
       }
       if (data.logs) setLogs(data.logs);
     });
@@ -105,9 +121,12 @@ export default function App() {
     });
 
     const unPlayerStatusChanged = network.on('player_status_changed', (updatedPlayer: any) => {
-      if (myPlayer && myPlayer.id === updatedPlayer.id) {
-        setMyPlayer(updatedPlayer);
-      }
+      setMyPlayer((prev) => {
+        if (prev && prev.id === updatedPlayer.id) {
+          return { ...prev, ...updatedPlayer };
+        }
+        return prev;
+      });
     });
 
     const unGameStarted = network.on('game_started', (data: any) => {
@@ -137,9 +156,7 @@ export default function App() {
       setTimer({ seconds: 60, isRunning: false });
       if (data.players) setPlayers(data.players);
       if (data.logs) setLogs(data.logs);
-      if (myPlayer) {
-        setMyPlayer((prev) => (prev ? { ...prev, roleId: undefined, isAlive: true, isSilenced: false } : null));
-      }
+      setMyPlayer((prev) => (prev ? { ...prev, roleId: undefined, isAlive: true, isSilenced: false } : null));
     });
 
     const unTimerUpdated = network.on('timer_updated', (t: any) => {
@@ -147,11 +164,17 @@ export default function App() {
     });
 
     const unKicked = network.on('kicked', () => {
+      setIsJoining(false);
+      hasJoinedRef.current = false;
+      network.resetJoined();
       setMyPlayer(null);
       setErrorMessage('شما توسط گرداننده از بازی اخراج شدید.');
     });
 
     const unErrorMessage = network.on('error_message', (msg: any) => {
+      setIsJoining(false);
+      hasJoinedRef.current = false;
+      network.resetJoined();
       setErrorMessage(typeof msg === 'string' ? msg : 'خطایی رخ داد.');
     });
 
@@ -174,18 +197,39 @@ export default function App() {
       unSecretVoteStarted();
       unSecretVoteEnded();
     };
-  }, [networkMode, myPlayer]);
+  }, [networkMode]);
+
+  // Generate a new 4-digit invite code
+  const handleGenerateNewRoomCode = useCallback(() => {
+    const newCode = generate4DigitCode();
+    setRoomCode(newCode);
+    if (clientType === 'god') {
+      network.joinRoom(newCode, 'god', 'گرداننده');
+    }
+  }, [clientType]);
 
   // Join Room as God
-  const handleJoinAsGod = () => {
+  const handleJoinAsGod = (customCode?: string) => {
+    const targetCode = (customCode || roomCode || generate4DigitCode()).trim().toUpperCase();
+    setRoomCode(targetCode);
     setClientType('god');
-    network.joinRoom(roomCode, 'god', 'گرداننده');
+    network.joinRoom(targetCode, 'god', 'گرداننده');
     audio.playGavel();
   };
 
-  // Join Room as Player
-  const handleJoinAsPlayer = (name: string) => {
-    network.joinRoom(roomCode, 'player', name);
+  // Join Room as Player - strictly triggered ONLY by user submit click
+  const handleJoinAsPlayer = (code: string, name: string) => {
+    const cleanCode = (code || roomCode).trim().toUpperCase();
+    const cleanName = (name || '').trim();
+
+    if (!cleanCode || !cleanName) return;
+    if (isJoining || hasJoinedRef.current) return;
+
+    setIsJoining(true);
+    hasJoinedRef.current = true;
+    setErrorMessage(null);
+    setRoomCode(cleanCode);
+    network.joinRoom(cleanCode, 'player', cleanName);
     audio.playFlip();
   };
 
@@ -255,6 +299,7 @@ export default function App() {
         clientType={clientType || 'player'}
         networkMode={networkMode}
         isConnected={isConnected}
+        playersCount={players.length}
         onOpenQr={() => setIsQrOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
         onOpenAudio={() => setIsAudioOpen(true)}
@@ -290,22 +335,34 @@ export default function App() {
               </p>
             </div>
 
-            {/* Room code input */}
-            <div className="max-w-xs mx-auto bg-neutral-900 border border-neutral-800 p-2 rounded-2xl flex items-center justify-center gap-2">
-              <span className="text-xs text-neutral-400">کد اتاق:</span>
-              <input
-                type="text"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                className="bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1 text-center font-mono font-bold text-rose-400 text-sm focus:outline-none focus:border-rose-500 w-28 uppercase"
-              />
+            {/* Room code input with Randomize button */}
+            <div className="max-w-xs mx-auto bg-neutral-900 border border-neutral-800 p-2.5 rounded-2xl flex items-center justify-between gap-2 shadow-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-neutral-400">کد دعوت:</span>
+                <input
+                  type="text"
+                  maxLength={4}
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                  className="bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-1.5 text-center font-mono font-bold text-amber-400 text-base focus:outline-none focus:border-amber-500 w-24 tracking-widest"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateNewRoomCode}
+                className="text-xs bg-neutral-800 hover:bg-neutral-750 text-neutral-200 px-2.5 py-1.5 rounded-xl border border-neutral-700/60 flex items-center gap-1 transition-all cursor-pointer"
+                title="تولید کد ۴ رقمی جدید"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                <span>کد جدید</span>
+              </button>
             </div>
 
             {/* Role Entrance Choices */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* God Selection Card */}
               <button
-                onClick={handleJoinAsGod}
+                onClick={() => handleJoinAsGod(roomCode)}
                 className="p-6 rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 border border-amber-600/40 hover:border-amber-500 hover:shadow-xl hover:shadow-amber-950/30 text-right group transition-all cursor-pointer"
               >
                 <div className="w-14 h-14 rounded-2xl bg-amber-950/60 border border-amber-600/40 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
@@ -315,7 +372,7 @@ export default function App() {
                   پنل گرداننده (God)
                 </h3>
                 <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                  انتخاب نقش‌ها، توزیع تصادفی کارت‌ها، تایمر صحبت، نظارت زنده و تولید QR Code برای گوشی‌ها.
+                  تولید کد دعوت، انتخاب نقش‌ها، توزیع کارت‌ها، تایمر، نظارت زنده و کد QR (حداکثر ۵۰ بازیکن).
                 </p>
                 <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-400">
                   <span>ورود به مدیریت</span>
@@ -335,7 +392,7 @@ export default function App() {
                   ورود بازیکن (Player)
                 </h3>
                 <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                  دریافت کارت محرمانه با انیمیشن چرخش ۳ بعدی، مشاهده وظایف نقش، وضعیت زنده و دفترچه یادداشت.
+                  ورود با کد دعوت ۴ رقمی و نام، دریافت کارت محرمانه، وضعیت زنده و دفترچه یادداشت.
                 </p>
                 <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-rose-400">
                   <span>ورود به بازی</span>
@@ -377,14 +434,14 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsQrOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md"
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
                   <Smartphone className="w-3.5 h-3.5" />
                   QR کد گوشی‌ها
                 </button>
                 <button
                   onClick={() => setClientType('player')}
-                  className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs"
+                  className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs cursor-pointer"
                 >
                   تغییر به نمای بازیکن
                 </button>
@@ -394,63 +451,17 @@ export default function App() {
             {/* If game cards have NOT been distributed yet, show the Role Selection System */}
             {!cardsDistributed ? (
               <div className="space-y-4">
-                {/* Connected Players Live Counter & List */}
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <h3 className="text-sm font-bold text-white">
-                        بازیکنان متصل شده: ({players.length} نفر)
-                      </h3>
-                    </div>
-                    <span className="text-xs text-neutral-400">
-                      منتظر انتخاب نقش‌ها و زدن دکمه «توزیع کارتها»
-                    </span>
-                  </div>
-
-                  {players.length === 0 ? (
-                    <div className="bg-neutral-950/70 border border-neutral-850 rounded-xl p-4 text-center space-y-2">
-                      <p className="text-xs text-neutral-400">
-                        هنوز بازیکنی به اتاق متصل نشده است. QR کد را باز کنید تا بازیکنان با دوربین گوشی اسکن کنند.
-                      </p>
-                      <button
-                        onClick={() => setIsQrOpen(true)}
-                        className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-white text-xs font-bold"
-                      >
-                        نمایش QR کد اتصال
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {players.map((p, idx) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 px-3 py-1.5 rounded-xl text-xs text-neutral-200"
-                        >
-                          <span className="w-5 h-5 rounded-md bg-neutral-800 text-[10px] flex items-center justify-center font-bold text-neutral-400">
-                            {idx + 1}
-                          </span>
-                          <span className="font-bold">{p.name}</span>
-                          <button
-                            onClick={() => handleKickPlayer(p.id)}
-                            className="text-neutral-500 hover:text-red-400 font-bold ml-1 text-xs"
-                            title="اخراج بازیکن"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Role Selection Panel adhering to prompt rules */}
                 <RoleSelectionPanel
                   selectedRoleCounts={selectedRoleCounts}
                   onUpdateRoleCount={handleUpdateRoleCount}
                   onSetPreset={(counts) => setSelectedRoleCounts(counts)}
                   connectedPlayersCount={players.length}
                   onDistribute={handleDistributeCards}
+                  roomCode={roomCode}
+                  players={players}
+                  onOpenQr={() => setIsQrOpen(true)}
+                  onGenerateNewCode={handleGenerateNewRoomCode}
+                  onKickPlayer={handleKickPlayer}
                 />
               </div>
             ) : (
@@ -462,6 +473,7 @@ export default function App() {
                   logs={logs}
                   rolesInGame={rolesInGame}
                   cardsDistributed={cardsDistributed}
+                  roomCode={roomCode}
                   onUpdatePlayer={handleUpdatePlayer}
                   onKickPlayer={handleKickPlayer}
                   onTimerControl={handleTimerControl}
@@ -474,26 +486,38 @@ export default function App() {
           </div>
         ) : (
           /* 3. PLAYER VIEW (MOBILE OPTIMIZED) */
-          <div className="space-y-4">
-            <div className="flex items-center justify-between bg-neutral-900/60 border border-neutral-800 p-2.5 rounded-2xl mb-2">
-              <span className="text-xs text-neutral-400">اتاق بازی: <strong className="text-rose-400">{roomCode}</strong></span>
-              <button
-                onClick={() => setClientType('god')}
-                className="text-xs px-2.5 py-1 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white"
-              >
-                تغییر به پنل گرداننده
-              </button>
-            </div>
-
-            <PlayerView
-              player={myPlayer}
-              cardsDistributed={cardsDistributed}
-              gameStarted={gameStarted}
-              timer={timer}
-              secretVote={secretVote}
+          !myPlayer ? (
+            <JoinCard
+              initialCode={roomCode}
+              errorMessage={errorMessage}
+              isJoining={isJoining}
               onJoin={handleJoinAsPlayer}
+              onGodClick={() => {
+                handleJoinAsGod(roomCode);
+              }}
             />
-          </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between bg-neutral-900/60 border border-neutral-800 p-2.5 rounded-2xl mb-2">
+                <span className="text-xs text-neutral-400">اتاق بازی: <strong className="text-amber-400">{roomCode}</strong></span>
+                <button
+                  onClick={() => setClientType('god')}
+                  className="text-xs px-2.5 py-1 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white"
+                >
+                  تغییر به پنل گرداننده
+                </button>
+              </div>
+
+              <PlayerView
+                player={myPlayer}
+                cardsDistributed={cardsDistributed}
+                gameStarted={gameStarted}
+                timer={timer}
+                secretVote={secretVote}
+                onJoin={(name) => handleJoinAsPlayer(roomCode, name)}
+              />
+            </div>
+          )
         )}
       </main>
 
