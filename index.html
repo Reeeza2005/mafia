@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بازی مافیا | دورهمی هوشمند</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+    <title>بازی مافیا | لوکال و آنلاین</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
@@ -15,13 +15,12 @@
         .box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         h1 { color: var(--accent); font-size: 26px; text-align: center; margin-bottom: 4px; }
         h2, h3 { text-align: center; margin-bottom: 10px; font-size: 18px; }
+        .badge { text-align: center; font-size: 12px; color: #4ade80; background: #14532d33; padding: 4px 10px; border-radius: 20px; width: fit-content; margin: 0 auto 10px; border: 1px solid #22c55e44; }
         button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 11px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
         button:active { transform: scale(0.98); }
         button.sec { background: #272732; }
         input { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid var(--border); background: #121216; color: white; font-size: 15px; margin-bottom: 10px; }
         .hidden { display: none !important; }
-
-        /* کارت سه‌بعدی */
         .flip-box { perspective: 1000px; width: 100%; height: 350px; margin: 12px 0; }
         .flip-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); cursor: pointer; }
         .flip-inner.flipped { transform: rotateY(180deg); }
@@ -29,21 +28,15 @@
         .card-front { background: linear-gradient(145deg, #1f1f28, #141418); border: 2px dashed #3f3f4e; }
         .card-back { background: linear-gradient(145deg, #272733, #17171c); border: 2px solid var(--accent); transform: rotateY(180deg); }
         .role-svg { width: 75px; height: 75px; fill: var(--accent); margin-bottom: 14px; }
-
-        /* لیست گرداننده */
         .player-row { display: flex; align-items: center; justify-content: space-between; background: var(--item); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border); font-size: 14px; }
         .player-info { display: flex; flex-direction: column; gap: 3px; }
         .player-name { font-weight: bold; color: #fff; }
         .player-role-badge { font-size: 12px; color: #f87171; }
         .player-ability { font-size: 11px; color: var(--sub); }
         .btn-buzz { width: auto; padding: 6px 10px; font-size: 12px; background: #3f3f4e; border-radius: 6px; }
-
-        /* انتخاب نقش‌ها */
         .role-counter { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
         .counter-btns { display: flex; align-items: center; gap: 8px; }
         .counter-btns button { width: 28px; height: 28px; padding: 0; font-size: 16px; margin: 0; }
-
-        /* جعبه ترتیب شب */
         .night-plan { background: #121218; border: 1px solid #312e81; border-radius: 10px; padding: 12px; margin-top: 14px; }
         .night-step { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #27273a; font-size: 13px; }
         .night-num { background: #4338ca; color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; }
@@ -53,15 +46,14 @@
 <body>
     <div class="app">
         <h1>🎭 بازی مافیا</h1>
+        <div id="net-badge" class="badge">در حال بررسی نوع شبکه...</div>
 
-        <!-- صفحه انتخاب اول -->
         <div id="view-home" class="box">
             <h2>ورود به بازی</h2>
             <button onclick="startHost()">ورود به عنوان گرداننده (Host)</button>
             <button class="sec" onclick="showJoin()" style="margin-top: 8px;">ورود به عنوان بازیکن</button>
         </div>
 
-        <!-- صفحه ورود بازیکن -->
         <div id="view-join" class="box hidden">
             <h2>ورود بازیکن به اتاق</h2>
             <input id="in-name" type="text" placeholder="نام خود را وارد کنید...">
@@ -70,7 +62,6 @@
             <button class="sec" onclick="location.reload()" style="margin-top: 8px;">بازگشت</button>
         </div>
 
-        <!-- صفحه کارت بازیکن -->
         <div id="view-card" class="box hidden">
             <h2 id="player-welcome">کارت نقش</h2>
             <p style="text-align: center; color: var(--sub); font-size: 12px;">روی کارت ضربه بزنید تا نقشتان آشکار یا مخفی شود</p>
@@ -89,13 +80,11 @@
             </div>
         </div>
 
-        <!-- داشبورد گرداننده -->
         <div id="view-host" class="box hidden">
             <h2>داشبورد گرداننده</h2>
-            <p id="room-code-txt" style="text-align:center; font-weight:bold; color:var(--accent); font-size: 13px;">در حال ایجاد اتاق...</p>
+            <p id="room-code-txt" style="text-align:center; font-weight:bold; color:var(--accent); font-size: 13px;">در حال آماده‌سازی اتاق...</p>
             <div id="qr-box"></div>
 
-            <!-- انتخاب کارت‌ها -->
             <div style="margin: 12px 0;">
                 <div class="role-counter">
                     <span>شهروند ساده</span>
@@ -121,21 +110,26 @@
 
             <button onclick="distributeCards()">توزیع کارت‌ها به بازیکنان</button>
 
-            <!-- لیست بازیکنان -->
             <h3 style="margin-top: 16px; text-align: right;">لیست بازیکنان حاضر (<span id="p-count">0</span>):</h3>
             <div id="players-list" style="margin-top: 8px;">
                 <p style="text-align: center; color: var(--sub); font-size: 13px;">هنوز بازیکنی متصل نشده است...</p>
             </div>
 
-            <!-- ترتیب بیدار شدن در شب -->
             <div id="night-section" class="night-plan hidden">
-                <h3 style="color: #a5b4fc; text-align: right; margin-bottom: 8px;">🌙 راهنمای شب گرداننده (به ترتیب بیدارباش):</h3>
+                <h3 style="color: #a5b4fc; text-align: right; margin-bottom: 8px;">🌙 راهنمای شب گرداننده:</h3>
                 <div id="night-steps-list"></div>
             </div>
         </div>
     </div>
 
     <script>
+        const isLocal = window.location.hostname === 'localhost' || 
+                        window.location.hostname.startsWith('192.168.') || 
+                        window.location.hostname.startsWith('10.') || 
+                        window.location.port !== '';
+
+        document.getElementById('net-badge').innerText = isLocal ? 'حالت لوکال (شبکه خانگی/وای‌فای)' : 'حالت آنلاین (P2P گیت‌هاب)';
+
         let peer, conns = {}, players = [];
         let counts = { cit: 3, maf: 1 };
 
@@ -162,7 +156,6 @@
             document.getElementById('view-join').classList.remove('hidden');
         }
 
-        // بررسی بارگذاری با لینک QR Code (اتصال مستقیم به فرم)
         window.onload = function() {
             const urlRoom = new URLSearchParams(window.location.search).get('room');
             if (urlRoom) {
@@ -179,10 +172,9 @@
             peer.on('open', id => {
                 document.getElementById('room-code-txt').innerText = 'کد اتاق: ' + id;
                 
-                // حل قطعی خطای 404: تولید لینک دقیق با پروتکل، هاست و مسیر صحیح
-                const currentUrl = window.location.href.split('?')[0];
-                const cleanBaseUrl = currentUrl.endsWith('/') ? currentUrl : currentUrl + '/';
-                const joinUrl = cleanBaseUrl + '?room=' + encodeURIComponent(id);
+                // در لوکال آی‌پی شبکه را حفظ می‌کند و در گیت‌هاب لینک کامل مخزن را
+                const baseUrl = window.location.origin + window.location.pathname;
+                const joinUrl = baseUrl + '?room=' + encodeURIComponent(id);
 
                 document.getElementById("qr-box").innerHTML = "";
                 new QRCode(document.getElementById("qr-box"), { text: joinUrl, width: 125, height: 125 });
@@ -240,7 +232,7 @@
         function joinGame() {
             const name = document.getElementById('in-name').value.trim();
             const room = document.getElementById('in-room').value.trim();
-            if (!name || !room) return alert('لطفاً نام و کد اتاق را وارد کنید.');
+            if (!name || !room) return alert('نام و کد اتاق را وارد کنید.');
 
             document.getElementById('view-join').classList.add('hidden');
             document.getElementById('view-card').classList.remove('hidden');
@@ -257,7 +249,6 @@
                         document.getElementById('card-title').innerText = data.role.title;
                         document.getElementById('card-desc').innerText = data.role.desc;
                     } else if (data.type === 'buzz') {
-                        // لرزش برای اندروید و صدای بیدارباش
                         if ('vibrate' in navigator) navigator.vibrate([250, 100, 250]);
                         beepAudio();
                     }
@@ -291,7 +282,7 @@
             if (document.getElementById('chk-snp').checked) deck.push({ title: 'اسنایپر (حرفه‌ای)', desc: ROLES_INFO['اسنایپر (حرفه‌ای)'].ability });
 
             if (deck.length !== players.length) {
-                return alert(`تعداد کارت‌های انتخاب‌شده (${deck.length}) با تعداد بازیکنان (${players.length}) برابر نیست!`);
+                return alert(`تعداد کارت‌ها (${deck.length}) با بازیکنان (${players.length}) برابر نیست!`);
             }
 
             deck.sort(() => Math.random() - 0.5);
