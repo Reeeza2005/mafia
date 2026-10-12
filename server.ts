@@ -153,7 +153,7 @@ interface GameRoom {
 const rooms: Record<string, GameRoom> = {};
 
 function getOrCreateRoom(code: string): GameRoom {
-  const upperCode = (code || 'MAFIA').toUpperCase();
+  const upperCode = (code || '').trim().toUpperCase() || Math.floor(1000 + Math.random() * 9000).toString();
   if (!rooms[upperCode]) {
     rooms[upperCode] = {
       code: upperCode,
@@ -673,7 +673,12 @@ async function startServer() {
     const ips = getLocalNetworkAddresses();
     console.log(`[Mafia Game] Server running on http://0.0.0.0:${PORT}`);
     if (ips.length > 0) {
-      console.log(`[Mafia Game] Local Wi-Fi network address: http://${ips[0].address}:${PORT}`);
+      ips.forEach((ip) => {
+        console.log(`[Mafia Game] Local Wi-Fi network address: http://${ip.address}:${PORT}`);
+      });
+      console.log(`[Mafia Game] God Dashboard: http://${ips[0].address}:${PORT}/?role=god&key=secret123`);
+    } else {
+      console.log(`[Mafia Game] God Dashboard: http://localhost:${PORT}/?role=god&key=secret123`);
     }
   });
 }

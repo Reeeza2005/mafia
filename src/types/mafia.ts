@@ -20,6 +20,9 @@ export interface Role {
   description: string;
   nightOrder?: number; // order of waking up at night (1, 2, 3...)
   wakeUpText?: string;
+  abilities?: string[];
+  winningCondition?: string;
+  tips?: string[];
 }
 
 export interface Player {

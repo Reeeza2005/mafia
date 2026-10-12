@@ -24,6 +24,10 @@
   transform: rotateY(180deg);
 }
 
+.-rotate-y-180 {
+  transform: rotateY(-180deg);
+}
+
 /* Smooth glass and neon glow effects */
 .glow-mafia {
   box-shadow: 0 0 25px -5px rgba(225, 29, 72, 0.4);

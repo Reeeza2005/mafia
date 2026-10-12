@@ -1,37 +1,46 @@
 /**
- * Mafia Game - Universal Web Application
- * بازی مافیا: دستیار و گرداننده آنلاین و محلی
+ * Mafia Game - Universal Local Wi-Fi Web Application
+ * بازی مافیا: دستیار و گرداننده آفلاین در شبکه محلی
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { network } from './services/network';
-import { Player, GameTimer, GameLog, NetworkMode } from './types/mafia';
+import { Player, GameTimer, GameLog, SecretVoteState } from './types/mafia';
 import { PRESETS } from './data/roles';
 import { Header } from './components/Header';
 import { RoleSelectionPanel } from './components/RoleSelectionPanel';
 import { GodDashboard } from './components/GodDashboard';
 import { PlayerView } from './components/PlayerView';
 import { JoinCard } from './components/JoinCard';
-import { QrCodeModal } from './components/QrCodeModal';
-import { OfflineExportModal } from './components/OfflineExportModal';
+import { HostShareModal } from './components/HostShareModal';
 import { AudioPlayerModal } from './components/AudioPlayerModal';
 import { audio } from './utils/audio';
-import { Crown, User, Smartphone, Wifi, Play, Sparkles, RefreshCw } from 'lucide-react';
+import { Crown, Sparkles, User, Play, RefreshCw, Smartphone, QrCode } from 'lucide-react';
 
 const generate4DigitCode = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 export default function App() {
-  // App view state: 'welcome' | 'god' | 'player'
-  const [clientType, setClientType] = useState<'god' | 'player' | null>(null);
+  // View mode: null (Welcome Portal) | 'god' | 'player'
+  const [clientType, setClientType] = useState<'god' | 'player' | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('role') === 'god') return 'god';
+      // If user came via QR Code or direct code link (?code=... or ?room=...), auto-route to Player view
+      if (params.get('code') || params.get('room')) return 'player';
+    }
+    return null;
+  });
+
+  // Room code: read from ?code= or ?room=, or generate a random 4-digit code
   const [roomCode, setRoomCode] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const r = urlParams.get('room');
-      if (r && r.trim()) return r.trim().toUpperCase();
+      const params = new URLSearchParams(window.location.search);
+      const c = params.get('code') || params.get('room');
+      if (c && c.trim()) return c.trim().replace(/[^0-9]/g, '').slice(0, 4);
     }
     return Math.floor(1000 + Math.random() * 9000).toString();
   });
-  const [networkMode, setNetworkMode] = useState<NetworkMode>('socket');
+
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
   // God state
@@ -42,7 +51,7 @@ export default function App() {
   const [gameStarted, setGameStarted] = useState<boolean>(false);
   const [timer, setTimer] = useState<GameTimer>({ seconds: 60, isRunning: false });
   const [logs, setLogs] = useState<GameLog[]>([]);
-  const [secretVote, setSecretVote] = useState<any>(undefined);
+  const [secretVote, setSecretVote] = useState<SecretVoteState | undefined>(undefined);
 
   // Player state
   const [myPlayer, setMyPlayer] = useState<Player | null>(null);
@@ -51,32 +60,28 @@ export default function App() {
 
   // Modals
   const [isQrOpen, setIsQrOpen] = useState(false);
-  const [isExportOpen, setIsExportOpen] = useState(false);
   const [isAudioOpen, setIsAudioOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // URL query parameter parsing on mount
+  // Parse URL query parameter changes
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const rCode = urlParams.get('room');
-    if (rCode && rCode.trim()) {
-      setRoomCode(rCode.trim().toUpperCase());
+    const params = new URLSearchParams(window.location.search);
+    const codeParam = params.get('code') || params.get('room');
+    if (codeParam && codeParam.trim()) {
+      setRoomCode(codeParam.trim().replace(/[^0-9]/g, '').slice(0, 4));
     }
 
-    const roleParam = urlParams.get('role');
+    const roleParam = params.get('role');
     if (roleParam === 'god') {
       setClientType('god');
-    } else if (roleParam === 'player') {
+    } else if (codeParam) {
       setClientType('player');
     }
   }, []);
 
-  // Setup networking listeners - depends strictly only on networkMode, NEVER on myPlayer
+  // Setup networking listeners once on mount
   useEffect(() => {
-    network.setMode(networkMode);
-    if (networkMode === 'socket') {
-      network.initSocket();
-    }
+    network.initSocket();
 
     const unConnected = network.on('connected', () => setIsConnected(true));
     const unDisconnected = network.on('disconnected', () => setIsConnected(false));
@@ -101,7 +106,7 @@ export default function App() {
     const unPlayersUpdated = network.on('players_updated', (data: any) => {
       if (data.players) {
         setPlayers(data.players);
-        // Use functional state updater so myPlayer is never a stale closure or effect dependency
+        // Functional update so myPlayer is never a stale dependency
         setMyPlayer((prev) => {
           if (!prev) return null;
           const updatedSelf = (data.players as Player[]).find((p) => p.id === prev.id);
@@ -136,7 +141,6 @@ export default function App() {
       if (data.rolesInGame) setRolesInGame(data.rolesInGame);
       if (data.logs) setLogs(data.logs);
 
-      // Trigger celebratory confetti
       try {
         confetti({
           particleCount: 80,
@@ -197,9 +201,16 @@ export default function App() {
       unSecretVoteStarted();
       unSecretVoteEnded();
     };
-  }, [networkMode]);
+  }, []);
 
-  // Generate a new 4-digit invite code
+  // When clientType changes to 'god', join room as God
+  useEffect(() => {
+    if (clientType === 'god' && roomCode) {
+      network.joinRoom(roomCode, 'god', 'گرداننده');
+    }
+  }, [clientType, roomCode]);
+
+  // God generates a new 4-digit invite code
   const handleGenerateNewRoomCode = useCallback(() => {
     const newCode = generate4DigitCode();
     setRoomCode(newCode);
@@ -217,7 +228,7 @@ export default function App() {
     audio.playGavel();
   };
 
-  // Join Room as Player - strictly triggered ONLY by user submit click
+  // Join Room as Player - strictly triggered on Submit click
   const handleJoinAsPlayer = (code: string, name: string) => {
     const cleanCode = (code || roomCode).trim().toUpperCase();
     const cleanName = (name || '').trim();
@@ -233,7 +244,7 @@ export default function App() {
     audio.playFlip();
   };
 
-  // Toggle Single Role Count
+  // Toggle Single Role Count (God)
   const handleUpdateRoleCount = (roleId: string, count: number) => {
     setSelectedRoleCounts((prev) => ({
       ...prev,
@@ -241,7 +252,7 @@ export default function App() {
     }));
   };
 
-  // Distribute Cards
+  // Distribute Cards (God)
   const handleDistributeCards = () => {
     const list: string[] = [];
     Object.entries(selectedRoleCounts).forEach(([roleId, count]) => {
@@ -249,11 +260,10 @@ export default function App() {
         list.push(roleId);
       }
     });
-
     network.distributeRoles(list);
   };
 
-  // Timer Control
+  // Timer Control (God)
   const handleTimerControl = (
     action: 'start' | 'pause' | 'reset' | 'set',
     seconds?: number,
@@ -274,20 +284,11 @@ export default function App() {
     network.kickPlayer(playerId);
   };
 
-  // Reset Game
+  // Reset Game (God)
   const handleResetGame = () => {
     if (window.confirm('آیا مطمئن هستید که می‌خواهید بازی را ریست کنید و کارت‌ها را پس بگیرید؟')) {
       network.resetGame();
       audio.playGavel();
-    }
-  };
-
-  // Mode Switcher (Socket vs PeerJS)
-  const handleToggleMode = (mode: NetworkMode) => {
-    setNetworkMode(mode);
-    setIsConnected(false);
-    if (clientType) {
-      network.joinRoom(roomCode, clientType, clientType === 'god' ? 'گرداننده' : (myPlayer?.name || 'بازیکن'));
     }
   };
 
@@ -297,41 +298,42 @@ export default function App() {
       <Header
         roomCode={roomCode}
         clientType={clientType || 'player'}
-        networkMode={networkMode}
         isConnected={isConnected}
         playersCount={players.length}
         onOpenQr={() => setIsQrOpen(true)}
-        onOpenExport={() => setIsExportOpen(true)}
         onOpenAudio={() => setIsAudioOpen(true)}
-        onToggleMode={handleToggleMode}
         onResetGame={clientType === 'god' ? handleResetGame : undefined}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-        {/* Error notification popup */}
+        {/* Error notification banner */}
         {errorMessage && (
           <div className="mb-4 p-3 bg-red-950/80 border border-red-800 rounded-2xl flex items-center justify-between text-xs text-red-200">
             <span>⚠️ {errorMessage}</span>
-            <button onClick={() => setErrorMessage(null)} className="font-bold px-2 py-0.5 rounded-lg bg-red-900">
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="font-bold px-2 py-0.5 rounded-lg bg-red-900 hover:bg-red-800 transition-colors cursor-pointer"
+            >
               متوجه شدم
             </button>
           </div>
         )}
 
-        {/* 1. WELCOME SCREEN: Select Role (God or Player) */}
+        {/* 1. WELCOME SCREEN: Dual Entrance Portal (Both God and Player accessible) */}
         {!clientType ? (
-          <div className="max-w-xl mx-auto py-10 sm:py-16 text-center space-y-8">
+          <div className="max-w-xl mx-auto py-10 sm:py-16 text-center space-y-8 animate-in fade-in duration-300">
+            {/* Title & Badge */}
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-950/60 border border-rose-800/60 text-rose-300 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>نسخه جامع مافیا لوکال و آنلاین P2P</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>دستیار هوشمند مافیا در شبکه محلی Wi-Fi (آفلاین)</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
                 بازی مافیا <span className="text-rose-500">نوار</span>
               </h1>
               <p className="text-xs sm:text-sm text-neutral-400 max-w-md mx-auto leading-relaxed">
-                مدیریت هوشمند سناریوهای مافیا، دارای بیش از ۲۰ نقش اختصاصی، انیمیشن ۳ بعدی کارت، تایمر نوبت و اتصال خودکار با QR کد
+                مدیریت آسان سناریوها، توزیع کارت‌ها، تایمر نوبت و اتصال خودکار با بارکد QR در شبکه محلی
               </p>
             </div>
 
@@ -358,24 +360,26 @@ export default function App() {
               </button>
             </div>
 
-            {/* Role Entrance Choices */}
+            {/* Role Entrance Choices: God or Player */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* God Selection Card */}
               <button
                 onClick={() => handleJoinAsGod(roomCode)}
-                className="p-6 rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 border border-amber-600/40 hover:border-amber-500 hover:shadow-xl hover:shadow-amber-950/30 text-right group transition-all cursor-pointer"
+                className="p-6 rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 border border-amber-600/40 hover:border-amber-500 hover:shadow-xl hover:shadow-amber-950/30 text-right group transition-all cursor-pointer text-right flex flex-col justify-between"
               >
-                <div className="w-14 h-14 rounded-2xl bg-amber-950/60 border border-amber-600/40 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                  <Crown className="w-7 h-7 text-amber-400" />
+                <div>
+                  <div className="w-14 h-14 rounded-2xl bg-amber-950/60 border border-amber-600/40 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                    <Crown className="w-7 h-7 text-amber-400" />
+                  </div>
+                  <h3 className="text-base font-black text-white group-hover:text-amber-400 transition-colors">
+                    پنل گرداننده (God)
+                  </h3>
+                  <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                    تولید کد دعوت، انتخاب نقش‌ها، توزیع کارت‌ها، تایمر نوبت و QR کد اتصال بازیکنان.
+                  </p>
                 </div>
-                <h3 className="text-base font-black text-white group-hover:text-amber-400 transition-colors">
-                  پنل گرداننده (God)
-                </h3>
-                <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                  تولید کد دعوت، انتخاب نقش‌ها، توزیع کارت‌ها، تایمر، نظارت زنده و کد QR (حداکثر ۵۰ بازیکن).
-                </p>
-                <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-400">
-                  <span>ورود به مدیریت</span>
+                <div className="mt-5 flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                  <span>ورود به مدیریت بازی</span>
                   <Play className="w-3.5 h-3.5 fill-amber-400 rotate-180" />
                 </div>
               </button>
@@ -383,42 +387,23 @@ export default function App() {
               {/* Player Selection Card */}
               <button
                 onClick={() => setClientType('player')}
-                className="p-6 rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 border border-rose-600/40 hover:border-rose-500 hover:shadow-xl hover:shadow-rose-950/30 text-right group transition-all cursor-pointer"
+                className="p-6 rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 border border-rose-600/40 hover:border-rose-500 hover:shadow-xl hover:shadow-rose-950/30 text-right group transition-all cursor-pointer text-right flex flex-col justify-between"
               >
-                <div className="w-14 h-14 rounded-2xl bg-rose-950/60 border border-rose-600/40 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                  <User className="w-7 h-7 text-rose-400" />
-                </div>
-                <h3 className="text-base font-black text-white group-hover:text-rose-400 transition-colors">
-                  ورود بازیکن (Player)
-                </h3>
-                <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                  ورود با کد دعوت ۴ رقمی و نام، دریافت کارت محرمانه، وضعیت زنده و دفترچه یادداشت.
-                </p>
-                <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-rose-400">
-                  <span>ورود به بازی</span>
-                  <Play className="w-3.5 h-3.5 fill-rose-400 rotate-180" />
-                </div>
-              </button>
-            </div>
-
-            {/* Offline Local Wi-Fi info banner */}
-            <div className="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-right">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-950 flex items-center justify-center text-amber-400 border border-neutral-800 shrink-0">
-                  <Wifi className="w-5 h-5" />
-                </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">اجرای ۱۰۰٪ بدون اینترنت در دورهمی‌ها</h4>
-                  <p className="text-[11px] text-neutral-400">
-                    لپ‌تاپ و گوشی‌ها را به یک وای‌فای یا هات‌اسپات وصل کنید تا بازی بدون اینترنت اجرا شود.
+                  <div className="w-14 h-14 rounded-2xl bg-rose-950/60 border border-rose-600/40 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                    <User className="w-7 h-7 text-rose-400" />
+                  </div>
+                  <h3 className="text-base font-black text-white group-hover:text-rose-400 transition-colors">
+                    ورود بازیکن (Player)
+                  </h3>
+                  <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                    ورود با نام و کد ۴ رقمی، مشاهده کارت نقش محرمانه و وضعیت زنده بازی.
                   </p>
                 </div>
-              </div>
-              <button
-                onClick={() => setIsExportOpen(true)}
-                className="text-xs px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-200 shrink-0"
-              >
-                مشاهده کدهای سرور
+                <div className="mt-5 flex items-center gap-1.5 text-xs font-bold text-rose-400">
+                  <span>ورود به عنوان بازیکن</span>
+                  <Play className="w-3.5 h-3.5 fill-rose-400 rotate-180" />
+                </div>
               </button>
             </div>
           </div>
@@ -434,21 +419,21 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsQrOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-950/40 cursor-pointer"
                 >
-                  <Smartphone className="w-3.5 h-3.5" />
-                  QR کد گوشی‌ها
+                  <QrCode className="w-4 h-4" />
+                  <span>QR کد گوشی‌ها</span>
                 </button>
                 <button
                   onClick={() => setClientType('player')}
                   className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs cursor-pointer"
                 >
-                  تغییر به نمای بازیکن
+                  مشاهده نمای بازیکن
                 </button>
               </div>
             </div>
 
-            {/* If game cards have NOT been distributed yet, show the Role Selection System */}
+            {/* If game cards have NOT been distributed yet, show Role Selection */}
             {!cardsDistributed ? (
               <div className="space-y-4">
                 <RoleSelectionPanel
@@ -492,17 +477,18 @@ export default function App() {
               errorMessage={errorMessage}
               isJoining={isJoining}
               onJoin={handleJoinAsPlayer}
-              onGodClick={() => {
-                handleJoinAsGod(roomCode);
-              }}
+              onGodClick={() => handleJoinAsGod(roomCode)}
+              onBack={() => setClientType(null)}
             />
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between bg-neutral-900/60 border border-neutral-800 p-2.5 rounded-2xl mb-2">
-                <span className="text-xs text-neutral-400">اتاق بازی: <strong className="text-amber-400">{roomCode}</strong></span>
+              <div className="flex items-center justify-between bg-neutral-900/60 border border-neutral-800 p-2.5 rounded-2xl mb-1">
+                <span className="text-xs text-neutral-400">
+                  اتاق بازی: <strong className="text-amber-400 font-mono font-bold tracking-wider">{roomCode}</strong>
+                </span>
                 <button
                   onClick={() => setClientType('god')}
-                  className="text-xs px-2.5 py-1 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white"
+                  className="text-xs px-2.5 py-1 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
                 >
                   تغییر به پنل گرداننده
                 </button>
@@ -521,8 +507,8 @@ export default function App() {
         )}
       </main>
 
-      {/* QR Code Modal for scanning with phones */}
-      <QrCodeModal
+      {/* Host QR Code Modal */}
+      <HostShareModal
         roomCode={roomCode}
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
@@ -532,12 +518,6 @@ export default function App() {
       <AudioPlayerModal
         isOpen={isAudioOpen}
         onClose={() => setIsAudioOpen(false)}
-      />
-
-      {/* Standalone server.js and offline instructions modal */}
-      <OfflineExportModal
-        isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
       />
     </div>
   );
