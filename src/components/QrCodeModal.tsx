@@ -19,7 +19,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ roomCode, isOpen, onCl
 
   const getCleanBaseUrl = () => {
     if (typeof window === 'undefined') return 'http://localhost:3000';
-    return window.location.origin + window.location.pathname;
+    return window.location.href.split("?")[0] + window.location.pathname;
   };
 
   const generateQr = useCallback(async (text: string) => {
