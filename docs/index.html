@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>بازی مافیا - دستیار و گرداننده آنلاین و محلی</title>
+    <meta name="description" content="وب‌اپلیکیشن جامع بازی مافیا با ۲۰+ نقش اختصاصی، انیمیشن کارت سه‌بعدی، پنل حرفه‌ای گرداننده، QR کد و پشتیبانی از شبکه محلی و آنلاین P2P" />
+    <meta property="og:title" content="بازی مافیا - دستیار و گرداننده آنلاین و محلی" />
+    <meta property="og:description" content="وب‌اپلیکیشن جامع بازی مافیا با ۲۰+ نقش اختصاصی، انیمیشن کارت سه‌بعدی، پنل حرفه‌ای گرداننده، QR کد و پشتیبانی از شبکه محلی و آنلاین P2P" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+      // Suppress Vite HMR WebSocket errors in cloud/iframe environments where HMR is disabled
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason;
+        if (
+          (reason && reason.message && /websocket|failed to fetch|without opened/i.test(reason.message)) ||
+          (typeof reason === 'string' && /websocket/i.test(reason)) ||
+          (reason && reason.stack && /@vite\/client/i.test(reason.stack))
+        ) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      });
+      window.addEventListener('error', function(event) {
+        if (
+          (event.message && /websocket|failed to fetch|without opened/i.test(event.message)) ||
+          (event.filename && /@vite\/client/i.test(event.filename))
+        ) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      });
+    </script>
+    <script>
+      // Fallback for uncompiled GitHub Pages static branch deployment
+      document.addEventListener('DOMContentLoaded', function() {
+        var uncompiledScript = document.querySelector('script[src*="main.tsx"]');
+        if (uncompiledScript && window.location.hostname.endsWith('github.io') && !window.location.pathname.includes('/docs/')) {
+          var fallback = document.getElementById('gh-fallback');
+          if (fallback) fallback.style.display = 'block';
+          try {
+            var cleanPath = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '');
+            window.location.replace(cleanPath + '/docs/' + window.location.search + window.location.hash);
+          } catch (e) {}
+        }
+      });
+    </script>
+    <script type="module" crossorigin src="./assets/index-BZ9UiEfL.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B8po9-Ye.css">
+  </head>
+  <body class="bg-neutral-950 text-neutral-100 antialiased selection:bg-rose-600 selection:text-white min-h-screen">
+    <div id="root">
+      <div id="gh-fallback" style="display:none; padding: 24px; text-align: center; color: #f4f4f5; font-family: system-ui, sans-serif; direction: rtl; max-width: 440px; margin: 40px auto; background: #18181b; border: 1px solid #27272a; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);">
+        <h2 style="color: #e11d48; margin-bottom: 8px; font-size: 22px;">🎭 بازی مافیا</h2>
+        <p style="font-size: 13.5px; color: #a1a1aa; line-height: 1.6; margin-bottom: 16px;">
+          در حال انتقال خودکار به نسخه وب بازی...
+        </p>
+        <a href="./docs/" style="display: block; background: #e11d48; color: white; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+          ورود مستقیم به بازی (Docs)
+        </a>
+        <a href="./standalone.html" style="display: block; background: #27272a; color: white; text-decoration: none; padding: 10px; border-radius: 10px; font-size: 13px;">
+          اجرای نسخه تک‌فایل (Standalone)
+        </a>
+      </div>
+    </div>
+  </body>
+</html>
+

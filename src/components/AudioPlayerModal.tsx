@@ -1,0 +1,534 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Music,
+  Upload,
+  Play,
+  Pause,
+  Trash2,
+  Volume2,
+  VolumeX,
+  Repeat,
+  Radio,
+  Sparkles,
+  Zap,
+  Moon,
+  Sun,
+  ShieldAlert,
+  Skull,
+} from 'lucide-react';
+import { AudioTrack, saveAudioTrack, getAudioTracks, deleteAudioTrack } from '../utils/audioStorage';
+import { ambientGenerator } from '../utils/audioGenerator';
+import { audio } from '../utils/audio';
+
+interface AudioPlayerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onBroadcastAudio?: (action: string, trackName: string) => void;
+}
+
+export const AudioPlayerModal: React.FC<AudioPlayerModalProps> = ({ isOpen, onClose, onBroadcastAudio }) => {
+  const [tracks, setTracks] = useState<AudioTrack[]>([]);
+  const [activeTrack, setActiveTrack] = useState<AudioTrack | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLooping, setIsLooping] = useState(true);
+  const [volume, setVolume] = useState(0.7);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [ambientMode, setAmbientMode] = useState<string>('none');
+  const [broadcastEnabled, setBroadcastEnabled] = useState(false);
+
+  // Upload state
+  const [uploadName, setUploadName] = useState('');
+  const [uploadCategory, setUploadCategory] = useState<'night' | 'day' | 'trial' | 'effect' | 'custom'>('night');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize and load saved tracks
+  useEffect(() => {
+    if (!isOpen) return;
+    loadTracks();
+  }, [isOpen]);
+
+  const loadTracks = async () => {
+    const list = await getAudioTracks();
+    setTracks(list);
+  };
+
+  // Audio element management
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    }
+    const a = audioRef.current;
+
+    const onTimeUpdate = () => setCurrentTime(a.currentTime);
+    const onLoadedMetadata = () => setDuration(a.duration || 0);
+    const onEnded = () => {
+      if (!isLooping) setIsPlaying(false);
+    };
+
+    a.addEventListener('timeupdate', onTimeUpdate);
+    a.addEventListener('loadedmetadata', onLoadedMetadata);
+    a.addEventListener('ended', onEnded);
+
+    return () => {
+      a.removeEventListener('timeupdate', onTimeUpdate);
+      a.removeEventListener('loadedmetadata', onLoadedMetadata);
+      a.removeEventListener('ended', onEnded);
+    };
+  }, [isLooping]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+      audioRef.current.loop = isLooping;
+    }
+    ambientGenerator.setVolume(volume);
+  }, [volume, isLooping]);
+
+  const handlePlayUploaded = (track: AudioTrack) => {
+    ambientGenerator.stopAll();
+    setAmbientMode('none');
+
+    if (!audioRef.current) return;
+
+    if (activeTrack?.id === track.id && isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.src = track.dataUrl;
+      audioRef.current.play();
+      setActiveTrack(track);
+      setIsPlaying(true);
+
+      if (broadcastEnabled && onBroadcastAudio) {
+        onBroadcastAudio('play', track.name);
+      }
+    }
+  };
+
+  const handleStopUploaded = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = val;
+      setCurrentTime(val);
+    }
+  };
+
+  // Ambient synth triggers
+  const handleTriggerAmbient = (mode: 'night' | 'day' | 'heartbeat') => {
+    handleStopUploaded();
+    setActiveTrack(null);
+
+    if (ambientMode === mode) {
+      ambientGenerator.stopAll();
+      setAmbientMode('none');
+    } else {
+      setAmbientMode(mode);
+      if (mode === 'night') ambientGenerator.playNightSuspense();
+      if (mode === 'day') ambientGenerator.playDayDiscussion();
+      if (mode === 'heartbeat') ambientGenerator.playTrialHeartbeat();
+
+      if (broadcastEnabled && onBroadcastAudio) {
+        onBroadcastAudio('ambient', mode === 'night' ? 'شب مافیا' : mode === 'day' ? 'بحث روز' : 'تپش دفاعیه');
+      }
+    }
+  };
+
+  // File upload handler
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const reader = new FileReader();
+
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      const defaultName = file.name.replace(/\.[^/.]+$/, '');
+      const newTrack: AudioTrack = {
+        id: 'track_' + Date.now(),
+        name: uploadName.trim() || defaultName,
+        category: uploadCategory,
+        dataUrl,
+      };
+
+      await saveAudioTrack(newTrack);
+      await loadTracks();
+      setUploadName('');
+      setIsUploading(false);
+      audio.playFlip();
+    };
+
+    reader.onerror = () => {
+      alert('خطا در خواندن فایل صوتی');
+      setIsUploading(false);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (activeTrack?.id === id) {
+      handleStopUploaded();
+      setActiveTrack(null);
+    }
+    await deleteAudioTrack(id);
+    await loadTracks();
+  };
+
+  const formatTime = (secs: number) => {
+    if (isNaN(secs)) return '00:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  if (!isOpen) return null;
+
+  const filteredTracks = activeCategory === 'all' ? tracks : tracks.filter((t) => t.category === activeCategory);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-neutral-800 pb-3 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-rose-950/80 border border-rose-800/60 flex items-center justify-center text-rose-400">
+              <Music className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-white">پلیر و مدیریت فایل‌های صوتی بازی</h3>
+              <p className="text-[11px] text-neutral-400">
+                پخش اتمسفر فاز شب، گفتگو، دفاعیه و بارگذاری آهنگ‌های دلخواه
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              handleStopUploaded();
+              ambientGenerator.stopAll();
+              setAmbientMode('none');
+              onClose();
+            }}
+            className="p-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-400 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto space-y-4 flex-1 pr-1">
+          {/* Active Audio Player Control Strip */}
+          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-4 shadow-inner space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="truncate">
+                <span className="text-[10px] text-neutral-500 uppercase font-mono block">در حال پخش:</span>
+                <span className="text-sm font-bold text-rose-400 truncate">
+                  {ambientMode !== 'none'
+                    ? ambientMode === 'night'
+                      ? '🌙 اتمسفر رازآلود فاز شب (Synth Drone)'
+                      : ambientMode === 'day'
+                      ? '☀️ تم تفکر و گفتگوی روز'
+                      : '💓 استرس تپش قلب دادگاه و دفاعیه'
+                    : activeTrack?.name || 'هیچ قطعه‌ای پخش نمی‌شود'}
+                </span>
+              </div>
+
+              {/* Progress & Duration */}
+              {activeTrack && (
+                <span className="text-xs font-mono text-neutral-400 shrink-0">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+              )}
+            </div>
+
+            {/* Seek Bar (for uploaded tracks) */}
+            {activeTrack && (
+              <input
+                type="range"
+                min={0}
+                max={duration || 100}
+                value={currentTime}
+                onChange={handleSeek}
+                className="w-full accent-rose-600 h-1.5 bg-neutral-800 rounded-lg cursor-pointer"
+              />
+            )}
+
+            {/* Controls Bar */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="flex items-center gap-2">
+                {/* Loop Button */}
+                <button
+                  onClick={() => setIsLooping(!isLooping)}
+                  className={`p-2 rounded-xl text-xs flex items-center gap-1 border transition-all ${
+                    isLooping
+                      ? 'bg-rose-950/70 border-rose-800 text-rose-300 font-bold'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-500'
+                  }`}
+                  title="تکرار مداوم (Loop)"
+                >
+                  <Repeat className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">تکرار</span>
+                </button>
+
+                {/* Broadcast Toggle */}
+                <button
+                  onClick={() => setBroadcastEnabled(!broadcastEnabled)}
+                  className={`p-2 rounded-xl text-xs flex items-center gap-1 border transition-all ${
+                    broadcastEnabled
+                      ? 'bg-amber-950/70 border-amber-800 text-amber-300 font-bold'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-500'
+                  }`}
+                  title="ارسال نام موسیقی به بازیکنان"
+                >
+                  <Radio className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">ارسال به بازیکنان</span>
+                </button>
+              </div>
+
+              {/* Volume Slider */}
+              <div className="flex items-center gap-2">
+                {volume === 0 ? <VolumeX className="w-4 h-4 text-neutral-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  className="w-20 sm:w-28 accent-rose-600 h-1.5 bg-neutral-800 rounded-lg cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Ambient Music & Sound Effects Soundboard */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-neutral-300 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              موسیقی‌های اتمسفریک آماده بازی (تولید خودکار بدون فایل):
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button
+                onClick={() => handleTriggerAmbient('night')}
+                className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-right ${
+                  ambientMode === 'night'
+                    ? 'bg-purple-950/80 border-purple-500 shadow-lg shadow-purple-950/50 text-white'
+                    : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-purple-800'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center shrink-0">
+                  <Moon className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="truncate">
+                  <span className="font-bold text-xs block">موسیقی فاز شب</span>
+                  <span className="text-[10px] text-neutral-400">اتمسفر دلهره‌آور مافیا</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleTriggerAmbient('day')}
+                className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-right ${
+                  ambientMode === 'day'
+                    ? 'bg-amber-950/80 border-amber-500 shadow-lg shadow-amber-950/50 text-white'
+                    : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-amber-800'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-950 border border-amber-800 flex items-center justify-center shrink-0">
+                  <Sun className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="truncate">
+                  <span className="font-bold text-xs block">موسیقی فاز روز</span>
+                  <span className="text-[10px] text-neutral-400">ریتم تفکر و بحث شهر</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleTriggerAmbient('heartbeat')}
+                className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-right ${
+                  ambientMode === 'heartbeat'
+                    ? 'bg-rose-950/80 border-rose-500 shadow-lg shadow-rose-950/50 text-white'
+                    : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-rose-800'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-rose-950 border border-rose-800 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-4 h-4 text-rose-400" />
+                </div>
+                <div className="truncate">
+                  <span className="font-bold text-xs block">تپش دفاعیه</span>
+                  <span className="text-[10px] text-neutral-400">استرس رأی‌گیری دادگاه</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Sound FX Triggers */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-neutral-500 ml-1">افکت‌های آنی:</span>
+            <button
+              onClick={() => audio.playShot()}
+              className="px-3 py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-xs text-neutral-300 flex items-center gap-1.5"
+            >
+              <Skull className="w-3.5 h-3.5 text-rose-500" />
+              صدای شلیک
+            </button>
+            <button
+              onClick={() => audio.playGavel()}
+              className="px-3 py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-xs text-neutral-300 flex items-center gap-1.5"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              چکش دادگاه
+            </button>
+            <button
+              onClick={() => audio.playAlarm()}
+              className="px-3 py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-xs text-neutral-300 flex items-center gap-1.5"
+            >
+              <Zap className="w-3.5 h-3.5 text-emerald-400" />
+              بوق زنگ
+            </button>
+          </div>
+
+          {/* File Upload Section */}
+          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-4 space-y-3">
+            <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Upload className="w-4 h-4 text-sky-400" />
+              افزودن فایل صوتی دلخواه (MP3, WAV, OGG, M4A)
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input
+                type="text"
+                value={uploadName}
+                onChange={(e) => setUploadName(e.target.value)}
+                placeholder="عنوان فایل (مثلاً: موزیک گادفادر)"
+                className="bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500"
+              />
+
+              <select
+                value={uploadCategory}
+                onChange={(e) => setUploadCategory(e.target.value as any)}
+                className="bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500"
+              >
+                <option value="night">🌙 فاز شب</option>
+                <option value="day">☀️ فاز روز</option>
+                <option value="trial">⚖️ دفاعیه و دادگاه</option>
+                <option value="effect">💥 افکت صوتی</option>
+                <option value="custom">🎵 دلخواه</option>
+              </select>
+
+              <label className="cursor-pointer bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white rounded-xl px-3 py-2 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 text-center">
+                <Upload className="w-3.5 h-3.5" />
+                <span>{isUploading ? 'در حال بارگذاری...' : 'انتخاب و آپلود فایل'}</span>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isUploading}
+                />
+              </label>
+            </div>
+            <p className="text-[10px] text-neutral-500">
+              * فایل‌ها در پایگاه‌داده محلی مرورگر (IndexedDB) ذخیره می‌شوند و برای دورهمی‌های بعدی هم باقی می‌مانند.
+            </p>
+          </div>
+
+          {/* Uploaded Playlist */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-neutral-300">
+                لیست فایل‌های صوتی بارگذاری‌شده ({tracks.length}):
+              </h4>
+              <div className="flex items-center gap-1">
+                {['all', 'night', 'day', 'trial'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all ${
+                      activeCategory === cat ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
+                    }`}
+                  >
+                    {cat === 'all' ? 'همه' : cat === 'night' ? 'شب' : cat === 'day' ? 'روز' : 'دفاعیه'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredTracks.length === 0 ? (
+              <div className="bg-neutral-950 border border-neutral-800/80 rounded-2xl p-6 text-center text-xs text-neutral-500">
+                هنوز فایل صوتی بارگذاری نشده است. فایل‌های MP3 خود را از بخش بالا اضافه کنید.
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {filteredTracks.map((track) => {
+                  const isThisPlaying = activeTrack?.id === track.id && isPlaying;
+                  return (
+                    <div
+                      key={track.id}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                        isThisPlaying
+                          ? 'bg-rose-950/40 border-rose-700/80 text-white'
+                          : 'bg-neutral-950 border-neutral-850 text-neutral-300 hover:border-neutral-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <button
+                          onClick={() => handlePlayUploaded(track)}
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform active:scale-95 ${
+                            isThisPlaying ? 'bg-rose-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                          }`}
+                        >
+                          {isThisPlaying ? <Pause className="w-3.5 h-3.5 fill-white" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                        </button>
+                        <div className="truncate text-right">
+                          <span className="font-bold text-xs truncate block">{track.name}</span>
+                          <span className="text-[10px] text-neutral-500">
+                            {track.category === 'night' ? 'فاز شب' : track.category === 'day' ? 'فاز روز' : track.category === 'trial' ? 'دفاعیه' : 'سایر'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleDelete(track.id)}
+                          className="p-1 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                          title="حذف فایل"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-4 pt-3 border-t border-neutral-800 flex items-center justify-between">
+          <span className="text-[11px] text-neutral-400">
+            برای پخش در اسپیکر دورهمی، گوشی یا لپتاپ گرداننده را با بلوتوث یا کابل AUX وصل کنید.
+          </span>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-white text-xs font-bold transition-colors"
+          >
+            بستن
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

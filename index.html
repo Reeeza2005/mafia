@@ -1,345 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>بازی مافیا | نبرد شب</title>
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        :root {
-            --bg: #09090d;
-            --surface: rgba(22, 22, 30, 0.85);
-            --surface-card: rgba(30, 30, 42, 0.7);
-            --accent: #e11d48;
-            --accent-glow: rgba(225, 29, 72, 0.35);
-            --mafia: #f43f5e;
-            --citizen: #38bdf8;
-            --independent: #c084fc;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: rgba(255, 255, 255, 0.08);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-        body {
-            background: radial-gradient(circle at 50% 0%, #1a0f18 0%, var(--bg) 75%);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 16px;
-        }
-        .container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
-        .glass-panel {
-            background: var(--surface);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-        }
-        h1 { font-size: 26px; text-align: center; font-weight: 900; background: linear-gradient(135deg, #fff 40%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        h2 { font-size: 18px; text-align: center; margin-bottom: 12px; font-weight: 700; }
-        button {
-            background: linear-gradient(135deg, #e11d48, #be123c);
-            color: white; border: none; border-radius: 12px; padding: 12px 16px;
-            font-size: 14px; font-weight: 700; cursor: pointer; width: 100%;
-            transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
-            box-shadow: 0 4px 15px var(--accent-glow);
-        }
-        button:active { transform: scale(0.97); }
-        button.btn-sec { background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border); box-shadow: none; }
-        button.btn-gavel { background: linear-gradient(135deg, #854d0e, #713f12); margin-top: 8px; }
-        input, select {
-            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border);
-            background: rgba(12, 12, 16, 0.85); color: white; font-size: 14px; margin-bottom: 10px; outline: none;
-        }
-        input:focus { border-color: var(--accent); }
-        .hidden { display: none !important; }
-        /* 3D Card */
-        .card-stage { perspective: 1200px; width: 100%; height: 380px; margin: 12px 0; }
-        .card-rotator { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; }
-        .card-rotator.flipped { transform: rotateY(180deg); }
-        .card-side { width: 100%; height: 100%; position: absolute; backface-visibility: hidden; border-radius: 24px; padding: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .card-front-side { background: linear-gradient(145deg, #181822, #0d0d12); border: 2px dashed rgba(255, 255, 255, 0.15); }
-        .card-back-side { background: linear-gradient(145deg, #24141e, #130a10); border: 2px solid var(--accent); transform: rotateY(180deg); }
-        /* Player row */
-        .player-tile { display: flex; align-items: center; justify-content: space-between; background: var(--surface-card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
-        .btn-buzz { width: auto; padding: 6px 10px; font-size: 11px; background: rgba(225, 29, 72, 0.2); border: 1px solid var(--accent); color: #f43f5e; border-radius: 8px; }
-        .night-guide { background: rgba(15, 12, 28, 0.85); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 14px; padding: 12px; margin-top: 14px; }
-        .night-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px dashed rgba(255,255,255,0.06); font-size: 12px; }
-        .night-badge { background: #4f46e5; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; flex-shrink: 0; }
-        #qr-wrap { background: white; padding: 8px; border-radius: 12px; width: fit-content; margin: 10px auto; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div>
-            <h1>🎭 مافیا: نبرد شب</h1>
-            <p style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 2px;">دستیار هوشمند دورهمی و سناریوهای حرفه‌ای</p>
-        </div>
-
-        <!-- صفحه اصلی -->
-        <div id="view-home" class="glass-panel">
-            <h2>ورود به اتاق بازی</h2>
-            <button onclick="startHost()">👑 ورود به عنوان گرداننده (Host)</button>
-            <button class="btn-sec" onclick="showJoin()" style="margin-top: 10px;">👤 ورود به عنوان بازیکن</button>
-            <div style="margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 14px;">
-                <a href="mafia-offline.zip" download style="text-decoration: none;">
-                    <button type="button" class="btn-sec" style="border-color: #0284c7; color: #38bdf8;">📥 دانلود پکیج آفلاین برای شبکه خانگی</button>
-                </a>
-            </div>
-        </div>
-
-        <!-- ورود بازیکن -->
-        <div id="view-join" class="glass-panel hidden">
-            <h2>ثبت مشخصات بازیکن</h2>
-            <input id="in-name" type="text" placeholder="نام خود را وارد کنید...">
-            <button onclick="registerPlayer()">ورود به اتاق</button>
-            <button class="btn-sec" onclick="location.reload()" style="margin-top: 8px;">بازگشت</button>
-        </div>
-
-        <!-- کارت بازیکن -->
-        <div id="view-card" class="glass-panel hidden">
-            <h2 id="player-welcome">کارت نقش</h2>
-            <p style="text-align: center; color: var(--text-muted); font-size: 12px;">روی کارت ضربه بزنید تا نقشتان آشکار شود</p>
-            <div class="card-stage" onclick="toggleCard()">
-                <div class="card-rotator" id="card-flipper">
-                    <div class="card-side card-front-side">
-                        <div style="font-size: 60px; margin-bottom: 10px;">🛡️</div>
-                        <h3>کارت محرمانه نقش</h3>
-                        <p style="color: var(--text-muted); font-size: 12px; margin-top: 6px;">برای مشاهده لمس کنید</p>
-                    </div>
-                    <div class="card-side card-back-side">
-                        <div id="role-icon-box" style="font-size: 55px; margin-bottom: 8px;">🎭</div>
-                        <h2 id="card-title" style="color: #fb7185; font-size: 20px;">در انتظار گرداننده...</h2>
-                        <p id="card-desc" style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-top: 8px;">کارت‌ها هنوز توزیع نشده‌اند.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- پنل گرداننده -->
-        <div id="view-host" class="glass-panel hidden">
-            <h2>پنل مدیریت گرداننده</h2>
-            <div id="qr-wrap"></div>
-            <p id="ip-address-txt" style="font-size: 11px; color: #38bdf8; text-align: center; margin-top: 4px; word-break: break-all;"></p>
-
-            <button class="btn-gavel" onclick="playGavelSound()">⚖️ کوبش چکش چوبی دادگاه</button>
-
-            <div style="margin: 14px 0; background: rgba(0,0,0,0.25); padding: 10px; border-radius: 12px;">
-                <label style="font-size: 13px; font-weight: bold;">توزیع کارت‌ها:</label>
-                <div style="display: flex; gap: 8px; margin-top: 6px;">
-                    <input id="roles-csv" type="text" value="پدرخوانده, مافیا ساده, پزشک, کارآگاه, اسنایپر, شهروند ساده" style="margin:0; font-size:12px;">
-                </div>
-                <button onclick="distributeCards()" style="margin-top: 8px;">توزیع محرمانه کارت‌ها</button>
-            </div>
-
-            <h3 style="margin-top: 14px; text-align: right; font-size: 14px;">فهرست بازیکنان متصل (<span id="p-count">0</span>):</h3>
-            <div id="players-list" style="margin-top: 8px;">
-                <p style="text-align: center; color: var(--text-muted); font-size: 12px;">منتظر ورود بازیکنان...</p>
-            </div>
-
-            <div id="night-section" class="night-guide hidden">
-                <h3 style="color: #c7d2fe; text-align: right; margin-bottom: 8px; font-size: 13px;">🌙 ترتیـب بیدارباش شـب:</h3>
-                <div id="night-steps-list"></div>
-            </div>
-        </div>
-    </div>
-
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>بازی مافیا - دستیار و گرداننده آنلاین و محلی</title>
+    <meta name="description" content="وب‌اپلیکیشن جامع بازی مافیا با ۲۰+ نقش اختصاصی، انیمیشن کارت سه‌بعدی، پنل حرفه‌ای گرداننده، QR کد و پشتیبانی از شبکه محلی و آنلاین P2P" />
+    <meta property="og:title" content="بازی مافیا - دستیار و گرداننده آنلاین و محلی" />
+    <meta property="og:description" content="وب‌اپلیکیشن جامع بازی مافیا با ۲۰+ نقش اختصاصی، انیمیشن کارت سه‌بعدی، پنل حرفه‌ای گرداننده، QR کد و پشتیبانی از شبکه محلی و آنلاین P2P" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script>
-        let myId = localStorage.getItem('mafia_uid') || 'p_' + Math.random().toString(36).substr(2, 7);
-        localStorage.setItem('mafia_uid', myId);
-        let myName = localStorage.getItem('mafia_uname') || '';
-        let players = [];
-        let peer = null;
-        let connections = {};
-
-        const ROLES_ORDER = {
-            'پدرخوانده': 1, 'مافیا ساده': 1, 'پزشک': 2, 'کارآگاه': 3, 'اسنایپر': 4, 'شهروند ساده': 99
-        };
-
-        function toggleCard() { document.getElementById('card-flipper').classList.toggle('flipped'); }
-        function showJoin() {
-            document.getElementById('view-home').classList.add('hidden');
-            document.getElementById('view-join').classList.remove('hidden');
-            if (myName) document.getElementById('in-name').value = myName;
+      // Suppress Vite HMR WebSocket errors in cloud/iframe environments where HMR is disabled
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason;
+        if (
+          (reason && reason.message && /websocket|failed to fetch|without opened/i.test(reason.message)) ||
+          (typeof reason === 'string' && /websocket/i.test(reason)) ||
+          (reason && reason.stack && /@vite\/client/i.test(reason.stack))
+        ) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
         }
-
-        window.onload = function() {
-            const p = new URLSearchParams(window.location.search);
-            if (p.get('join') || p.get('room')) showJoin();
-        };
-
-        function startHost() {
-            document.getElementById('view-home').classList.add('hidden');
-            document.getElementById('view-host').classList.remove('hidden');
-
-            const roomId = 'room_' + Math.random().toString(36).substr(2, 6);
-            peer = new Peer('mafia_' + roomId);
-            peer.on('open', () => {
-                const joinUrl = window.location.origin + window.location.pathname + '?room=' + roomId;
-                document.getElementById('qr-wrap').innerHTML = '';
-                new QRCode(document.getElementById('qr-wrap'), { text: joinUrl, width: 130, height: 130 });
-                document.getElementById('ip-address-txt').innerText = joinUrl;
-            });
-
-            peer.on('connection', conn => {
-                conn.on('data', data => {
-                    if (data.type === 'join') {
-                        connections[conn.peer] = conn;
-                        if (!players.find(p => p.id === data.id)) {
-                            players.push({ id: data.id, name: data.name, peerId: conn.peer });
-                            updateHostUI();
-                        }
-                    }
-                });
-            });
-
-            // لوکال پولینگ بک‌اند در صورت اجرا در شبکه محلی
-            setInterval(() => {
-                fetch('/api/state').then(r => r.json()).then(d => {
-                    if (d.players) { players = d.players; updateHostUI(); }
-                }).catch(() => {});
-            }, 2000);
+      });
+      window.addEventListener('error', function(event) {
+        if (
+          (event.message && /websocket|failed to fetch|without opened/i.test(event.message)) ||
+          (event.filename && /@vite\/client/i.test(event.filename))
+        ) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
         }
-
-        function registerPlayer() {
-            myName = document.getElementById('in-name').value.trim();
-            if (!myName) return alert('نام را وارد کنید');
-            localStorage.setItem('mafia_uname', myName);
-
-            document.getElementById('view-join').classList.add('hidden');
-            document.getElementById('view-card').classList.remove('hidden');
-            document.getElementById('player-welcome').innerText = 'خوش آمدی، ' + myName;
-
-            const room = new URLSearchParams(window.location.search).get('room');
-            if (room && typeof Peer !== 'undefined') {
-                peer = new Peer();
-                peer.on('open', () => {
-                    const conn = peer.connect('mafia_' + room);
-                    conn.on('open', () => conn.send({ type: 'join', id: myId, name: myName }));
-                    conn.on('data', data => {
-                        if (data.type === 'role') setMyRole(data.role);
-                        if (data.type === 'buzz') triggerBuzz();
-                    });
-                });
-            }
-
-            fetch('/api/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: myId, name: myName })
-            }).catch(() => {});
-
-            setInterval(() => {
-                fetch('/api/my_role?id=' + myId).then(r => r.json()).then(d => {
-                    if (d.role) setMyRole(d.role.title);
-                    if (d.buzzed) triggerBuzz();
-                }).catch(() => {});
-            }, 1800);
-        }
-
-        function setMyRole(title) {
-            document.getElementById('card-title').innerText = title;
-            document.getElementById('card-desc').innerText = 'نقش شما با موفقیت تعیین شد.';
-        }
-
-        function triggerBuzz() {
-            if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
-            playChime();
-        }
-
-        function updateHostUI() {
-            document.getElementById('p-count').innerText = players.length;
-            const wrap = document.getElementById('players-list');
-            wrap.innerHTML = '';
-            players.forEach(p => {
-                const d = document.createElement('div');
-                d.className = 'player-tile';
-                d.innerHTML = `
-                    <div><strong>${p.name}</strong> <span style="font-size:12px;color:var(--text-muted);">${p.role || ''}</span></div>
-                    <button class="btn-buzz" onclick="sendBuzz('${p.peerId}', '${p.id}')">📳 ویبره</button>
-                `;
-                wrap.appendChild(d);
-            });
-        }
-
-        function sendBuzz(peerId, pId) {
-            if (connections[peerId]) connections[peerId].send({ type: 'buzz' });
-            fetch('/api/buzz', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetId: pId })
-            }).catch(() => {});
-        }
-
-        function distributeCards() {
-            const list = document.getElementById('roles-csv').value.split(',').map(s => s.trim()).filter(Boolean);
-            if (list.length !== players.length) {
-                return alert(`تعداد نقش‌ها (${list.length}) با بازیکنان (${players.length}) برابر نیست!`);
-            }
-            list.sort(() => Math.random() - 0.5);
-            players.forEach((p, i) => {
-                p.role = list[i];
-                if (connections[p.peerId]) connections[p.peerId].send({ type: 'role', role: p.role });
-            });
-            fetch('/api/distribute', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deck: list.map(t => ({ title: t, desc: '' })) })
-            }).catch(() => {});
-            updateHostUI();
-            renderNightOrder();
-        }
-
-        function renderNightOrder() {
-            const box = document.getElementById('night-section');
-            const list = document.getElementById('night-steps-list');
-            list.innerHTML = '';
-            const ordered = players.filter(p => p.role && ROLES_ORDER[p.role] < 90)
-                                   .sort((a,b) => (ROLES_ORDER[a.role] || 99) - (ROLES_ORDER[b.role] || 99));
-            if (ordered.length > 0) {
-                box.classList.remove('hidden');
-                ordered.forEach((p, idx) => {
-                    const row = document.createElement('div');
-                    row.className = 'night-item';
-                    row.innerHTML = `<div class="night-badge">${idx + 1}</div><div><strong>${p.role}</strong> (${p.name})</div>`;
-                    list.appendChild(row);
-                });
-            }
-        }
-
-        function playGavelSound() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const g = ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(140, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.15);
-                g.gain.setValueAtTime(0.8, ctx.currentTime);
-                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
-                osc.connect(g); g.connect(ctx.destination);
-                osc.start(); osc.stop(ctx.currentTime + 0.2);
-            } catch(e) {}
-        }
-
-        function playChime() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const g = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(587, ctx.currentTime);
-                g.gain.setValueAtTime(0.25, ctx.currentTime);
-                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-                osc.connect(g); g.connect(ctx.destination);
-                osc.start(); osc.stop(ctx.currentTime + 0.35);
-            } catch(e) {}
-        }
+      });
     </script>
-</body>
+    <script>
+      // Fallback for uncompiled GitHub Pages static branch deployment
+      document.addEventListener('DOMContentLoaded', function() {
+        var uncompiledScript = document.querySelector('script[src*="main.tsx"]');
+        if (uncompiledScript && window.location.hostname.endsWith('github.io') && !window.location.pathname.includes('/docs/')) {
+          var fallback = document.getElementById('gh-fallback');
+          if (fallback) fallback.style.display = 'block';
+          try {
+            var cleanPath = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '');
+            window.location.replace(cleanPath + '/docs/' + window.location.search + window.location.hash);
+          } catch (e) {}
+        }
+      });
+    </script>
+  </head>
+  <body class="bg-neutral-950 text-neutral-100 antialiased selection:bg-rose-600 selection:text-white min-h-screen">
+    <div id="root">
+      <div id="gh-fallback" style="display:none; padding: 24px; text-align: center; color: #f4f4f5; font-family: system-ui, sans-serif; direction: rtl; max-width: 440px; margin: 40px auto; background: #18181b; border: 1px solid #27272a; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);">
+        <h2 style="color: #e11d48; margin-bottom: 8px; font-size: 22px;">🎭 بازی مافیا</h2>
+        <p style="font-size: 13.5px; color: #a1a1aa; line-height: 1.6; margin-bottom: 16px;">
+          در حال انتقال خودکار به نسخه وب بازی...
+        </p>
+        <a href="./docs/" style="display: block; background: #e11d48; color: white; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+          ورود مستقیم به بازی (Docs)
+        </a>
+        <a href="./standalone.html" style="display: block; background: #27272a; color: white; text-decoration: none; padding: 10px; border-radius: 10px; font-size: 13px;">
+          اجرای نسخه تک‌فایل (Standalone)
+        </a>
+      </div>
+    </div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
 </html>
+

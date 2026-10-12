@@ -1,0 +1,6 @@
+{
+  "name": "بازی مافیا - دستیار و گرداننده آنلاین و محلی",
+  "description": "وب‌اپلیکیشن جامع بازی مافیا با ۲۰+ نقش اختصاصی، انیمیشن کارت سه‌بعدی، پنل حرفه‌ای گرداننده، QR کد و پشتیبانی از شبکه محلی و آنلاین P2P",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

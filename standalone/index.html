@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>بازی مافیا دورهمی (دوگانه لوکال / آنلاین)</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg: #09090b;
+            --card: #18181b;
+            --accent: #e11d48;
+            --accent-hover: #be123c;
+            --text: #f4f4f5;
+            --sub: #a1a1aa;
+            --border: #27272a;
+            --mafia: #f43f5e;
+            --citizen: #38bdf8;
+            --independent: #c084fc;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 12px; }
+        .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 12px; }
+        .box { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        h1, h2, h3 { text-align: center; }
+        h1 { color: var(--accent); margin-bottom: 6px; font-size: 24px; font-weight: 900; }
+        .mode-badge { text-align: center; font-size: 11.5px; color: #4ade80; background: #14532d33; padding: 4px 12px; border-radius: 20px; width: fit-content; margin: 0 auto 10px; border: 1px solid #22c55e44; }
+        button { background: var(--accent); color: white; border: none; border-radius: 12px; padding: 12px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
+        button:hover { background: var(--accent-hover); }
+        button:active { transform: scale(0.97); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        button.secondary { background: #27272a; margin-top: 8px; color: #e4e4e7; }
+        button.secondary:hover { background: #3f3f46; }
+        input[type="text"] { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: #09090b; color: white; font-size: 14px; margin-bottom: 10px; text-align: center; }
+        .hidden { display: none !important; }
+
+        /* کارت سه بعدی ۳D Flip Card */
+        .card-scene { perspective: 1000px; width: 100%; height: 420px; margin: 12px 0; }
+        .card-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); cursor: pointer; }
+        .card-inner.flipped { transform: rotateY(180deg); }
+        .card-face { width: 100%; height: 100%; position: absolute; backface-visibility: hidden; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 22px; text-align: center; }
+        .card-front { background: linear-gradient(160deg, #18181b, #09090b); border: 2px dashed #3f3f46; }
+        .card-back { background: linear-gradient(160deg, #27272a, #09090b); border: 2px solid var(--accent); transform: rotateY(180deg); }
+        .role-svg-box { width: 85px; height: 85px; margin: 8px 0; border-radius: 16px; background: #09090b; padding: 6px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+        .role-desc { font-size: 13px; color: var(--sub); line-height: 1.6; margin-top: 8px; max-height: 120px; overflow-y: auto; text-align: justify; padding: 0 4px; }
+        .team-badge { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: bold; margin-bottom: 4px; }
+
+        /* پنل گرداننده و انتخاب نقش‌ها */
+        .role-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #27272a88; font-size: 13.5px; }
+        .role-item:last-child { border-bottom: none; }
+        .num-ctrl { display: flex; gap: 8px; align-items: center; }
+        .num-ctrl button { width: 28px; height: 28px; padding: 0; font-size: 16px; line-height: 1; border-radius: 6px; background: #27272a; }
+        .num-ctrl span { min-width: 20px; text-align: center; font-weight: bold; font-family: monospace; }
+        .toggle-switch { width: 44px; height: 24px; position: relative; display: inline-block; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #27272a; border-radius: 24px; transition: 0.3s; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* تایمر */
+        .timer-box { display: flex; align-items: center; justify-content: space-between; background: #09090b; border: 1px solid var(--border); border-radius: 14px; padding: 10px 14px; margin: 10px 0; }
+        .timer-val { font-family: monospace; font-size: 26px; font-weight: 900; color: #fff; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+        th, td { padding: 9px; text-align: center; border-bottom: 1px solid var(--border); }
+        th { color: var(--sub); font-size: 11px; text-transform: uppercase; }
+        .badge-alive { color: #4ade80; background: #14532d44; padding: 2px 8px; border-radius: 8px; font-size: 11px; }
+        .badge-dead { color: #f87171; background: #450a0a55; padding: 2px 8px; border-radius: 8px; font-size: 11px; }
+        #qr-box { display: flex; justify-content: center; margin: 10px auto; background: white; padding: 8px; border-radius: 12px; width: fit-content; }
+        .summary-bar { display: flex; justify-content: space-between; align-items: center; background: #09090b; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); margin: 10px 0; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <h1>🎭 بازی مافیا</h1>
+        <div id="mode-badge" class="mode-badge">شناسایی پروتکل شبکه...</div>
+
+        <!-- صفحه اصلی -->
+        <div id="view-home" class="box">
+            <h2>انتخاب نقش کاربری</h2>
+            <p style="text-align: center; color: var(--sub); font-size: 12.5px; margin: 6px 0 16px;">
+                گرداننده برای مدیریت و بازیکن برای دریافت کارت اختصاصی
+            </p>
+            <button onclick="initHost()">ورود به عنوان گرداننده (Host)</button>
+            <button class="secondary" onclick="showJoin()">ورود به عنوان بازیکن</button>
+        </div>
+
+        <!-- صفحه ورود بازیکن -->
+        <div id="view-join" class="box hidden">
+            <h2>اتصال به اتاق بازی</h2>
+            <input id="in-name" type="text" placeholder="نام شما (مثلاً: رضا)">
+            <input id="in-room" type="text" placeholder="شناسه یا کد اتاق (مثلاً: MAFIA)">
+            <button onclick="joinGame()">ورود به بازی</button>
+            <button class="secondary" onclick="location.reload()">بازگشت</button>
+        </div>
+
+        <!-- صفحه کارت بازیکن -->
+        <div id="view-card" class="box hidden">
+            <h2>کارت شما</h2>
+            <p style="text-align: center; color: var(--sub); font-size: 12px; margin-top: 4px;">
+                برای دیدن یا مخفی کردن نقش، روی کارت ضربه بزنید
+            </p>
+
+            <div class="timer-box">
+                <span style="font-size: 12px; color: var(--sub);" id="player-timer-label">تایمر نوبت صحبت:</span>
+                <span class="timer-val" id="player-timer-val">01:00</span>
+            </div>
+
+            <div class="card-scene" onclick="toggleFlip()">
+                <div class="card-inner" id="card-inner">
+                    <div class="card-face card-front">
+                        <span style="font-size: 10px; color: var(--sub); font-family: monospace;">MAFIA CONFIDENTIAL</span>
+                        <div class="role-svg-box">
+                            <svg viewBox="0 0 24 24" fill="#e11d48" width="50" height="50"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                        </div>
+                        <h3>کارت محرمانه نقش</h3>
+                        <p style="font-size: 12px; color: var(--sub);">برای مشاهده نقش، روی کارت ضربه بزنید</p>
+                    </div>
+
+                    <div class="card-face card-back">
+                        <span id="r-team" class="team-badge" style="background:#27272a; color:#fff;">ساید</span>
+                        <div class="role-svg-box" id="r-svg-wrap"></div>
+                        <h2 id="r-title" style="color: #fff; font-size: 18px;">در انتظار توزیع...</h2>
+                        <p class="role-desc" id="r-desc">گرداننده بازی هنوز کارت‌ها را پخش نکرده است.</p>
+                        <span style="font-size: 10.5px; color: var(--sub); margin-top: 4px;">لمس مجدد = مخفی‌سازی</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- داشبورد گرداننده -->
+        <div id="view-host" class="box hidden">
+            <h2>کنترل پنل گرداننده</h2>
+            <p id="room-code-txt" style="text-align:center; font-weight:bold; color:var(--accent); margin: 6px 0; font-family: monospace;"></p>
+            <div id="qr-box"></div>
+
+            <div class="timer-box">
+                <div style="text-align: right;">
+                    <div style="font-size: 11px; color: var(--sub);">تایمر نوبت صحبت</div>
+                    <div class="timer-val" id="host-timer-val">01:00</div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button onclick="toggleTimer()" id="btn-timer-toggle" style="width: auto; padding: 8px 14px; font-size: 12px;">شروع</button>
+                    <button onclick="resetTimer()" style="width: auto; padding: 8px 12px; font-size: 12px; background: #27272a;">ریست</button>
+                </div>
+            </div>
+
+            <!-- بخش فایل‌های صوتی و موسیقی بازی -->
+            <div style="background:#09090b; border:1px solid var(--border); border-radius:14px; padding:12px; margin:10px 0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:12px; font-weight:bold; color:#fff;">🎵 موسیقی و افکت‌های صوتی:</span>
+                    <span id="audio-status" style="font-size:11px; color:var(--accent);">آماده</span>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px;">
+                    <button onclick="playAmbientPreset('night')" style="padding:8px 4px; font-size:11px; background:#3b0764;">🌙 موزیک شب</button>
+                    <button onclick="playAmbientPreset('day')" style="padding:8px 4px; font-size:11px; background:#713f12;">☀️ موزیک روز</button>
+                    <button onclick="playAmbientPreset('heartbeat')" style="padding:8px 4px; font-size:11px; background:#881337;">💓 دفاعیه</button>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="file" id="custom-audio-input" accept="audio/*" onchange="loadCustomAudioFile(event)" style="display:none;">
+                    <button onclick="document.getElementById('custom-audio-input').click()" style="padding:8px; font-size:11px; background:#27272a;">
+                        📁 بارگذاری فایل صوتی دلخواه (MP3)
+                    </button>
+                    <button id="btn-custom-play" onclick="toggleCustomAudio()" style="padding:8px; font-size:11px; display:none; background:var(--accent);">
+                        پخش فایل
+                    </button>
+                </div>
+            </div>
+
+            <div class="summary-bar">
+                <span>کارت‌های انتخابی: <strong id="selected-count" style="color:var(--accent)">0</strong></span>
+                <span>بازیکنان متصل: <strong id="connected-count" style="color:#4ade80">0</strong></span>
+            </div>
+
+            <div style="margin: 10px 0; max-height: 280px; overflow-y: auto; padding-right: 4px;" id="roles-container">
+                <div class="role-item">
+                    <span><strong>شهروند ساده</strong> (ساید شهر)</span>
+                    <div class="num-ctrl">
+                        <button onclick="changeRoleCount('simple_citizen', -1)">-</button>
+                        <span id="c-simple_citizen">3</span>
+                        <button onclick="changeRoleCount('simple_citizen', 1)">+</button>
+                    </div>
+                </div>
+                <div class="role-item">
+                    <span><strong>مافیا ساده</strong> (ساید مافیا)</span>
+                    <div class="num-ctrl">
+                        <button onclick="changeRoleCount('simple_mafia', -1)">-</button>
+                        <span id="c-simple_mafia">1</span>
+                        <button onclick="changeRoleCount('simple_mafia', 1)">+</button>
+                    </div>
+                </div>
+                <div id="special-roles-list"></div>
+            </div>
+
+            <button id="btn-deal" onclick="dealCards()">پخش کارت‌ها بین بازیکنان</button>
+
+            <h3 style="margin-top: 16px; font-size: 15px;">جدول نظارت بازیکنان (<span id="p-count">0</span>)</h3>
+            <table>
+                <thead><tr><th>نام</th><th>نقش</th><th>وضعیت</th><th>اقدام</th></tr></thead>
+                <tbody id="p-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const ROLES_DATA = {
+            godfather: { name: 'پدرخوانده (گادفادر)', team: 'mafia', desc: 'لیدر مافیا؛ تصمیم‌گیرنده شلیک شب و دارای استعلام منفی برای کارآگاه.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#180408" stroke="#e11d48" stroke-width="3"/><ellipse cx="50" cy="42" rx="34" ry="7" fill="#4c0519"/><path d="M26 41 C28 24 38 18 50 18 C62 18 72 24 74 41 Z" fill="#2d0611" stroke="#e11d48" stroke-width="2"/><rect x="33" y="49" width="13" height="9" rx="3" fill="#09090b" stroke="#e11d48"/><rect x="54" y="49" width="13" height="9" rx="3" fill="#09090b" stroke="#e11d48"/></svg>' },
+            dr_lecter: { name: 'دکتر لکتور', team: 'mafia', desc: 'پزشک مافیا؛ هر شب جان یک عضو مافیا (یا خودش) را نجات می‌دهد.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#140207" stroke="#be123c" stroke-width="3"/><circle cx="50" cy="42" r="18" fill="#310b17" stroke="#f43f5e" stroke-width="2"/><rect x="40" y="44" width="20" height="14" rx="2" fill="#0f0206" stroke="#fb7185"/><line x1="45" y1="44" x2="45" y2="58" stroke="#fb7185"/><line x1="55" y1="44" x2="55" y2="58" stroke="#fb7185"/></svg>' },
+            natasha: { name: 'ناتاشا (سایلنسر)', team: 'mafia', desc: 'سکوت اجباری؛ هر شب یک نفر را سایلنت می‌کند تا فردا نتواند صحبت یا رأی دهد.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#160824" stroke="#a855f7" stroke-width="3"/><path d="M22 48 C30 38 42 36 50 42 C58 36 70 38 78 48 C68 58 56 64 50 64 C44 64 32 58 22 48 Z" fill="#3b0764" stroke="#c084fc" stroke-width="2"/><line x1="24" y1="48" x2="76" y2="48" stroke="#f43f5e" stroke-width="2.5"/></svg>' },
+            terrorist: { name: 'تروریست', team: 'mafia', desc: 'در صورت کشته شدن با رأی دادگاه روز، می‌تواند یک نفر را همراه خود حذف کند.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#180404" stroke="#dc2626" stroke-width="3"/><rect x="25" y="32" width="14" height="42" rx="3" fill="#7f1d1d" stroke="#ef4444"/><rect x="43" y="28" width="14" height="46" rx="3" fill="#991b1b" stroke="#f87171"/><rect x="61" y="32" width="14" height="42" rx="3" fill="#7f1d1d" stroke="#ef4444"/></svg>' },
+            mistress: { name: 'معشوقه', team: 'mafia', desc: 'محبوب مافیا؛ با مرگ او در روز یا شب، مافیا شب بعد دو تیر شلیک می‌کند.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#1a0410" stroke="#f43f5e" stroke-width="3"/><path d="M50 20 C38 20 32 30 32 42 C32 50 38 58 46 62 L44 80 L56 80 L54 62 C62 58 68 50 68 42 C68 30 62 20 50 20 Z" fill="#3a0420" stroke="#fb7185" stroke-width="2"/><circle cx="62" cy="28" r="6" fill="#e11d48"/></svg>' },
+            joker: { name: 'جوکر', team: 'mafia', desc: 'خرابکار استعلام؛ نتیجه استعلام شبانه یک مظنون را برای کارآگاه معکوس می‌کند.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#14061a" stroke="#d946ef" stroke-width="3"/><path d="M30 40 C20 30 16 16 32 20 C42 22 40 38 40 38" fill="#701a75"/><path d="M70 40 C80 30 84 16 68 20 C58 22 60 38 60 38" fill="#581c87"/><circle cx="50" cy="54" r="18" fill="#2e1065" stroke="#e879f9" stroke-width="2"/></svg>' },
+            simple_mafia: { name: 'مافیا ساده', team: 'mafia', desc: 'عضو تیم مافیا؛ همفکری شبانه و دفاع از یاران در روز.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#14080a" stroke="#f43f5e" stroke-width="3"/><ellipse cx="50" cy="40" rx="30" ry="6" fill="#3f131a"/><path d="M32 39 C33 24 38 20 50 20 C62 20 67 24 68 39 Z" fill="#260b10" stroke="#f43f5e"/></svg>' },
+            detective: { name: 'کارآگاه', team: 'citizen', desc: 'استعلام شبانه هویت مظنونین (مثبت برای مافیا، منفی برای شهروند و پدرخوانده).', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#031b26" stroke="#0ea5e9" stroke-width="3"/><circle cx="44" cy="42" r="20" fill="#082f49" stroke="#38bdf8" stroke-width="3"/><line x1="58" y1="56" x2="76" y2="74" stroke="#38bdf8" stroke-width="6" stroke-linecap="round"/></svg>' },
+            doctor: { name: 'پزشک', team: 'citizen', desc: 'نجات جان یک شهروند در برابر شلیک مافیا در هر شب.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#04201e" stroke="#10b981" stroke-width="3"/><path d="M50 18 C64 18 76 26 76 42 C76 64 50 80 50 80 C50 80 24 64 24 42 C24 26 36 18 50 18 Z" fill="#064e3b" stroke="#34d399" stroke-width="2"/><rect x="45" y="32" width="10" height="30" fill="#fff"/><rect x="35" y="42" width="30" height="10" fill="#fff"/></svg>' },
+            sniper: { name: 'اسنایپر (حرفه‌ای)', team: 'citizen', desc: 'شلیک شبانه به مافیا؛ اگر به شهروند شلیک کند خودش کشته می‌شود.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#021a1f" stroke="#06b6d4" stroke-width="3"/><circle cx="50" cy="50" r="28" stroke="#22d3ee" stroke-width="2"/><circle cx="50" cy="50" r="3" fill="#ef4444"/><line x1="14" y1="50" x2="86" y2="50" stroke="#22d3ee" stroke-width="2"/></svg>' },
+            armored: { name: 'زره‌پوش', team: 'citizen', desc: 'دارای جلیقه ضدگلوله؛ نجات از اولین شلیک شب یا اولین رأی خروج روز.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#0f172a" stroke="#64748b" stroke-width="3"/><path d="M30 24 L42 20 L58 20 L70 24 L76 46 L70 52 L72 80 L28 80 L30 52 L24 46 Z" fill="#1e293b" stroke="#94a3b8" stroke-width="2"/></svg>' },
+            gunsmith: { name: 'تفنگدار', team: 'citizen', desc: 'اعطای تیر جنگی یا مشقی به شهروندان برای شلیک در فاز روز.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#181308" stroke="#f59e0b" stroke-width="3"/><g transform="rotate(45 50 50)"><rect x="46" y="20" width="8" height="50" fill="#78350f" stroke="#fbbf24"/></g></svg>' },
+            judge: { name: 'قاضی', team: 'citizen', desc: 'وتوی رأی دادگاه روز یا صدور حکم خروج مستقیم برای یک متهم.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#17120a" stroke="#eab308" stroke-width="3"/><line x1="24" y1="36" x2="76" y2="36" stroke="#ca8a04" stroke-width="3"/><line x1="50" y1="36" x2="50" y2="76" stroke="#ca8a04" stroke-width="3"/></svg>' },
+            priest: { name: 'کشیش', team: 'citizen', desc: 'تطهیر روحی و رفع سایلنت ناتاشا از روی شهروندان در شب.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#081d28" stroke="#38bdf8" stroke-width="3"/><rect x="45" y="22" width="10" height="52" rx="2" fill="#0284c7" stroke="#e0f2fe"/><rect x="28" y="34" width="44" height="10" rx="2" fill="#0284c7" stroke="#e0f2fe"/></svg>' },
+            sacrificial: { name: 'فدایی', team: 'citizen', desc: 'فدا کردن جان خود در دادگاه برای نجات یک شهروند بی‌گناه از اعدام.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#200d08" stroke="#f97316" stroke-width="3"/><path d="M50 36 C42 22 24 26 24 44 C24 64 50 78 50 78 C50 78 76 64 76 44 C76 26 58 22 50 36 Z" fill="#9a3412" stroke="#fdba74" stroke-width="2"/></svg>' },
+            freemason: { name: 'فراماسون', team: 'citizen', desc: 'شناسایی و شبکه مخفیانه شهروندان در شب اول بازی.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#081a24" stroke="#0284c7" stroke-width="3"/><polygon points="50,18 82,74 18,74" fill="#0c4a6e" stroke="#38bdf8" stroke-width="2.5"/></svg>' },
+            mayor: { name: 'شهردار', team: 'citizen', desc: 'رأی دوبرابر در روز یا لغو کامل رأی‌گیری دادگاه یک‌بار در طول بازی.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#1c1606" stroke="#eab308" stroke-width="3"/><ellipse cx="50" cy="38" rx="24" ry="5" fill="#422006"/><rect x="36" y="20" width="28" height="18" fill="#713f12"/></svg>' },
+            hacker: { name: 'هکر (نخبه)', team: 'citizen', desc: 'استعلام نقش دقیق بازیکنان یا قطع ارتباط شبانه مافیا.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#021c16" stroke="#10b981" stroke-width="3"/><path d="M30 66 C30 44 38 30 50 30 C62 30 70 44 70 66 Z" fill="#064e3b" stroke="#34d399"/></svg>' },
+            simple_citizen: { name: 'شهروند ساده', team: 'citizen', desc: 'ستون فقرات شهر؛ تحلیل‌گر روزانه و مشارکت در رأی‌گیری‌ها.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#081826" stroke="#38bdf8" stroke-width="3"/><rect x="24" y="48" width="14" height="32" fill="#0f2b46"/><rect x="42" y="38" width="16" height="42" fill="#075985"/><circle cx="50" cy="22" r="3" fill="#facc15"/></svg>' },
+            nostradamus: { name: 'نوستراداموس', team: 'independent', desc: 'پیشگویی برنده بازی در شب اول و تغییر جبهه بر اساس سرنوشت.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#180e28" stroke="#a855f7" stroke-width="3"/><circle cx="50" cy="44" r="20" fill="#2e1065" stroke="#d946ef" stroke-width="2"/></svg>' },
+            thousand_faces: { name: 'هزارچهره', team: 'independent', desc: 'کپی کردن نقش و قابلیت بازیکن کشته‌شده شب قبل.', svg: '<svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#171226" stroke="#8b5cf6" stroke-width="3"/><path d="M46 26 C30 26 22 38 22 54 C22 68 32 76 46 76 Z" fill="#2e1065"/><path d="M54 26 C70 26 78 38 78 54 C78 68 68 76 54 76 Z" fill="#431407"/></svg>' }
+        };
+
+        // Auto-detect connection capabilities
+        let mode = 'LOCAL_SOCKET';
+        const urlParams = new URLSearchParams(location.search);
+        const roomFromUrl = urlParams.get('room');
+        const roleFromUrl = urlParams.get('role');
+
+        const peerConfig = {
+            debug: 1,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        };
+
+        if (location.hostname.endsWith('github.io')) {
+            mode = 'PEER_P2P';
+        }
+
+        document.getElementById('mode-badge').innerText = mode === 'LOCAL_SOCKET'
+            ? 'اتصال هوشمند: سرور لوکال و شبکه محلی'
+            : 'اتصال آنلاین P2P (گیت‌هاب پیجز / وب)';
+
+        // Auto navigate if player joined via QR
+        if (roomFromUrl && roleFromUrl === 'player') {
+            window.addEventListener('DOMContentLoaded', () => {
+                showJoin();
+            });
+        }
+
+        let peer = null, socket = null, p2pConns = [];
+        let players = [];
+        let counts = { simple_citizen: 3, simple_mafia: 1 };
+        let specialSelections = {};
+
+        const specialContainer = document.getElementById('special-roles-list');
+        Object.keys(ROLES_DATA).forEach(k => {
+            if (k === 'simple_citizen' || k === 'simple_mafia') return;
+            const r = ROLES_DATA[k];
+            const div = document.createElement('div');
+            div.className = 'role-item';
+            div.innerHTML = `
+                <span>${r.name} <small style="color:${r.team === 'mafia' ? 'var(--mafia)' : r.team === 'citizen' ? 'var(--citizen)' : 'var(--independent)'}">(${r.team === 'mafia' ? 'مافیا' : r.team === 'citizen' ? 'شهروند' : 'مستقل'})</small></span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="chk-${k}" onchange="toggleSpecialRole('${k}')">
+                    <span class="slider"></span>
+                </label>
+            `;
+            specialContainer.appendChild(div);
+        });
+
+        function toggleSpecialRole(k) {
+            specialSelections[k] = document.getElementById('chk-' + k).checked;
+            updateCountsComparison();
+        }
+
+        function changeRoleCount(key, delta) {
+            counts[key] = Math.max(0, (counts[key] || 0) + delta);
+            document.getElementById('c-' + key).innerText = counts[key];
+            updateCountsComparison();
+        }
+
+        function getSelectedRolesArray() {
+            const arr = [];
+            for (let i = 0; i < (counts.simple_citizen || 0); i++) arr.push('simple_citizen');
+            for (let i = 0; i < (counts.simple_mafia || 0); i++) arr.push('simple_mafia');
+            Object.keys(specialSelections).forEach(k => {
+                if (specialSelections[k]) arr.push(k);
+            });
+            return arr;
+        }
+
+        function updateCountsComparison() {
+            const total = getSelectedRolesArray().length;
+            document.getElementById('selected-count').innerText = total;
+            document.getElementById('connected-count').innerText = players.length;
+            const btn = document.getElementById('btn-deal');
+            if (total === players.length && players.length > 0) {
+                btn.disabled = false;
+                btn.innerText = `پخش کارت‌ها (${total} کارت به ${players.length} بازیکن)`;
+            } else {
+                btn.disabled = true;
+                btn.innerText = `تعداد کارت‌ها (${total}) با بازیکنان (${players.length}) برابر نیست`;
+            }
+        }
+
+        function toggleFlip() {
+            document.getElementById('card-inner').classList.toggle('flipped');
+        }
+
+        function showJoin() {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-join').classList.remove('hidden');
+            const roomParam = new URLSearchParams(location.search).get('room');
+            if (roomParam) document.getElementById('in-room').value = roomParam;
+        }
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playBeep(freq = 600, duration = 0.1) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        let timerSeconds = 60, timerInterval = null, timerRunning = false;
+        function updateTimerDisplay() {
+            const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+            const s = String(timerSeconds % 60).padStart(2, '0');
+            const str = `${m}:${s}`;
+            document.getElementById('host-timer-val').innerText = str;
+            const pt = document.getElementById('player-timer-val');
+            if (pt) pt.innerText = str;
+        }
+
+        function toggleTimer() {
+            if (timerRunning) {
+                clearInterval(timerInterval);
+                timerRunning = false;
+                document.getElementById('btn-timer-toggle').innerText = 'ادامه';
+            } else {
+                timerRunning = true;
+                document.getElementById('btn-timer-toggle').innerText = 'مکث';
+                timerInterval = setInterval(() => {
+                    if (timerSeconds > 0) {
+                        timerSeconds--;
+                        if (timerSeconds <= 5 && timerSeconds > 0) playBeep(700, 0.08);
+                        if (timerSeconds === 0) playBeep(350, 0.4);
+                        updateTimerDisplay();
+                        broadcast({ type: 'timer', seconds: timerSeconds });
+                    } else {
+                        clearInterval(timerInterval);
+                        timerRunning = false;
+                        document.getElementById('btn-timer-toggle').innerText = 'شروع';
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            timerSeconds = 60;
+            updateTimerDisplay();
+            document.getElementById('btn-timer-toggle').innerText = 'شروع';
+            broadcast({ type: 'timer', seconds: 60 });
+        }
+
+        // سیستم پخش اتمسفر و فایل صوتی
+        let customAudio = new Audio();
+        let currentAmbientOscs = [];
+        let isCustomPlaying = false;
+
+        function stopAllMusic() {
+            if (customAudio) customAudio.pause();
+            isCustomPlaying = false;
+            const btn = document.getElementById('btn-custom-play');
+            if (btn) btn.innerText = 'پخش فایل';
+            currentAmbientOscs.forEach(o => { try { o.stop(); } catch(e){} });
+            currentAmbientOscs = [];
+            document.getElementById('audio-status').innerText = 'متوقف';
+        }
+
+        function playAmbientPreset(type) {
+            stopAllMusic();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            if (type === 'night') {
+                document.getElementById('audio-status').innerText = 'پخش موزیک شب 🌙';
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.value = 55;
+                gain.gain.value = 0.15;
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                currentAmbientOscs.push(osc);
+            } else if (type === 'day') {
+                document.getElementById('audio-status').innerText = 'پخش موزیک روز ☀️';
+                [130.81, 196.0].forEach(f => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = f;
+                    gain.gain.value = 0.1;
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    currentAmbientOscs.push(osc);
+                });
+            } else if (type === 'heartbeat') {
+                document.getElementById('audio-status').innerText = 'تپش قلب دفاعیه 💓';
+                let hbActive = true;
+                const beat = () => {
+                    if (!hbActive) return;
+                    playBeep(70, 0.15);
+                    setTimeout(() => { if (hbActive) playBeep(60, 0.2); }, 220);
+                    setTimeout(beat, 1100);
+                };
+                beat();
+                currentAmbientOscs.push({ stop: () => { hbActive = false; } });
+            }
+        }
+
+        function loadCustomAudioFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            customAudio.src = url;
+            customAudio.loop = true;
+            document.getElementById('btn-custom-play').style.display = 'inline-block';
+            document.getElementById('btn-custom-play').innerText = 'پخش: ' + file.name.slice(0, 15);
+            document.getElementById('audio-status').innerText = 'فایل آماده: ' + file.name;
+        }
+
+        function toggleCustomAudio() {
+            if (isCustomPlaying) {
+                customAudio.pause();
+                isCustomPlaying = false;
+                document.getElementById('btn-custom-play').innerText = 'ادامه پخش فایل';
+                document.getElementById('audio-status').innerText = 'مکث فایل';
+            } else {
+                stopAllMusic();
+                customAudio.play();
+                isCustomPlaying = true;
+                document.getElementById('btn-custom-play').innerText = 'مکث فایل';
+                document.getElementById('audio-status').innerText = 'در حال پخش فایل صوتی';
+            }
+        }
+
+        function broadcast(msg) {
+            if (mode === 'PEER_P2P') {
+                p2pConns.forEach(c => { try { c.send(msg); } catch(e){} });
+            } else if (socket) {
+                socket.emit('host_broadcast', msg);
+            }
+        }
+
+        function loadScript(src, cb) {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = cb;
+            s.onerror = () => { console.warn('Could not load ' + src + ', falling back to PeerJS'); mode = 'PEER_P2P'; initHost(); };
+            document.head.appendChild(s);
+        }
+
+        function initHost() {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-host').classList.remove('hidden');
+
+            if (mode === 'PEER_P2P') {
+                peer = new Peer();
+                peer.on('open', id => {
+                    document.getElementById('room-code-txt').innerText = 'کد اتاق: ' + id;
+                    const joinUrl = location.origin + location.pathname + '?room=' + id;
+                    const qrBox = document.getElementById("qr-box");
+                    qrBox.innerHTML = '';
+                    new QRCode(qrBox, { text: joinUrl, width: 130, height: 130 });
+                });
+                peer.on('connection', conn => {
+                    conn.on('data', data => {
+                        if (data.type === 'join') {
+                            if (!players.find(p => p.id === conn.peer)) {
+                                players.push({ id: conn.peer, name: data.name, roleId: null, isAlive: true, conn });
+                                p2pConns.push(conn);
+                                renderHostTable();
+                                updateCountsComparison();
+                            }
+                        }
+                    });
+                });
+            } else {
+                loadScript('/socket.io/socket.io.js', () => {
+                    socket = io();
+                    socket.emit('join_room', { roomCode: 'MAFIA', clientType: 'god' });
+                    socket.on('players_updated', data => {
+                        players = (data.players || []).map(p => ({ ...p, roleId: p.roleId }));
+                        renderHostTable();
+                        updateCountsComparison();
+                    });
+                    const joinUrl = location.origin + '?room=MAFIA';
+                    document.getElementById('room-code-txt').innerText = 'کد اتاق: MAFIA';
+                    const qrBox = document.getElementById("qr-box");
+                    qrBox.innerHTML = '';
+                    new QRCode(qrBox, { text: joinUrl, width: 130, height: 130 });
+                });
+            }
+            updateCountsComparison();
+        }
+
+        function dealCards() {
+            const selected = getSelectedRolesArray();
+            if (selected.length !== players.length) return alert('تعداد کارت‌ها با تعداد بازیکنان برابر نیست!');
+
+            const shuffled = [...selected].sort(() => Math.random() - 0.5);
+
+            players.forEach((p, idx) => {
+                p.roleId = shuffled[idx];
+                p.isAlive = true;
+                if (mode === 'PEER_P2P' && p.conn) {
+                    p.conn.send({ type: 'assigned_role', roleId: p.roleId });
+                }
+            });
+
+            if (mode === 'LOCAL_SOCKET' && socket) {
+                socket.emit('distribute_roles', { roomCode: 'MAFIA', selectedRoleIds: selected });
+            }
+
+            renderHostTable();
+            alert('کارت‌ها با موفقیت بین بازیکنان توزیع شدند!');
+        }
+
+        function toggleAlive(pid) {
+            const p = players.find(x => x.id === pid);
+            if (p) {
+                p.isAlive = !p.isAlive;
+                if (mode === 'PEER_P2P' && p.conn) {
+                    p.conn.send({ type: 'status_update', isAlive: p.isAlive });
+                } else if (mode === 'LOCAL_SOCKET' && socket) {
+                    socket.emit('update_player_status', { roomCode: 'MAFIA', playerId: pid, updates: { isAlive: p.isAlive } });
+                }
+                renderHostTable();
+            }
+        }
+
+        function renderHostTable() {
+            document.getElementById('p-count').innerText = players.length;
+            const tbody = document.getElementById('p-table');
+            tbody.innerHTML = '';
+            players.forEach(p => {
+                const r = p.roleId ? ROLES_DATA[p.roleId] : null;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${p.name}</strong></td>
+                    <td style="color:${r ? (r.team === 'mafia' ? 'var(--mafia)' : r.team === 'citizen' ? 'var(--citizen)' : 'var(--independent)') : 'var(--sub)'}">
+                        ${r ? r.name : 'در انتظار'}
+                    </td>
+                    <td>
+                        <span class="${p.isAlive ? 'badge-alive' : 'badge-dead'}">${p.isAlive ? 'زنده' : 'حذف شده'}</span>
+                    </td>
+                    <td>
+                        <button onclick="toggleAlive('${p.id}')" style="padding:4px 8px; font-size:11px; background:#27272a; width:auto;">
+                            ${p.isAlive ? 'حذف' : 'احیا'}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function joinGame() {
+            const name = document.getElementById('in-name').value.trim();
+            const room = document.getElementById('in-room').value.trim() || new URLSearchParams(location.search).get('room') || 'MAFIA';
+            if (!name) return alert('لطفاً نام خود را وارد کنید');
+
+            document.getElementById('view-join').classList.add('hidden');
+            document.getElementById('view-card').classList.remove('hidden');
+
+            if (mode === 'PEER_P2P') {
+                peer = new Peer();
+                peer.on('open', () => {
+                    const conn = peer.connect(room);
+                    conn.on('open', () => {
+                        conn.send({ type: 'join', name: name });
+                    });
+                    conn.on('data', data => {
+                        if (data.type === 'assigned_role') {
+                            setPlayerRole(data.roleId);
+                        } else if (data.type === 'timer') {
+                            timerSeconds = data.seconds;
+                            updateTimerDisplay();
+                        } else if (data.type === 'status_update') {
+                            if (!data.isAlive) alert('شما از بازی حذف شدید!');
+                        }
+                    });
+                });
+            } else {
+                loadScript('/socket.io/socket.io.js', () => {
+                    socket = io();
+                    socket.emit('join_room', { roomCode: room, clientType: 'player', playerName: name });
+                    socket.on('role_assigned', data => {
+                        setPlayerRole(data.roleId);
+                    });
+                    socket.on('timer_updated', t => {
+                        timerSeconds = t.seconds;
+                        updateTimerDisplay();
+                    });
+                });
+            }
+        }
+
+        function setPlayerRole(roleId) {
+            const r = ROLES_DATA[roleId];
+            if (!r) return;
+            document.getElementById('r-title').innerText = r.name;
+            document.getElementById('r-desc').innerText = r.desc;
+            document.getElementById('r-team').innerText = r.team === 'mafia' ? 'ساید مافیا' : r.team === 'citizen' ? 'ساید شهروند' : 'ساید مستقل';
+            document.getElementById('r-team').style.color = r.team === 'mafia' ? 'var(--mafia)' : r.team === 'citizen' ? 'var(--citizen)' : 'var(--independent)';
+            document.getElementById('r-svg-wrap').innerHTML = r.svg;
+            playBeep(520, 0.2);
+        }
+    </script>
+</body>
+</html>
