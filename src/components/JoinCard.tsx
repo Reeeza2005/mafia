@@ -33,9 +33,24 @@ export const JoinCard: React.FC<JoinCardProps> = ({
     return '';
   });
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('mafia_player_name') || '';
+    }
+    return '';
+  });
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Auto-reconnect if returning with saved credentials
+  useEffect(() => {
+    const savedName = typeof window !== 'undefined' ? localStorage.getItem('mafia_player_name') : null;
+    const activeCode = code || initialCode;
+    if (activeCode && savedName && !hasSubmittedRef.current && !errorMessage && !isJoining) {
+      hasSubmittedRef.current = true;
+      setIsSubmitting(true);
+      onJoin(activeCode, savedName);
+    }
+  }, []);
   const hasSubmittedRef = useRef(false);
 
   // Sync initialCode if changed

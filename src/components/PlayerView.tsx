@@ -129,7 +129,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
           <div>
             <h2 className="text-xl font-black text-white">ورود به اتاق بازی مافیا</h2>
-            <p className="text-xs text-neutral-400 mt-1">
+            <p className="text-xs text-neutral-200 font-medium mt-1">
               نام خود را وارد کنید تا به بازی متصل شوید.
             </p>
           </div>
@@ -195,7 +195,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
           <div>
             <h3 className="text-sm font-bold text-white">{player.name}</h3>
-            <span className="text-[11px] text-neutral-400">
+            <span className="text-[11px] text-neutral-200 font-medium">
               {player.isAlive ? '🟢 در بازی (زنده)' : '🔴 حذف شده از بازی'}
             </span>
           </div>
@@ -215,7 +215,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           )}
           <button
             onClick={handleTestVibrate}
-            className="p-1.5 rounded-lg bg-neutral-950 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg bg-neutral-950 text-neutral-200 font-medium hover:text-white transition-colors cursor-pointer"
             title="تست صدا و هشدار"
           >
             <Vibrate className="w-3.5 h-3.5" />
@@ -234,10 +234,10 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         <div className="flex items-center gap-2">
           <Clock
             className={`w-4 h-4 ${
-              timer.isRunning ? 'text-rose-400 animate-spin' : 'text-neutral-500'
+              timer.isRunning ? 'text-rose-400 animate-spin' : 'text-neutral-300'
             }`}
           />
-          <span className="text-xs text-neutral-300">
+          <span className="text-xs text-white font-medium">
             {timer.speakerName ? `نوبت: ${timer.speakerName}` : 'تایمر نوبت صحبت'}
           </span>
         </div>
@@ -272,7 +272,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
-              <span className="text-xs text-neutral-400 block font-bold">انتخاب گزینه / بازیکن:</span>
+              <span className="text-xs text-neutral-200 font-medium block font-bold">انتخاب گزینه / بازیکن:</span>
               <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                 {secretVote.candidates?.map((candidate) => (
                   <button
@@ -281,7 +281,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       selectedCandidateId === candidate.id
                         ? 'bg-purple-600 text-white border-purple-400 shadow-md'
-                        : 'bg-neutral-950 text-neutral-300 border-neutral-800 hover:border-neutral-700'
+                        : 'bg-neutral-950 text-white font-medium border-neutral-800 hover:border-neutral-700'
                     }`}
                   >
                     {candidate.name}
@@ -309,7 +309,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
           <div>
             <h3 className="text-base font-bold text-white">در انتظار توزیع کارت‌ها...</h3>
-            <p className="text-xs text-neutral-400 mt-1">
+            <p className="text-xs text-neutral-200 font-medium mt-1">
               گرداننده بازی هنوز کارت‌ها را پخش نکرده است. به محض توزیع، کارت محرمانه شما ظاهر خواهد شد.
             </p>
           </div>
@@ -323,11 +323,11 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           <div className="text-center">
             <button
               onClick={handleFlipCard}
-              className="text-xs text-neutral-300 hover:text-white px-3.5 py-1.5 rounded-full bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="text-xs text-white font-medium hover:text-white px-3.5 py-1.5 rounded-full bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
             >
               {isFlipped ? (
                 <>
-                  <EyeOff className="w-3.5 h-3.5 text-neutral-400" />
+                  <EyeOff className="w-3.5 h-3.5 text-neutral-200 font-medium" />
                   <span>برای بستن و پنهان‌سازی نقش کلیک کنید</span>
                 </>
               ) : (
@@ -341,12 +341,12 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
           <div
             onClick={handleFlipCard}
-            className="perspective-1000 w-full min-h-[500px] cursor-pointer select-none relative"
+            className="w-full min-h-[480px] cursor-pointer select-none relative"
           >
             {/* Card Flip Transition Wrapper */}
             <div
-              className={`relative w-full min-h-[500px] transition-transform duration-700 transform-style-preserve-3d ${
-                isFlipped ? 'rotate-y-180' : ''
+              className={`relative w-full min-h-[500px] transition-transform duration-700  ${
+                isFlipped ? '' : ''
               }`}
             >
               {/* ---------------------------------------------------- */}
@@ -366,7 +366,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   display: isFlipped ? 'none' : 'flex',
                 }}
               >
-                <div className="w-full flex items-center justify-between text-neutral-500 text-[10px] font-mono uppercase tracking-widest relative z-10">
+                <div className="w-full flex items-center justify-between text-neutral-300 text-[10px] font-mono uppercase tracking-widest relative z-10">
                   <span>MAFIA NOIR</span>
                   <span>CONFIDENTIAL</span>
                 </div>
@@ -378,7 +378,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   <h4 className="text-xl font-black text-white tracking-wider">
                     کارت محرمانه نقش
                   </h4>
-                  <p className="text-xs text-neutral-400 text-center max-w-[240px] leading-relaxed">
+                  <p className="text-xs text-neutral-200 font-medium text-center max-w-[240px] leading-relaxed">
                     فقط زمانی که مطمئنید کسی به صفحه گوشی شما نگاه نمی‌کند لمس کنید
                   </p>
                 </div>
@@ -396,7 +396,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               {/* Fully hidden when isFlipped is false to stop bleeding*/}
               {/* ---------------------------------------------------- */}
               <div
-                className={`w-full min-h-[500px] rounded-3xl border-2 p-5 flex flex-col justify-between shadow-2xl transition-all duration-300 rotate-y-180 bg-neutral-950 ${
+                className={`w-full min-h-[500px] rounded-3xl border-2 p-5 flex flex-col justify-between shadow-2xl transition-all duration-300  bg-neutral-950 ${
                   role.team === 'mafia'
                     ? 'border-rose-600/80 glow-mafia'
                     : role.team === 'citizen'
@@ -433,8 +433,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     {role.team === 'mafia' ? '🔴 ساید مافیا' : role.team === 'citizen' ? '🔵 ساید شهروند' : '🟣 ساید مستقل'}
                   </span>
 
-                  <span className="text-[10px] text-neutral-400 flex items-center gap-1 bg-neutral-900 px-2 py-0.5 rounded-lg border border-neutral-800">
-                    <EyeOff className="w-3 h-3 text-neutral-400" />
+                  <span className="text-[10px] text-neutral-200 font-medium flex items-center gap-1 bg-neutral-900 px-2 py-0.5 rounded-lg border border-neutral-800">
+                    <EyeOff className="w-3 h-3 text-neutral-200 font-medium" />
                     <span>لمس = پنهان‌سازی</span>
                   </span>
                 </div>
@@ -446,9 +446,9 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   </div>
 
                   <h3 className="text-xl font-black text-white tracking-wide">{role.name}</h3>
-                  <span className="text-[11px] font-mono text-neutral-400">{role.englishName}</span>
+                  <span className="text-[11px] font-mono text-neutral-200 font-medium">{role.englishName}</span>
 
-                  <div className="mt-2 px-3 py-1.5 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs text-neutral-300 font-medium leading-relaxed">
+                  <div className="mt-2 px-3 py-1.5 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs text-white font-medium font-medium leading-relaxed">
                     {role.summary}
                   </div>
                 </div>
@@ -458,7 +458,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   {/* 1. Full Description & Duties */}
                   <div className="bg-neutral-900/80 p-3 rounded-2xl border border-neutral-800 text-xs text-neutral-200 leading-relaxed">
                     <span className="font-bold text-white block mb-1 text-xs">📋 شرح وظایف و مأموریت:</span>
-                    <p className="leading-relaxed text-neutral-300">{role.description}</p>
+                    <p className="leading-relaxed text-white font-medium">{role.description}</p>
                   </div>
 
                   {/* 2. Key Abilities */}
@@ -468,7 +468,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         <Zap className="w-3.5 h-3.5 text-amber-400" />
                         <span>قابلیت‌های ویژه:</span>
                       </span>
-                      <ul className="space-y-1 text-[11px] text-neutral-300 pr-1">
+                      <ul className="space-y-1 text-[11px] text-white font-medium pr-1">
                         {role.abilities.map((ability, idx) => (
                           <li key={idx} className="flex items-start gap-1.5">
                             <span className="text-amber-400 mt-0.5 font-bold">•</span>
@@ -485,7 +485,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       <Trophy className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold text-emerald-400 block text-[11px]">شرط پیروزی:</span>
-                        <p className="text-[11px] text-neutral-300 leading-tight">{role.winningCondition}</p>
+                        <p className="text-[11px] text-white font-medium leading-tight">{role.winningCondition}</p>
                       </div>
                     </div>
                   )}
@@ -497,7 +497,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                         <Lightbulb className="w-3.5 h-3.5 text-sky-400" />
                         <span>نکات استراتژیک بازی با این نقش:</span>
                       </span>
-                      <ul className="space-y-1 text-[11px] text-neutral-400 pr-1">
+                      <ul className="space-y-1 text-[11px] text-neutral-200 font-medium pr-1">
                         {role.tips.map((tip, idx) => (
                           <li key={idx} className="flex items-start gap-1.5">
                             <span className="text-sky-400 mt-0.5 font-bold">•</span>
@@ -518,7 +518,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
                 {/* Bottom Hide Prompt */}
                 <div className="pt-2 text-center">
-                  <div className="w-full py-2 rounded-xl bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 text-neutral-400 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors">
+                  <div className="w-full py-2 rounded-xl bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 text-neutral-200 font-medium text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors">
                     <EyeOff className="w-3.5 h-3.5" />
                     <span>لمس کارت برای بستن و پنهان‌سازی نقش</span>
                   </div>
@@ -533,13 +533,13 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-lg mt-4">
         <button
           onClick={() => setIsNotesOpen((prev) => !prev)}
-          className="w-full p-3.5 flex items-center justify-between text-xs font-bold text-neutral-300 hover:text-white transition-colors cursor-pointer"
+          className="w-full p-3.5 flex items-center justify-between text-xs font-bold text-white font-medium hover:text-white transition-colors cursor-pointer"
         >
           <span className="flex items-center gap-2">
             <FileEdit className="w-4 h-4 text-rose-400" />
             دفترچه یادداشت شخصی من
           </span>
-          <span className="text-neutral-500 font-mono text-[11px]">
+          <span className="text-neutral-300 font-mono text-[11px]">
             {isNotesOpen ? 'بستن ▲' : 'باز کردن ▼'}
           </span>
         </button>

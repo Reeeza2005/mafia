@@ -94,7 +94,16 @@ export default function App() {
   useEffect(() => {
     network.initSocket();
 
-    const unConnected = network.on('connected', () => setIsConnected(true));
+        const unConnected = network.on('connected', () => {
+      setIsConnected(true);
+      try {
+        const savedRoom = localStorage.getItem('mafia_room');
+        const savedName = localStorage.getItem('mafia_player_name');
+        if (savedRoom && savedName && !clientType) {
+          network.joinRoom(savedRoom, 'player', savedName);
+        }
+      } catch (e) {}
+    });
     const unDisconnected = network.on('disconnected', () => setIsConnected(false));
 
     const unRoomState = network.on('room_state', (data: any) => {
@@ -255,12 +264,17 @@ export default function App() {
     const cleanName = (name || '').trim();
 
     if (!cleanCode || !cleanName) return;
-    if (isJoining || hasJoinedRef.current) return;
+    // اجازه اتصال مجدد در صورت تغییر سوکت یا بازگشت پس از اسلیپ
+    if (isJoining) return;
 
     setIsJoining(true);
     hasJoinedRef.current = true;
     setErrorMessage(null);
-    setRoomCode(cleanCode);
+        setRoomCode(cleanCode);
+    try {
+      localStorage.setItem('mafia_room', cleanCode);
+      localStorage.setItem('mafia_player_name', cleanName);
+    } catch (e) {}
     network.joinRoom(cleanCode, 'player', cleanName);
     audio.playFlip();
   };
@@ -329,6 +343,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans select-none">
       {/* App Header */}
+      {clientType === 'god' && (
       <Header
         roomCode={roomCode}
         clientType={clientType || 'player'}
@@ -339,6 +354,7 @@ export default function App() {
         onOpenOfflineExport={() => setIsExportOpen(true)}
         onResetGame={clientType === 'god' ? handleResetGame : undefined}
       />
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
@@ -421,7 +437,12 @@ export default function App() {
 
               {/* Player Selection Card */}
               <button
-                onClick={() => setClientType('player')}
+                onClick={() => {
+                  if (roomCode && roomCode.trim()) {
+                    try { localStorage.setItem('mafia_room', roomCode.trim()); } catch(e){}
+                  }
+                  setClientType('player');
+                }}
                 className="p-6 rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 border border-rose-600/40 hover:border-rose-500 hover:shadow-xl hover:shadow-rose-950/30 text-right group transition-all cursor-pointer text-right flex flex-col justify-between"
               >
                 <div>
@@ -539,20 +560,53 @@ export default function App() {
               errorMessage={errorMessage}
               isJoining={isJoining}
               onJoin={handleJoinAsPlayer}
-              onGodClick={() => handleJoinAsGod(roomCode)}
+              onGodClick={undefined}
               onBack={() => setClientType(null)}
             />
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between bg-neutral-900/60 border border-neutral-800 p-2.5 rounded-2xl mb-1">
-                <span className="text-xs text-neutral-400">
-                  اتاق بازی: <strong className="text-amber-400 font-mono font-bold tracking-wider">{roomCode}</strong>
-                </span>
+                            <div className="flex items-center justify-between bg-neutral-900/80 border border-neutral-800 p-2 rounded-2xl mb-2 gap-2">
+                <div className="flex items-center gap-1.5 flex-1">
+                  <span className="text-xs text-neutral-400 shrink-0">اتاق:</span>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    defaultValue={roomCode}
+                    id="player-edit-room-input"
+                    className="bg-neutral-950 border border-neutral-700 rounded-lg px-2 py-1 text-center font-mono font-bold text-amber-400 text-sm focus:outline-none focus:border-amber-500 w-16 tracking-widest"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const inp = document.getElementById('player-edit-room-input') as HTMLInputElement;
+                      const newCode = (inp?.value || '').replace(/[^0-9]/g, '').slice(0, 4);
+                      if (newCode && newCode.length === 4) {
+                        try {
+                          localStorage.setItem('mafia_room', newCode);
+                        } catch(e) {}
+                        setRoomCode(newCode);
+                        if (myPlayer?.name) {
+                          network.joinRoom(newCode, 'player', myPlayer.name);
+                        }
+                      }
+                    }}
+                    className="text-xs bg-amber-600 hover:bg-amber-500 text-white font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-sm"
+                  >
+                    تغییر اتاق
+                  </button>
+                </div>
                 <button
-                  onClick={() => setClientType('god')}
-                  className="text-xs px-2.5 py-1 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.removeItem('mafia_room');
+                    } catch(e) {}
+                    setMyPlayer(null);
+                    setClientType(null);
+                  }}
+                  className="text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-2 py-1 rounded-lg shrink-0 cursor-pointer"
                 >
-                  تغییر به پنل گرداننده
+                  خروج
                 </button>
               </div>
 
