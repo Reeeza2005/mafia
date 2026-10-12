@@ -356,11 +356,14 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               <div
                 className={`w-full min-h-[500px] rounded-3xl bg-neutral-950 border-2 border-rose-900/60 shadow-2xl p-6 flex flex-col items-center justify-between overflow-hidden transition-all duration-300 ${
                   isFlipped
-                    ? 'opacity-0 pointer-events-none invisible absolute inset-0'
-                    : 'opacity-100 pointer-events-auto visible relative'
+                    ? 'opacity-0 pointer-events-none invisible absolute inset-0 hidden'
+                    : 'opacity-100 pointer-events-auto visible relative flex'
                 }`}
                 style={{
                   background: 'linear-gradient(180deg, #18181b 0%, #09090b 50%, #000000 100%)',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  display: isFlipped ? 'none' : 'flex',
                 }}
               >
                 <div className="w-full flex items-center justify-between text-neutral-500 text-[10px] font-mono uppercase tracking-widest relative z-10">
@@ -401,8 +404,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     : 'border-purple-500/80 glow-neutral'
                 } ${
                   isFlipped
-                    ? 'opacity-100 pointer-events-auto visible relative'
-                    : 'opacity-0 pointer-events-none invisible absolute inset-0'
+                    ? 'opacity-100 pointer-events-auto visible relative flex'
+                    : 'opacity-0 pointer-events-none invisible absolute inset-0 hidden'
                 }`}
                 style={{
                   background:
@@ -411,6 +414,9 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       : role.team === 'citizen'
                       ? 'linear-gradient(180deg, #0b1522 0%, #09090b 45%, #050505 100%)'
                       : 'linear-gradient(180deg, #180b22 0%, #09090b 45%, #050505 100%)',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  display: isFlipped ? 'flex' : 'none',
                 }}
               >
                 {/* Header: Team Badge & Hide Button */}

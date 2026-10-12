@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Share2, Smartphone, Music, RefreshCw, Wifi } from 'lucide-react';
+import { Volume2, VolumeX, Share2, Smartphone, Music, RefreshCw, Wifi, Download } from 'lucide-react';
 import { audio } from '../utils/audio';
 
 interface HeaderProps {
@@ -9,6 +9,7 @@ interface HeaderProps {
   playersCount?: number;
   onOpenQr?: () => void;
   onOpenAudio?: () => void;
+  onOpenOfflineExport?: () => void;
   onResetGame?: () => void;
 }
 
@@ -19,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   playersCount,
   onOpenQr,
   onOpenAudio,
+  onOpenOfflineExport,
   onResetGame,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
@@ -105,6 +107,18 @@ export const Header: React.FC<HeaderProps> = ({
               {isConnected ? 'متصل' : 'قطع'}
             </span>
           </div>
+
+          {/* Offline Download & Tutorial button */}
+          {onOpenOfflineExport && (
+            <button
+              onClick={onOpenOfflineExport}
+              className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-sky-400 border border-neutral-800 hover:border-sky-500/40 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="دانلود فایل‌های اجرای آفلاین و راهنمای ویندوز و لینوکس"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">دانلود آفلاین</span>
+            </button>
+          )}
 
           {/* God-Only Controls */}
           {isGod && (

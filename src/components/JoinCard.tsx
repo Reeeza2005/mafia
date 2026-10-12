@@ -98,6 +98,17 @@ export const JoinCard: React.FC<JoinCardProps> = ({
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
 
+    // Safety timeout: unlock if server response takes too long
+    setTimeout(() => {
+      setIsSubmitting((current) => {
+        if (current) {
+          hasSubmittedRef.current = false;
+          return false;
+        }
+        return false;
+      });
+    }, 4500);
+
     // Single trigger strictly on submit button
     onJoin(cleanCode, cleanName);
   };
@@ -132,6 +143,14 @@ export const JoinCard: React.FC<JoinCardProps> = ({
           </div>
         )}
 
+        {/* QR Code pre-filled notice */}
+        {isCodeValid && (
+          <div className="mb-4 p-2.5 bg-emerald-950/60 border border-emerald-800/80 rounded-2xl text-[11px] text-emerald-300 text-center font-bold flex items-center justify-center gap-1.5 animate-in fade-in duration-200">
+            <span className="text-emerald-400">✓</span>
+            <span>کد اتاق ({code}) با موفقیت بارگذاری شد. فقط نام خود را وارد کنید!</span>
+          </div>
+        )}
+
         {/* Join Form */}
         <form onSubmit={handleSubmit} className="space-y-4 relative">
           {/* 1. Room Code Field */}
@@ -163,6 +182,7 @@ export const JoinCard: React.FC<JoinCardProps> = ({
               onChange={handleNameChange}
               placeholder="نام مستعار یا اسمتان..."
               maxLength={20}
+              autoFocus={isCodeValid}
               className="w-full bg-neutral-950 border border-neutral-700 focus:border-rose-500 disabled:opacity-60 rounded-2xl px-4 py-3 text-sm text-neutral-100 placeholder-neutral-600 outline-none transition-all"
             />
           </div>

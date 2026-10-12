@@ -52,7 +52,10 @@ interface GodDashboardProps {
   ) => void;
   onOpenQr: () => void;
   onOpenAudio?: () => void;
+  onOpenOfflineExport?: () => void;
   onReconfigureRoles: () => void;
+  onEndGame?: (winner: 'mafia' | 'citizen', reason: string) => void;
+  onResetGame?: () => void;
 }
 
 export const GodDashboard: React.FC<GodDashboardProps> = ({
@@ -67,8 +70,12 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   onTimerControl,
   onOpenQr,
   onOpenAudio,
+  onOpenOfflineExport,
   onReconfigureRoles,
+  onEndGame,
+  onResetGame,
 }) => {
+  const [isDeclareWinnerModalOpen, setIsDeclareWinnerModalOpen] = useState(false);
   const [speakerId, setSpeakerId] = useState<string>('');
   const [localSeconds, setLocalSeconds] = useState(timer.seconds);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -388,6 +395,39 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               <span>🗳️ رأی‌گیری مخفی</span>
             </button>
 
+            {/* End Game / Declare Winner Trigger */}
+            {onEndGame && (
+              <button
+                onClick={() => setIsDeclareWinnerModalOpen(true)}
+                className="px-3.5 py-2.5 rounded-2xl bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-800 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-lg cursor-pointer"
+                title="اعلام برنده و ثبت نتیجه نهایی بازی به تمام بازیکنان"
+              >
+                <span>🏆 اعلام نتیجه</span>
+              </button>
+            )}
+
+            {/* Offline Guide Button */}
+            {onOpenOfflineExport && (
+              <button
+                onClick={onOpenOfflineExport}
+                className="p-2.5 rounded-2xl bg-neutral-800 hover:bg-neutral-750 text-sky-400 border border-neutral-700 text-xs active:scale-95 transition-all cursor-pointer"
+                title="دانلود و اجرای آفلاین در ویندوز و لینوکس"
+              >
+                <span>📥</span>
+              </button>
+            )}
+
+            {/* Reset Game Button */}
+            {onResetGame && (
+              <button
+                onClick={onResetGame}
+                className="p-2.5 rounded-2xl bg-neutral-800 hover:bg-red-950/60 text-neutral-400 hover:text-red-400 border border-neutral-700 text-xs active:scale-95 transition-all cursor-pointer"
+                title="ریست بازی و بازنشانی کارت‌ها"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Music & Soundboard */}
             {onOpenAudio && (
               <button
@@ -410,6 +450,51 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 1.1 AUTOMATIC VICTORY ALERT BANNERS */}
+      {cardsDistributed && totalCount > 0 && mafiaAliveCount === 0 && (
+        <div className="bg-gradient-to-r from-sky-950/90 to-neutral-950 border-2 border-sky-500 rounded-3xl p-4 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-pulse">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🏆</span>
+            <div>
+              <h4 className="font-black text-sm text-sky-300">
+                شهروندان پیروز شدند! تمام اعضای مافیا حذف شدند.
+              </h4>
+              <p className="text-[11px] text-neutral-300">
+                می‌توانید نتیجه را رسماً به تمام گوشی‌های بازیکنان اعلام کنید.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onEndGame?.('citizen', 'تمام اعضای مافیا از بازی حذف شدند.')}
+            className="px-4 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs shadow-lg active:scale-95 transition-all cursor-pointer shrink-0"
+          >
+            اعلام رسمی پیروزی شهروندان 🏆
+          </button>
+        </div>
+      )}
+
+      {cardsDistributed && totalCount > 0 && mafiaAliveCount >= citizenAliveCount && mafiaAliveCount > 0 && (
+        <div className="bg-gradient-to-r from-rose-950/90 to-neutral-950 border-2 border-rose-500 rounded-3xl p-4 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-pulse">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🏆</span>
+            <div>
+              <h4 className="font-black text-sm text-rose-300">
+                مافیا پیروز شد! تعداد اعضای مافیا برابر یا بیشتر از شهروندان شد.
+              </h4>
+              <p className="text-[11px] text-neutral-300">
+                می‌توانید نتیجه را رسماً به تمام گوشی‌های بازیکنان اعلام کنید.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onEndGame?.('mafia', 'تعداد اعضای مافیا برابر یا بیشتر از شهروندان شد.')}
+            className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg active:scale-95 transition-all cursor-pointer shrink-0"
+          >
+            اعلام رسمی پیروزی مافیا 🏆
+          </button>
+        </div>
+      )}
 
       {/* 2. LIVE SECRET VOTE STATUS (IF RUNNING) */}
       {activeSecretVote && (
@@ -1001,6 +1086,73 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 انصراف
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. DECLARE WINNER / END GAME MODAL */}
+      {isDeclareWinnerModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 dir-rtl text-right">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <span className="text-xl">🏆</span>
+                اعلام نتیجه و برنده بازی مافیا
+              </h3>
+              <button
+                onClick={() => setIsDeclareWinnerModalOpen(false)}
+                className="text-neutral-400 hover:text-white text-xs p-1 rounded-lg bg-neutral-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-300 leading-relaxed">
+              با انتخاب برنده، بازی به پایان رسیده، نتیجه به گوشی تمام بازیکنان ارسال شده و کارت‌ها و نقش‌های مخفی برای همه رونمایی می‌شوند.
+            </p>
+
+            <div className="space-y-3 pt-2">
+              <button
+                onClick={() => {
+                  onEndGame?.('citizen', 'شهروندان با کشف و حذف مافیا به پیروزی رسیدند.');
+                  setIsDeclareWinnerModalOpen(false);
+                }}
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white font-black text-sm shadow-xl shadow-sky-950/50 flex items-center justify-between transition-all cursor-pointer active:scale-95"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🔵</span>
+                  <div className="text-right">
+                    <span className="block font-black">پیروزی ساید شهروندان</span>
+                    <span className="text-[11px] text-sky-200 font-normal">تمامی اعضای مافیا حذف شدند</span>
+                  </div>
+                </div>
+                <span className="text-xs bg-sky-800/80 px-2.5 py-1 rounded-lg">ثبت پیروزی</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  onEndGame?.('mafia', 'تعداد اعضای مافیا برابر یا بیشتر از شهروندان شد.');
+                  setIsDeclareWinnerModalOpen(false);
+                }}
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-black text-sm shadow-xl shadow-rose-950/50 flex items-center justify-between transition-all cursor-pointer active:scale-95"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🔴</span>
+                  <div className="text-right">
+                    <span className="block font-black">پیروزی ساید مافیا</span>
+                    <span className="text-[11px] text-rose-200 font-normal">تعداد مافیا با شهروندان برابر شد</span>
+                  </div>
+                </div>
+                <span className="text-xs bg-rose-800/80 px-2.5 py-1 rounded-lg">ثبت پیروزی</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setIsDeclareWinnerModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-300 font-bold text-xs transition-colors cursor-pointer"
+            >
+              انصراف
+            </button>
           </div>
         </div>
       )}

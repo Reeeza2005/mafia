@@ -14,8 +14,10 @@ import { PlayerView } from './components/PlayerView';
 import { JoinCard } from './components/JoinCard';
 import { HostShareModal } from './components/HostShareModal';
 import { AudioPlayerModal } from './components/AudioPlayerModal';
+import { OfflineExportModal } from './components/OfflineExportModal';
+import { GameResultModal } from './components/GameResultModal';
 import { audio } from './utils/audio';
-import { Crown, Sparkles, User, Play, RefreshCw, Smartphone, QrCode } from 'lucide-react';
+import { Crown, Sparkles, User, Play, RefreshCw, Smartphone, QrCode, Download, RotateCcw } from 'lucide-react';
 
 const generate4DigitCode = () => Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -53,6 +55,13 @@ export default function App() {
   const [logs, setLogs] = useState<GameLog[]>([]);
   const [secretVote, setSecretVote] = useState<SecretVoteState | undefined>(undefined);
 
+  // Game Victory / Results state
+  const [gameResult, setGameResult] = useState<{
+    winner: 'mafia' | 'citizen';
+    reason: string;
+    players?: Player[];
+  } | null>(null);
+
   // Player state
   const [myPlayer, setMyPlayer] = useState<Player | null>(null);
   const [isJoining, setIsJoining] = useState<boolean>(false);
@@ -61,6 +70,8 @@ export default function App() {
   // Modals
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isAudioOpen, setIsAudioOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Parse URL query parameter changes
@@ -157,10 +168,19 @@ export default function App() {
       setCardsDistributed(false);
       setGameStarted(false);
       setRolesInGame([]);
+      setGameResult(null);
       setTimer({ seconds: 60, isRunning: false });
       if (data.players) setPlayers(data.players);
       if (data.logs) setLogs(data.logs);
       setMyPlayer((prev) => (prev ? { ...prev, roleId: undefined, isAlive: true, isSilenced: false } : null));
+    });
+
+    const unGameEnded = network.on('game_ended', (data: any) => {
+      setGameResult({
+        winner: data.winner,
+        reason: data.reason,
+        players: data.players || players,
+      });
     });
 
     const unTimerUpdated = network.on('timer_updated', (t: any) => {
@@ -195,6 +215,7 @@ export default function App() {
       unPlayerStatusChanged();
       unGameStarted();
       unGameReset();
+      unGameEnded();
       unTimerUpdated();
       unKicked();
       unErrorMessage();
@@ -284,12 +305,25 @@ export default function App() {
     network.kickPlayer(playerId);
   };
 
-  // Reset Game (God)
+  // Reset Game Trigger (God) - opens custom confirmation modal (avoid window.confirm)
   const handleResetGame = () => {
-    if (window.confirm('آیا مطمئن هستید که می‌خواهید بازی را ریست کنید و کارت‌ها را پس بگیرید؟')) {
-      network.resetGame();
-      audio.playGavel();
-    }
+    setIsResetConfirmOpen(true);
+  };
+
+  // Confirmed Reset Action
+  const handleConfirmReset = () => {
+    network.resetGame();
+    setCardsDistributed(false);
+    setGameStarted(false);
+    setRolesInGame([]);
+    setGameResult(null);
+    setIsResetConfirmOpen(false);
+    audio.playGavel();
+  };
+
+  // End Game & Declare Winner (God)
+  const handleEndGame = (winner: 'mafia' | 'citizen', reason: string) => {
+    network.endGame(winner, reason);
   };
 
   return (
@@ -302,6 +336,7 @@ export default function App() {
         playersCount={players.length}
         onOpenQr={() => setIsQrOpen(true)}
         onOpenAudio={() => setIsAudioOpen(true)}
+        onOpenOfflineExport={() => setIsExportOpen(true)}
         onResetGame={clientType === 'god' ? handleResetGame : undefined}
       />
 
@@ -406,6 +441,30 @@ export default function App() {
                 </div>
               </button>
             </div>
+
+            {/* Offline Bundle Download Banner */}
+            <div className="bg-neutral-900/80 border border-neutral-800 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-3 text-right">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-sky-950 border border-sky-800 flex items-center justify-center shrink-0">
+                  <Download className="w-5 h-5 text-sky-400" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-white">
+                    دانلود بازی برای اجرای آفلاین در ویندوز و لینوکس
+                  </h4>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">
+                    آموزش مرحله‌به‌مرحله و فایل‌های اجرایی یک‌کلیکه در شبکه محلی بدون اینترنت
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsExportOpen(true)}
+                className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-md"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>دانلود و آموزش آفلاین</span>
+              </button>
+            </div>
           </div>
         ) : clientType === 'god' ? (
           /* 2. GOD / NARRATOR VIEW */
@@ -426,7 +485,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setClientType('player')}
-                  className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-300 text-xs cursor-pointer"
                 >
                   مشاهده نمای بازیکن
                 </button>
@@ -464,7 +523,10 @@ export default function App() {
                   onTimerControl={handleTimerControl}
                   onOpenQr={() => setIsQrOpen(true)}
                   onOpenAudio={() => setIsAudioOpen(true)}
+                  onOpenOfflineExport={() => setIsExportOpen(true)}
                   onReconfigureRoles={() => setCardsDistributed(false)}
+                  onEndGame={handleEndGame}
+                  onResetGame={handleResetGame}
                 />
               </div>
             )}
@@ -519,6 +581,58 @@ export default function App() {
         isOpen={isAudioOpen}
         onClose={() => setIsAudioOpen(false)}
       />
+
+      {/* Offline Export and Tutorial Modal */}
+      <OfflineExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+      />
+
+      {/* Game Over and Victory Announcement Modal */}
+      <GameResultModal
+        isOpen={!!gameResult}
+        winner={gameResult?.winner || null}
+        reason={gameResult?.reason}
+        players={gameResult?.players || players}
+        isGod={clientType === 'god'}
+        onResetGame={handleConfirmReset}
+        onClose={() => setGameResult(null)}
+      />
+
+      {/* Custom Reset Confirmation Modal (Reliable in Iframes & Mobile) */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 dir-rtl text-right select-none animate-in fade-in duration-200">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-red-950/80 border border-red-800/80 flex items-center justify-center text-red-400">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+
+            <div className="text-center">
+              <h3 className="text-base font-black text-white">ریست کامل و شروع دست جدید؟</h3>
+              <p className="text-xs text-neutral-300 mt-1 leading-relaxed">
+                با ریست کردن بازی، تمامی کارت‌ها و نقش‌ها پس گرفته می‌شوند، وضعیت حذف یا سکوت بازیکنان پاک شده و بازی برای دست بعدی آماده می‌گردد.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                onClick={handleConfirmReset}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-xs shadow-lg shadow-red-950/50 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>بله، ریست بازی و پس گرفتن کارت‌ها</span>
+              </button>
+
+              <button
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-300 font-bold text-xs transition-colors cursor-pointer"
+              >
+                انصراف و ادامه بازی
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

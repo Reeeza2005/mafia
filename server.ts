@@ -25,18 +25,35 @@ const io = new SocketIOServer(httpServer, {
 
 app.use(express.json());
 
+// Enable CORS for all local requests and phones
+app.use((_req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  if (_req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 // Helper to get local Wi-Fi / LAN IP addresses
 function getLocalNetworkAddresses(): { name: string; address: string }[] {
   const interfaces = os.networkInterfaces();
   const addresses: { name: string; address: string }[] = [];
   for (const name of Object.keys(interfaces)) {
+    // Avoid virtual/docker bridges if physical interfaces exist
     for (const iface of interfaces[name] || []) {
       if (iface.family === 'IPv4' && !iface.internal) {
         addresses.push({ name, address: iface.address });
       }
     }
   }
-  return addresses;
+  // Sort Wi-Fi / LAN IPs first (192.168.x.x or 10.x.x.x)
+  return addresses.sort((a, b) => {
+    const aIsLan = a.address.startsWith('192.168.') || a.address.startsWith('10.');
+    const bIsLan = b.address.startsWith('192.168.') || b.address.startsWith('10.');
+    if (aIsLan && !bIsLan) return -1;
+    if (!aIsLan && bIsLan) return 1;
+    return 0;
+  });
 }
 
 // API endpoint to return local IP addresses for God panel QR display
@@ -312,6 +329,40 @@ io.on('connection', (socket) => {
 
       socket.emit('player_state', {
         player: existing,
+        roomCode: room.code,
+        gameStarted: room.gameStarted,
+        cardsDistributed: room.cardsDistributed,
+        timer: room.timer,
+        secretVote: room.secretVote,
+      });
+
+      io.to(room.code).emit('players_updated', {
+        players: Object.values(room.players),
+        logs: room.logs,
+      });
+      return;
+    }
+
+    // 2.5 Re-attach if player reconnects with same name in same room (e.g. page refresh on phone)
+    const existingSameName = Object.values(room.players).find(
+      (p) => p.name.trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (existingSameName) {
+      const oldId = existingSameName.id;
+      delete room.players[oldId];
+      existingSameName.id = socket.id;
+      existingSameName.connected = true;
+      room.players[socket.id] = existingSameName;
+
+      room.logs.push({
+        id: Math.random().toString(36).substring(2, 9),
+        time: new Date().toLocaleTimeString('fa-IR'),
+        text: `«${cleanName}» مجدداً متصل شد.`,
+        type: 'info',
+      });
+
+      socket.emit('player_state', {
+        player: existingSameName,
         roomCode: room.code,
         gameStarted: room.gameStarted,
         cardsDistributed: room.cardsDistributed,
@@ -602,6 +653,24 @@ io.on('connection', (socket) => {
     }
   });
 
+  // End game and declare victory
+  socket.on('end_game', ({ roomCode, winner, reason }) => {
+    const room = getOrCreateRoom(roomCode);
+    room.gameStarted = false;
+    room.logs.push({
+      id: Math.random().toString(36).substring(2, 9),
+      time: new Date().toLocaleTimeString('fa-IR'),
+      text: `🏆 بازی به پایان رسید! برنده: ${winner === 'mafia' ? 'تیم مافیا' : 'تیم شهروندان'} (${reason || ''})`,
+      type: 'action',
+    });
+    io.to(room.code).emit('game_ended', {
+      winner,
+      reason,
+      logs: room.logs,
+      players: Object.values(room.players),
+    });
+  });
+
   // Reset entire game
   socket.on('reset_game', ({ roomCode }) => {
     const room = getOrCreateRoom(roomCode);
@@ -622,12 +691,15 @@ io.on('connection', (socket) => {
     room.logs.push({
       id: Math.random().toString(36).substring(2, 9),
       time: new Date().toLocaleTimeString('fa-IR'),
-      text: 'بازی توسط گرداننده ریست شد. کارت‌ها پس گرفته شدند.',
+      text: 'بازی توسط گرداننده ریست شد. تمامی کارت‌ها و نقش‌ها بازنشانی شدند.',
       type: 'info',
     });
     io.to(room.code).emit('game_reset', {
       players: Object.values(room.players),
       logs: room.logs,
+    });
+    io.to(room.code).emit('room_state', {
+      ...room,
     });
   });
 

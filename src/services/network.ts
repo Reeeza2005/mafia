@@ -102,6 +102,7 @@ class NetworkService {
     this.socket.on('night_actions_updated', (data) => this.emitLocal('night_actions_updated', data));
     this.socket.on('kicked', () => this.emitLocal('kicked', {}));
     this.socket.on('error_message', (msg) => this.emitLocal('error_message', msg));
+    this.socket.on('game_ended', (data) => this.emitLocal('game_ended', data));
   }
 
   // Explicit Join action - only called upon user Submit click
@@ -270,6 +271,16 @@ class NetworkService {
     if (this.socket && this.socket.connected) {
       this.socket.emit('end_secret_vote', {
         roomCode: this.roomCode,
+      });
+    }
+  }
+
+  public endGame(winner: 'mafia' | 'citizen', reason: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('end_game', {
+        roomCode: this.roomCode,
+        winner,
+        reason,
       });
     }
   }
