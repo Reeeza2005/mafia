@@ -149,7 +149,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               placeholder="مثال: رضا، علی، مهدی..."
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-center font-bold text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 transition-colors"
+              style={{ color: "#ffffff", backgroundColor: "#171717" }} className="w-full border-2 border-neutral-700 rounded-2xl px-4 py-3 text-center font-bold text-base text-white placeholder-neutral-400 focus:outline-none focus:border-rose-500"
               autoFocus
               maxLength={20}
               required
