@@ -3,91 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
-    <title>بازی مافیا | شبکه وای‌فای لوکال</title>
-    <script>
-if (location.hostname !== 'localhost' && !location.hostname.startsWith('192.168.')) {
-    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
-} else {
-    document.write('<script src="qrcode.min.js"><\/script>');
-}
-</script>
+    <title>بازی مافیا | دورهمی آنلاین</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --bg: #101014; --card: #18181f; --accent: #dc2626; --text: #f4f4f5; --sub: #a1a1aa; --border: #272732; --item: #21212b; }
+        :root { --bg: #121214; --card: #1c1c21; --accent: #e50914; --text: #f4f4f5; --sub: #a1a1aa; --border: #2e2e38; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 14px; }
-        .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
-        .box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        h1 { color: var(--accent); font-size: 26px; text-align: center; margin-bottom: 4px; }
-        h2, h3 { text-align: center; margin-bottom: 10px; font-size: 18px; }
-        .badge { text-align: center; font-size: 12px; color: #4ade80; background: #14532d33; padding: 4px 10px; border-radius: 20px; width: fit-content; margin: 0 auto 10px; border: 1px solid #22c55e44; }
-        button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 11px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
-        button:active { transform: scale(0.98); }
-        button.sec { background: #272732; }
-        input { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid var(--border); background: #121216; color: white; font-size: 15px; margin-bottom: 10px; }
+        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; }
+        .app { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 14px; }
+        .box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+        h1, h2, h3 { text-align: center; }
+        h1 { color: var(--accent); margin-bottom: 8px; font-size: 26px; }
+        button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 8px; }
+        button:active { transform: scale(0.97); }
+        button.sec { background: #27272a; }
+        input { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid var(--border); background: #121214; color: white; font-size: 15px; margin-bottom: 10px; }
         .hidden { display: none !important; }
-
-        /* کارت سه‌بعدی */
-        .flip-box { perspective: 1000px; width: 100%; height: 350px; margin: 12px 0; }
+        .flip-box { perspective: 1000px; width: 100%; height: 350px; margin: 15px 0; }
         .flip-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); cursor: pointer; }
         .flip-inner.flipped { transform: rotateY(180deg); }
         .card-face { width: 100%; height: 100%; position: absolute; backface-visibility: hidden; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-        .card-front { background: linear-gradient(145deg, #1f1f28, #141418); border: 2px dashed #3f3f4e; }
-        .card-back { background: linear-gradient(145deg, #272733, #17171c); border: 2px solid var(--accent); transform: rotateY(180deg); }
-        .role-svg { width: 75px; height: 75px; fill: var(--accent); margin-bottom: 14px; }
-
-        .player-row { display: flex; align-items: center; justify-content: space-between; background: var(--item); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border); font-size: 14px; }
-        .player-info { display: flex; flex-direction: column; gap: 3px; }
-        .player-name { font-weight: bold; color: #fff; }
-        .player-role-badge { font-size: 12px; color: #f87171; }
-        .player-ability { font-size: 11px; color: var(--sub); }
-        .btn-buzz { width: auto; padding: 6px 10px; font-size: 12px; background: #3f3f4e; border-radius: 6px; }
-
-        .role-counter { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-        .counter-btns { display: flex; align-items: center; gap: 8px; }
-        .counter-btns button { width: 28px; height: 28px; padding: 0; font-size: 16px; margin: 0; }
-
-        .night-plan { background: #121218; border: 1px solid #312e81; border-radius: 10px; padding: 12px; margin-top: 14px; }
-        .night-step { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #27273a; font-size: 13px; }
-        .night-num { background: #4338ca; color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; }
+        .card-front { background: linear-gradient(145deg, #1f1f26, #16161a); border: 2px dashed #3f3f46; }
+        .card-back { background: linear-gradient(145deg, #272730, #18181c); border: 2px solid var(--accent); transform: rotateY(180deg); }
+        .role-svg { width: 80px; height: 80px; fill: var(--accent); margin-bottom: 14px; }
+        .role-desc { font-size: 13.5px; color: var(--sub); line-height: 1.6; margin-top: 10px; }
+        .role-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .num-box { display: flex; gap: 8px; align-items: center; }
+        .num-box button { width: 32px; height: 32px; padding: 0; margin: 0; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13.5px; }
+        th, td { padding: 8px; text-align: center; border-bottom: 1px solid var(--border); }
         #qr-box { display: flex; justify-content: center; margin: 12px auto; background: white; padding: 8px; border-radius: 8px; width: fit-content; }
-        .ip-notice { font-size: 12px; color: #38bdf8; text-align: center; word-break: break-all; margin-top: 4px; }
     </style>
 </head>
 <body>
     <div class="app">
         <h1>🎭 بازی مافیا</h1>
-        <div id="net-badge" class="badge">حالت شبکه وای‌فای لوکال (آفلاین)</div>
 
-        <!-- صفحه اصلی -->
         <div id="view-home" class="box">
             <h2>ورود به بازی</h2>
             <button onclick="startHost()">گرداننده بازی (Host)</button>
-            <button class="sec" onclick="showJoin()" style="margin-top: 8px;">ورود به عنوان بازیکن</button>
+            <button class="sec" onclick="showJoin()">ورود به عنوان بازیکن</button>
         </div>
 
-        
-            <div style="margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px;">
-                <a href="mafia-offline.zip" download style="text-decoration: none;">
-                    <button type="button" style="background: #0284c7;">📥 دانلود پکیج آفلاین برای بازی در وای‌فای خانگی</button>
-                </a>
-                <p style="font-size: 11.5px; color: var(--sub); text-align: center; margin-top: 6px; line-height: 1.5;">
-                    با زدن این دکمه پکیج کامل ذخیره می‌شود. در خانه بدون اینترنت کافیست run-linux یا run-windows را اجرا کنید تا سیستم با موفقیت به سرور مافیا تبدیل شود.
-                </p>
-            </div>
-
-        <!-- فرم ورود بازیکن -->
         <div id="view-join" class="box hidden">
-            <h2>ورود بازیکن به بازی</h2>
+            <h2>اتصال بازیکن</h2>
             <input id="in-name" type="text" placeholder="نام خود را وارد کنید...">
-            <button onclick="registerPlayer()">ثبت نام و ورود</button>
-            <button class="sec" onclick="location.reload()" style="margin-top: 8px;">بازگشت</button>
+            <input id="in-room" type="text" placeholder="کد اتاق">
+            <button onclick="joinGame()">ورود به اتاق</button>
+            <button class="sec" onclick="location.reload()">بازگشت</button>
         </div>
 
-        <!-- کارت بازیکن -->
         <div id="view-card" class="box hidden">
-            <h2 id="player-welcome">کارت نقش</h2>
-            <p style="text-align: center; color: var(--sub); font-size: 12px;">روی کارت ضربه بزنید تا نقشتان آشکار یا مخفی شود</p>
+            <h2>کارت نقش شما</h2>
+            <p style="text-align: center; color: var(--sub); font-size: 12px; margin-top: 4px;">برای دیدن یا بستن نقش ضربه بزنید</p>
             <div class="flip-box" onclick="toggleCard()">
                 <div class="flip-inner" id="flipper">
                     <div class="card-face card-front">
@@ -97,74 +65,64 @@ if (location.hostname !== 'localhost' && !location.hostname.startsWith('192.168.
                     <div class="card-face card-back">
                         <svg class="role-svg" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                         <h2 id="card-title">در انتظار...</h2>
-                        <p id="card-desc" style="font-size: 13.5px; color: var(--sub); line-height: 1.6; margin-top: 8px;">گرداننده هنوز کارت‌ها را توزیع نکرده است.</p>
+                        <p class="role-desc" id="card-desc">گرداننده هنوز کارت‌ها را پخش نکرده است.</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- پنل گرداننده -->
         <div id="view-host" class="box hidden">
             <h2>داشبورد گرداننده</h2>
+            <p id="room-code-txt" style="text-align:center; font-weight:bold; color:var(--accent); margin:6px 0;">در حال دریافت شناسه اتاق...</p>
             <div id="qr-box"></div>
-            <p id="ip-address-txt" class="ip-notice"></p>
 
-            <div style="margin: 12px 0;">
-                <div class="role-counter">
+            <div style="margin: 10px 0;">
+                <div class="role-row">
                     <span>شهروند ساده</span>
-                    <div class="counter-btns">
-                        <button onclick="setRoleCount('cit', -1)">-</button>
+                    <div class="num-box">
+                        <button onclick="changeRole('cit', -1)">-</button>
                         <span id="c-cit">3</span>
-                        <button onclick="setRoleCount('cit', 1)">+</button>
+                        <button onclick="changeRole('cit', 1)">+</button>
                     </div>
                 </div>
-                <div class="role-counter">
+                <div class="role-row">
                     <span>مافیا ساده</span>
-                    <div class="counter-btns">
-                        <button onclick="setRoleCount('maf', -1)">-</button>
+                    <div class="num-box">
+                        <button onclick="changeRole('maf', -1)">-</button>
                         <span id="c-maf">1</span>
-                        <button onclick="setRoleCount('maf', 1)">+</button>
+                        <button onclick="changeRole('maf', 1)">+</button>
                     </div>
                 </div>
-                <div class="role-counter"><span>پزشک</span><input type="checkbox" id="chk-doc" style="width:20px;height:20px;margin:0;"></div>
-                <div class="role-counter"><span>کارآگاه</span><input type="checkbox" id="chk-det" style="width:20px;height:20px;margin:0;"></div>
-                <div class="role-counter"><span>پدرخوانده</span><input type="checkbox" id="chk-gf" style="width:20px;height:20px;margin:0;"></div>
-                <div class="role-counter"><span>اسنایپر (حرفه‌ای)</span><input type="checkbox" id="chk-snp" style="width:20px;height:20px;margin:0;"></div>
+                <div class="role-row">
+                    <span>پزشک</span>
+                    <input type="checkbox" id="chk-doc" style="width:20px; height:20px; margin:0;">
+                </div>
+                <div class="role-row">
+                    <span>کارآگاه</span>
+                    <input type="checkbox" id="chk-det" style="width:20px; height:20px; margin:0;">
+                </div>
+                <div class="role-row">
+                    <span>پدرخوانده</span>
+                    <input type="checkbox" id="chk-gf" style="width:20px; height:20px; margin:0;">
+                </div>
             </div>
 
-            <button onclick="distributeCards()">توزیع کارت‌ها به بازیکنان</button>
+            <button onclick="distributeCards()">پخش کارت‌ها و شروع</button>
 
-            <h3 style="margin-top: 16px; text-align: right;">بازیکنان حاضر در اتاق (<span id="p-count">0</span>):</h3>
-            <div id="players-list" style="margin-top: 8px;">
-                <p style="text-align: center; color: var(--sub); font-size: 13px;">هنوز بازیکنی متصل نشده است...</p>
-            </div>
-
-            <div id="night-section" class="night-plan hidden">
-                <h3 style="color: #a5b4fc; text-align: right; margin-bottom: 8px;">🌙 راهنمای شب گرداننده:</h3>
-                <div id="night-steps-list"></div>
-            </div>
+            <h3 style="margin-top: 14px;">بازیکنان متصل (<span id="p-count">0</span>)</h3>
+            <table>
+                <thead><tr><th>نام</th><th>نقش</th></tr></thead>
+                <tbody id="p-table"></tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        let myPlayerId = localStorage.getItem('mafia_player_id') || ('p_' + Math.random().toString(36).substring(2, 9));
-        localStorage.setItem('mafia_player_id', myPlayerId);
-
-        let myPlayerName = localStorage.getItem('mafia_player_name') || '';
+        let peer, conns = [], players = [];
         let counts = { cit: 3, maf: 1 };
-        let playersState = [];
 
-        const ROLES_INFO = {
-            'پدرخوانده': { ability: 'تصمیم‌گیری شلیک شب، استعلام منفی کارآگاه', nightOrder: 1 },
-            'مافیا ساده': { ability: 'همکاری و شلیک با تیم مافیا', nightOrder: 1 },
-            'پزشک': { ability: 'نجات جان یک شهروند در هر شب', nightOrder: 2 },
-            'کارآگاه': { ability: 'استعلام شبانه هویت یک نفر', nightOrder: 3 },
-            'اسنایپر (حرفه‌ای)': { ability: 'شلیک شب به مافیا', nightOrder: 4 },
-            'شهروند ساده': { ability: 'کشف مافیا در روز و رأی‌گیری', nightOrder: 99 }
-        };
-
-        function setRoleCount(type, delta) {
-            counts[type] = Math.max(0, counts[type] + delta);
+        function changeRole(type, d) {
+            counts[type] = Math.max(0, counts[type] + d);
             document.getElementById('c-' + type).innerText = counts[type];
         }
 
@@ -175,176 +133,90 @@ if (location.hostname !== 'localhost' && !location.hostname.startsWith('192.168.
         function showJoin() {
             document.getElementById('view-home').classList.add('hidden');
             document.getElementById('view-join').classList.remove('hidden');
-            if (myPlayerName) document.getElementById('in-name').value = myPlayerName;
+            const urlRoom = new URLSearchParams(location.search).get('room');
+            if (urlRoom) document.getElementById('in-room').value = urlRoom;
         }
-
-        // اگر بازیکن از طریق اسکن بارکد با پارامتر ?join=1 باز کرد، مستقیماً فرم ثبت‌نام باز شود
-        window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('join') === '1' || urlParams.get('room')) {
-                showJoin();
-            }
-        };
 
         function startHost() {
             document.getElementById('view-home').classList.add('hidden');
             document.getElementById('view-host').classList.remove('hidden');
 
-            // ساخت لینک بر اساس آی‌پی واقعی فعلی دستگاه در شبکه
-            const origin = window.location.origin;
-            const joinUrl = origin + '/?join=1';
+            peer = new Peer();
+            peer.on('open', id => {
+                document.getElementById('room-code-txt').innerText = 'کد اتاق: ' + id;
+                const link = location.origin + location.pathname + '?room=' + id;
+                new QRCode(document.getElementById("qr-box"), { text: link, width: 120, height: 120 });
+            });
 
-            document.getElementById("qr-box").innerHTML = "";
-            new QRCode(document.getElementById("qr-box"), { text: joinUrl, width: 130, height: 130 });
-            document.getElementById('ip-address-txt').innerText = 'آدرس وای‌فای: ' + joinUrl;
-
-            // دریافت مرتب لیست بازیکنان از سرور محلی
-            setInterval(fetchGameState, 1500);
+            peer.on('connection', conn => {
+                conn.on('data', data => {
+                    if (data.type === 'join') {
+                        players.push({ id: conn.peer, name: data.name, role: null });
+                        conns.push(conn);
+                        updateTable();
+                    }
+                });
+            });
         }
 
-        function registerPlayer() {
-            const name = document.getElementById('in-name').value.trim();
-            if (!name) return alert('لطفاً نام خود را وارد کنید.');
+        function updateTable() {
+            document.getElementById('p-count').innerText = players.length;
+            const tbody = document.getElementById('p-table');
+            tbody.innerHTML = '';
+            players.forEach(p => {
+                tbody.innerHTML += `<tr><td>${p.name}</td><td>${p.role ? p.role.title : 'در انتظار'}</td></tr>`;
+            });
+        }
 
-            myPlayerName = name;
-            localStorage.setItem('mafia_player_name', name);
+        function joinGame() {
+            const name = document.getElementById('in-name').value.trim();
+            const room = document.getElementById('in-room').value.trim() || new URLSearchParams(location.search).get('room');
+            if (!name || !room) return alert('نام و کد اتاق الزامی است');
 
             document.getElementById('view-join').classList.add('hidden');
             document.getElementById('view-card').classList.remove('hidden');
-            document.getElementById('player-welcome').innerText = 'خوش آمدی، ' + name;
 
-            fetch('/api/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: myPlayerId, name: name })
-            }).catch(e => console.log('Direct local mode active'));
-
-            setInterval(fetchPlayerRole, 1500);
-        }
-
-        function fetchGameState() {
-            fetch('/api/state')
-                .then(r => r.json())
-                .then(data => {
-                    playersState = data.players || [];
-                    renderHostList();
-                })
-                .catch(() => {});
-        }
-
-        function renderHostList() {
-            document.getElementById('p-count').innerText = playersState.length;
-            const container = document.getElementById('players-list');
-            if (playersState.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: var(--sub); font-size: 13px;">در انتظار اتصال بازیکنان از طریق اسکن QR...</p>';
-                return;
-            }
-
-            container.innerHTML = '';
-            playersState.forEach(p => {
-                const info = p.role ? ROLES_INFO[p.role.title] : null;
-                const div = document.createElement('div');
-                div.className = 'player-row';
-                div.innerHTML = `
-                    <div class="player-info">
-                        <span class="player-name">${p.name}</span>
-                        ${p.role ? `<span class="player-role-badge">نقش: ${p.role.title}</span>` : '<span style="font-size:12px; color:var(--sub)">آماده دریافت کارت</span>'}
-                        ${info ? `<span class="player-ability">${info.ability}</span>` : ''}
-                    </div>
-                    <button class="btn-buzz" onclick="sendBuzz('${p.id}')">📳 لرزش</button>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function sendBuzz(playerId) {
-            fetch('/api/buzz', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetId: playerId })
-            });
-        }
-
-        function fetchPlayerRole() {
-            fetch('/api/my_role?id=' + myPlayerId)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.role) {
+            peer = new Peer();
+            peer.on('open', () => {
+                const conn = peer.connect(room);
+                conn.on('open', () => {
+                    conn.send({ type: 'join', name: name });
+                });
+                conn.on('data', data => {
+                    if (data.type === 'role') {
                         document.getElementById('card-title').innerText = data.role.title;
                         document.getElementById('card-desc').innerText = data.role.desc;
                     }
-                    if (data.buzzed) {
-                        if ('vibrate' in navigator) navigator.vibrate([250, 100, 250]);
-                        beepAudio();
-                    }
-                })
-                .catch(() => {});
-        }
-
-        function beepAudio() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(520, ctx.currentTime);
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.35);
-            } catch(e) {}
+                });
+            });
         }
 
         function distributeCards() {
             let deck = [];
-            for (let i = 0; i < counts.cit; i++) deck.push({ title: 'شهروند ساده', desc: ROLES_INFO['شهروند ساده'].ability });
-            for (let i = 0; i < counts.maf; i++) deck.push({ title: 'مافیا ساده', desc: ROLES_INFO['مافیا ساده'].ability });
-            if (document.getElementById('chk-doc').checked) deck.push({ title: 'پزشک', desc: ROLES_INFO['پزشک'].ability });
-            if (document.getElementById('chk-det').checked) deck.push({ title: 'کارآگاه', desc: ROLES_INFO['کارآگاه'].ability });
-            if (document.getElementById('chk-gf').checked) deck.push({ title: 'پدرخوانده', desc: ROLES_INFO['پدرخوانده'].ability });
-            if (document.getElementById('chk-snp').checked) deck.push({ title: 'اسنایپر (حرفه‌ای)', desc: ROLES_INFO['اسنایپر (حرفه‌ای)'].ability });
+            for (let i = 0; i < counts.cit; i++) deck.push({ title: 'شهروند ساده', desc: 'تلاش برای پیدا کردن مافیا در روز.' });
+            for (let i = 0; i < counts.maf; i++) deck.push({ title: 'مافیا ساده', desc: 'همکاری با تیم مافیا و فریب شهروندان.' });
+            if (document.getElementById('chk-doc').checked) deck.push({ title: 'پزشک', desc: 'نجات جان یکی از شهروندان در هر شب.' });
+            if (document.getElementById('chk-det').checked) deck.push({ title: 'کارآگاه', desc: 'استعلام هویت یک بازیکن در هر شب.' });
+            if (document.getElementById('chk-gf').checked) deck.push({ title: 'پدرخوانده', desc: 'فرمانده تیم مافیا، استعلام منفی برای کارآگاه.' });
 
-            if (deck.length !== playersState.length) {
-                return alert(`تعداد کارت‌ها (${deck.length}) با تعداد بازیکنان (${playersState.length}) برابر نیست!`);
+            if (deck.length !== players.length) {
+                return alert(`تعداد کارت‌ها (${deck.length}) با تعداد بازیکنان (${players.length}) برابر نیست!`);
             }
 
             deck.sort(() => Math.random() - 0.5);
-
-            fetch('/api/distribute', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deck: deck })
-            }).then(() => {
-                fetchGameState();
-                renderNightOrder();
+            players.forEach((p, idx) => {
+                p.role = deck[idx];
+                conns[idx].send({ type: 'role', role: p.role });
             });
-        }
-
-        function renderNightOrder() {
-            const nightBox = document.getElementById('night-section');
-            const stepsList = document.getElementById('night-steps-list');
-            stepsList.innerHTML = '';
-
-            const nightRoles = playersState
-                .filter(p => p.role && ROLES_INFO[p.role.title].nightOrder < 90)
-                .sort((a, b) => ROLES_INFO[a.role.title].nightOrder - ROLES_INFO[b.role.title].nightOrder);
-
-            if (nightRoles.length > 0) {
-                nightBox.classList.remove('hidden');
-                let stepIndex = 1;
-                nightRoles.forEach(p => {
-                    const step = document.createElement('div');
-                    step.className = 'night-step';
-                    step.innerHTML = `
-                        <div class="night-num">${stepIndex++}</div>
-                        <div><strong>${p.role.title}</strong> (${p.name}): ${ROLES_INFO[p.role.title].ability}</div>
-                    `;
-                    stepsList.appendChild(step);
-                });
-            }
+            updateTable();
         }
     </script>
+
+        <div style="margin: 15px auto; text-align: center; max-width: 420px;">
+            <a href="mafia-offline.zip" download style="text-decoration: none;">
+                <button type="button" style="background: #0284c7; color: white; padding: 12px; border-radius: 10px; border: none; font-weight: bold; width: 100%; cursor: pointer;">📥 دانلود پکیج آفلاین برای بازی در وای‌فای خانگی</button>
+            </a>
+        </div>
+
 </body>
 </html>
