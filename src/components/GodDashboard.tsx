@@ -30,6 +30,9 @@ import {
   Gavel,
   Check,
   ChevronDown,
+  Plus,
+  Minus,
+  Calculator,
 } from 'lucide-react';
 import { audio } from '../utils/audio';
 import { network } from '../services/network';
@@ -167,9 +170,120 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     }).length;
   }, [alivePlayers]);
 
-  // Required votes calculation
-  const requiredCourtVotes = Math.max(1, Math.ceil(aliveCount / 2));
-  const requiredEliminationVotes = Math.max(1, Math.floor(aliveCount / 2) + 1);
+  // Daytime Voting & Defense/Exile Calculator State
+  const [voteStage, setVoteStage] = useState<'defense' | 'elimination'>('defense');
+  const [playerVotes, setPlayerVotes] = useState<Record<string, number>>({});
+  const [customQuorum, setCustomQuorum] = useState<number | null>(null);
+  const [voteCalculation, setVoteCalculation] = useState<{
+    stage: 'defense' | 'elimination';
+    quorum: number;
+    qualifiedForDefense: { id: string; name: string; votes: number }[];
+    eliminatedPlayer?: { id: string; name: string; votes: number };
+    isTie?: boolean;
+    tiePlayers?: { id: string; name: string; votes: number }[];
+    summary: string;
+    calculatedAt: string;
+  } | null>(null);
+
+  // Required votes calculation according to Iranian Mafia rules:
+  // Defense stage: at least half of alive players: Math.ceil(aliveCount / 2)
+  // Elimination stage: strict majority of alive players: Math.floor(aliveCount / 2) + 1
+  const defaultDefenseQuorum = Math.max(1, Math.ceil(aliveCount / 2));
+  const defaultEliminationQuorum = Math.max(1, Math.floor(aliveCount / 2) + 1);
+  const activeQuorum =
+    customQuorum ?? (voteStage === 'defense' ? defaultDefenseQuorum : defaultEliminationQuorum);
+
+  const handleVoteChange = (playerId: string, val: number) => {
+    const safeVal = Math.max(0, Math.min(aliveCount, val));
+    setPlayerVotes((prev) => ({
+      ...prev,
+      [playerId]: safeVal,
+    }));
+  };
+
+  const handleResetVotes = () => {
+    audio.playFlip();
+    setPlayerVotes({});
+    setVoteCalculation(null);
+  };
+
+  const handleCalculateVotes = () => {
+    audio.playGavel();
+    const timeStr = new Date().toLocaleTimeString('fa-IR');
+
+    if (voteStage === 'defense') {
+      // Rule: Any alive player who received >= activeQuorum votes qualifies for defense
+      const qualified = alivePlayers
+        .filter((p) => (playerVotes[p.id] || 0) >= activeQuorum)
+        .map((p) => ({ id: p.id, name: p.name, votes: playerVotes[p.id] || 0 }))
+        .sort((a, b) => b.votes - a.votes);
+
+      let summary = '';
+      if (qualified.length > 0) {
+        summary = `${qualified.length} بازیکن با کسب حدنصاب (${activeQuorum} رأی از ${aliveCount} نفر زنده) به دفاعیه راه یافتند: ${qualified
+          .map((q) => `«${q.name}» (${q.votes} رأی)`)
+          .join('، ')}.`;
+      } else {
+        summary = `هیچ بازیکنی به حدنصاب ورود به دفاعیه (حداقل ${activeQuorum} رأی از ${aliveCount} بازیکن زنده) نرسید. دفاعیه‌ای برگزار نمی‌شود.`;
+      }
+
+      setVoteCalculation({
+        stage: 'defense',
+        quorum: activeQuorum,
+        qualifiedForDefense: qualified,
+        summary,
+        calculatedAt: timeStr,
+      });
+    } else {
+      // Elimination Rule:
+      // Must have highest votes and reach activeQuorum
+      const ranked = alivePlayers
+        .filter((p) => (playerVotes[p.id] || 0) > 0)
+        .map((p) => ({ id: p.id, name: p.name, votes: playerVotes[p.id] || 0 }))
+        .sort((a, b) => b.votes - a.votes);
+
+      if (ranked.length === 0 || ranked[0].votes < activeQuorum) {
+        const topVote = ranked.length > 0 ? ranked[0].votes : 0;
+        const topName = ranked.length > 0 ? `«${ranked[0].name}»` : 'هیچ بازیکنی';
+        setVoteCalculation({
+          stage: 'elimination',
+          quorum: activeQuorum,
+          qualifiedForDefense: [],
+          summary: `هیچ بازیکنی به حدنصاب خروج (${activeQuorum} رأی) نرسید (بیشترین رأی: ${topName} با ${topVote} رأی). کسی با رأی دادگاه از بازی خارج نمی‌شود.`,
+          calculatedAt: timeStr,
+        });
+      } else {
+        const topVotes = ranked[0].votes;
+        const topPlayers = ranked.filter((p) => p.votes === topVotes);
+
+        if (topPlayers.length > 1) {
+          // Tie between multiple candidates
+          setVoteCalculation({
+            stage: 'elimination',
+            quorum: activeQuorum,
+            qualifiedForDefense: [],
+            isTie: true,
+            tiePlayers: topPlayers,
+            summary: `تساوی آرا بین ${topPlayers
+              .map((p) => `«${p.name}»`)
+              .join(' و ')} با ${topVotes} رأی (هر دو به حدنصاب ${activeQuorum} رسیده‌اند)! طبق قانون مافیا: قرعه مرگ / کارت شانس یا بدون خروج.`,
+            calculatedAt: timeStr,
+          });
+        } else {
+          // Single player definitively eliminated
+          const out = topPlayers[0];
+          setVoteCalculation({
+            stage: 'elimination',
+            quorum: activeQuorum,
+            qualifiedForDefense: [],
+            eliminatedPlayer: out,
+            summary: `«${out.name}» با کسب بیشترین آرا (${out.votes} رأی از حدنصاب ${activeQuorum}) به عنوان خروجی دادگاه مشخص شد!`,
+            calculatedAt: timeStr,
+          });
+        }
+      }
+    }
+  };
 
   // Sorted players: If cards distributed, sort by night wake-up order!
   const sortedPlayers = useMemo(() => {
@@ -343,15 +457,15 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           {/* Court & Execution Quotas */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <div className="px-3.5 py-2 rounded-2xl bg-neutral-950 border border-amber-900/60 text-right">
-              <span className="text-[10px] text-neutral-400 block">رأی لازم دادگاه:</span>
+              <span className="text-[10px] text-neutral-400 block">حدنصاب دفاعیه:</span>
               <span className="text-base font-black text-amber-400 font-mono">
-                {requiredCourtVotes} رأی
+                {defaultDefenseQuorum} رأی
               </span>
             </div>
             <div className="px-3.5 py-2 rounded-2xl bg-neutral-950 border border-red-900/60 text-right">
-              <span className="text-[10px] text-neutral-400 block">رأی خروج دادگاه:</span>
+              <span className="text-[10px] text-neutral-400 block">حدنصاب خروج:</span>
               <span className="text-base font-black text-red-400 font-mono">
-                {requiredEliminationVotes} رأی
+                {defaultEliminationQuorum} رأی
               </span>
             </div>
 
@@ -792,6 +906,221 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           </div>
         </div>
 
+        {/* DAYTIME VOTING & DEFENSE/EXILE CALCULATOR HUB */}
+        <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-inner">
+          {/* Top row: Stage selector & Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-neutral-850 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-950/70 border border-amber-800/80 flex items-center justify-center text-amber-400">
+                <Vote className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-white flex items-center gap-2">
+                  میز رأی‌گیری روز و دادگاه (محاسبه خودکار دفاع و خروج)
+                </h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  آرا را کنار نام کاربران بنویسید و با دکمه محاسبه، بر اساس قانون رسمی مافیا راه‌یافتگان به دفاع یا خروجی دادگاه را مشخص کنید.
+                </p>
+              </div>
+            </div>
+
+            {/* Voting Phase Tabs */}
+            <div className="flex items-center bg-neutral-900 p-1 rounded-2xl border border-neutral-800 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setVoteStage('defense');
+                  setVoteCalculation(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  voteStage === 'defense'
+                    ? 'bg-sky-600 text-white shadow-md'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                🛡️ ۱. ورود به دفاعیه
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setVoteStage('elimination');
+                  setVoteCalculation(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  voteStage === 'elimination'
+                    ? 'bg-rose-600 text-white shadow-md'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                ⚖️ ۲. خروج از بازی (دادگاه)
+              </button>
+            </div>
+          </div>
+
+          {/* Middle row: Quorum explanation and adjuster */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-neutral-900/70 p-3 rounded-2xl border border-neutral-800 text-xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-black text-amber-400">
+                  {voteStage === 'defense' ? '📌 قانون رسمی ورود به دفاعیه:' : '📌 قانون رسمی خروج از بازی:'}
+                </span>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 font-mono">
+                  {aliveCount} بازیکن زنده
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-300 leading-relaxed">
+                {voteStage === 'defense'
+                  ? `هر بازیکنی که حداقل نصف آرای بازیکنان زنده (حداقل ${activeQuorum} رأی) را کسب کند، به مرحله دفاعیه راه می‌یابد.`
+                  : `کسب بالاترین رأی در میان کاندیداها و رسیدن به حدنصاب اکثریت (حداقل ${activeQuorum} رأی). در صورت تساوی، قرعه یا بدون خروج.`}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 bg-neutral-950 px-3 py-1.5 rounded-xl border border-neutral-800">
+              <span className="text-[11px] text-neutral-400 font-bold">حدنصاب لازم:</span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCustomQuorum(Math.max(1, activeQuorum - 1))}
+                  className="w-5 h-5 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-black flex items-center justify-center cursor-pointer"
+                  title="کاهش حدنصاب"
+                >
+                  -
+                </button>
+                <span className="font-mono font-black text-amber-400 text-sm px-1">
+                  {activeQuorum} رأی
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCustomQuorum(Math.min(aliveCount, activeQuorum + 1))}
+                  className="w-5 h-5 rounded bg-neutral-800 hover:bg-neutral-700 text-white font-black flex items-center justify-center cursor-pointer"
+                  title="افزایش حدنصاب"
+                >
+                  +
+                </button>
+              </div>
+              {customQuorum !== null && (
+                <button
+                  type="button"
+                  onClick={() => setCustomQuorum(null)}
+                  className="text-[10px] text-amber-400 hover:underline mr-1 cursor-pointer"
+                >
+                  پیش‌فرض
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons row */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCalculateVotes}
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-black flex items-center gap-1.5 shadow-lg shadow-amber-950/50 active:scale-95 transition-all cursor-pointer"
+              >
+                <Calculator className="w-4 h-4" />
+                <span>⚡ محاسبه آرا و اعلام نتیجه</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetVotes}
+                className="px-3.5 py-2.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs font-bold border border-neutral-800 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                title="صفر کردن تمام آرای وارد شده"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-neutral-400" />
+                <span>صفر کردن آرا</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleStartTimerPreset(30, 'voting', 'رأی‌گیری')}
+                className="px-3.5 py-2 rounded-2xl bg-purple-950/60 hover:bg-purple-900/70 text-purple-300 text-xs font-bold border border-purple-800 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>⏱️ تایمر رأی‌گیری (۳۰ث)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Live Calculation Result Banner */}
+          {voteCalculation && (
+            <div
+              className={`rounded-2xl border-2 p-3.5 transition-all ${
+                voteCalculation.stage === 'defense'
+                  ? voteCalculation.qualifiedForDefense.length > 0
+                    ? 'bg-sky-950/60 border-sky-500 text-sky-100 shadow-lg shadow-sky-950/40'
+                    : 'bg-neutral-900 border-neutral-750 text-neutral-300'
+                  : voteCalculation.eliminatedPlayer
+                  ? 'bg-rose-950/70 border-rose-500 text-rose-100 shadow-xl shadow-rose-950/50'
+                  : voteCalculation.isTie
+                  ? 'bg-yellow-950/60 border-yellow-500 text-yellow-100'
+                  : 'bg-neutral-900 border-neutral-750 text-neutral-300'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 font-bold mb-2">
+                <div className="flex items-center gap-2">
+                  <Gavel className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="font-black text-xs sm:text-sm text-white">
+                    نتیجه رسمی رأی‌گیری {voteCalculation.stage === 'defense' ? 'ورود به دفاعیه' : 'خروج دادگاه'}:
+                  </span>
+                </div>
+                <span className="text-[10px] text-neutral-400 font-mono">
+                  زمان محاسبه: {voteCalculation.calculatedAt}
+                </span>
+              </div>
+
+              <p className="text-xs mb-3 leading-relaxed font-medium">
+                {voteCalculation.summary}
+              </p>
+
+              {/* Action buttons on results */}
+              {voteCalculation.stage === 'defense' && voteCalculation.qualifiedForDefense.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-sky-800/60">
+                  <span className="text-xs text-sky-300 font-bold">شروع تایمر دفاعیه برای:</span>
+                  {voteCalculation.qualifiedForDefense.map((cand) => (
+                    <button
+                      key={cand.id}
+                      type="button"
+                      onClick={() => handleStartTimerPreset(45, 'defense', `دفاعیه ${cand.name}`)}
+                      className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-1.5 shadow active:scale-95 cursor-pointer"
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{cand.name} (۴۵ث)</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {voteCalculation.stage === 'elimination' && voteCalculation.eliminatedPlayer && (
+                <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-rose-800/60">
+                  <span className="text-xs text-rose-200 font-black">
+                    ⚖️ کاندیدای خروج با بالاترین رأی: «{voteCalculation.eliminatedPlayer.name}»
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (voteCalculation.eliminatedPlayer) {
+                        onUpdatePlayer(voteCalculation.eliminatedPlayer.id, {
+                          isAlive: false,
+                          eliminationReason: 'court_vote',
+                        });
+                        audio.playShot();
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-2 shadow-lg active:scale-95 cursor-pointer animate-bounce"
+                  >
+                    <Skull className="w-4 h-4" />
+                    <span>اعمال مستقیم خروج با رأی دادگاه 💀</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Players List Table / Cards */}
         {sortedPlayers.length === 0 ? (
           <div className="py-12 text-center text-neutral-500 text-xs">
@@ -841,7 +1170,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
                     {/* Name, Connection, and Role */}
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-bold text-sm text-white">{player.name}</h4>
                         <span
                           className={`w-2 h-2 rounded-full ${
@@ -849,6 +1178,38 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                           }`}
                           title={player.connected ? 'متصل' : 'قطع ارتباط'}
                         />
+
+                        {/* Vote result badge on player name */}
+                        {player.isAlive && (playerVotes[player.id] || 0) > 0 && (
+                          <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-800">
+                            🗳️ {playerVotes[player.id]} رأی
+                          </span>
+                        )}
+
+                        {/* Defense Qualification Badge */}
+                        {voteCalculation?.stage === 'defense' &&
+                          voteCalculation.qualifiedForDefense.some((q) => q.id === player.id) && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-950 text-sky-300 border border-sky-600 animate-pulse">
+                              🛡️ راهی دفاعیه
+                            </span>
+                          )}
+
+                        {/* Court Elimination Badge */}
+                        {voteCalculation?.stage === 'elimination' &&
+                          voteCalculation.eliminatedPlayer?.id === player.id && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-500 animate-pulse">
+                              ⚖️ خروجی دادگاه
+                            </span>
+                          )}
+
+                        {/* Tie Badge */}
+                        {voteCalculation?.stage === 'elimination' &&
+                          voteCalculation.isTie &&
+                          voteCalculation.tiePlayers?.some((t) => t.id === player.id) && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-yellow-950 text-yellow-300 border border-yellow-600">
+                              ⚠️ تساوی آرا
+                            </span>
+                          )}
                       </div>
 
                       <div className="flex items-center gap-2 mt-0.5">
@@ -881,8 +1242,40 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* Right Column: Game Master Tools (چگونه حذف شدن، ویبره، وضعیت، یادداشت) */}
+                  {/* Right Column: Game Master Tools (رأی‌گیری، چگونه حذف شدن، ویبره، وضعیت، یادداشت) */}
                   <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+                    {/* Vote input stepper for this player */}
+                    {player.isAlive && (
+                      <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2 py-1">
+                        <span className="text-[10px] text-neutral-400 font-bold ml-1">تعداد رأی:</span>
+                        <button
+                          type="button"
+                          onClick={() => handleVoteChange(player.id, (playerVotes[player.id] || 0) - 1)}
+                          className="w-5 h-5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-black flex items-center justify-center active:scale-95 cursor-pointer"
+                          title="کاهش یک رأی"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min={0}
+                          max={aliveCount}
+                          inputMode="numeric"
+                          value={playerVotes[player.id] || 0}
+                          onChange={(e) => handleVoteChange(player.id, parseInt(e.target.value) || 0)}
+                          className="w-9 text-center bg-neutral-950 border border-neutral-700 rounded py-0.5 text-xs font-mono font-black text-amber-400 focus:outline-none focus:border-amber-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleVoteChange(player.id, (playerVotes[player.id] || 0) + 1)}
+                          className="w-5 h-5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-black flex items-center justify-center active:scale-95 cursor-pointer"
+                          title="افزایش یک رأی"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+
                     {/* Elimination Reason Selector (چگونه حذف شدن) */}
                     <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2 py-1">
                       <span className="text-[10px] text-neutral-400">وضعیت:</span>

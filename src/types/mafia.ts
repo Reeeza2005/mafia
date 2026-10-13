@@ -37,6 +37,7 @@ export interface Player {
   connected: boolean;
   joinedAt?: number;
   gunGiven?: 'war' | 'blank'; // تفنگدار: جنگی یا مشقی
+  votes?: number; // آرای کسب شده در مرحله رای‌گیری
 }
 
 export interface GameLog {

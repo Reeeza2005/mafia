@@ -162,6 +162,7 @@ interface GameRoom {
     speakerId?: string;
     timerType?: 'speech' | 'challenge' | 'defense' | 'voting';
   };
+  timerInterval?: NodeJS.Timeout;
   secretVote?: SecretVoteState;
   nightActions?: NightActions;
   logs: { id: string; time: string; text: string; type: 'info' | 'danger' | 'action' }[];
@@ -609,34 +610,86 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Timer sync & Expire Alert
+  // Timer sync & Expire Alert with Authoritative Server Interval
   socket.on('timer_control', ({ roomCode, action, seconds, speakerName, speakerId, timerType }) => {
     const room = getOrCreateRoom(roomCode);
+
+    // Always clear existing running interval before applying new action
+    if (room.timerInterval) {
+      clearInterval(room.timerInterval);
+      room.timerInterval = undefined;
+    }
+
     if (action === 'set') {
       room.timer.seconds = seconds ?? 60;
-      room.timer.speakerName = speakerName;
-      room.timer.speakerId = speakerId;
-      room.timer.timerType = timerType;
+      if (speakerName !== undefined) room.timer.speakerName = speakerName;
+      if (speakerId !== undefined) room.timer.speakerId = speakerId;
+      if (timerType !== undefined) room.timer.timerType = timerType;
+      io.to(room.code).emit('timer_updated', room.timer);
     } else if (action === 'start') {
       room.timer.isRunning = true;
       if (seconds !== undefined) room.timer.seconds = seconds;
       if (speakerName !== undefined) room.timer.speakerName = speakerName;
       if (speakerId !== undefined) room.timer.speakerId = speakerId;
       if (timerType !== undefined) room.timer.timerType = timerType;
+
+      // Broadcast start state immediately to all clients (phones + host)
+      io.to(room.code).emit('timer_updated', room.timer);
+
+      // Start authoritative 1-second server countdown
+      room.timerInterval = setInterval(() => {
+        if (!room.timer.isRunning) {
+          if (room.timerInterval) {
+            clearInterval(room.timerInterval);
+            room.timerInterval = undefined;
+          }
+          return;
+        }
+
+        room.timer.seconds = Math.max(0, room.timer.seconds - 1);
+        io.to(room.code).emit('timer_updated', room.timer);
+
+        if (room.timer.seconds <= 0) {
+          room.timer.isRunning = false;
+          if (room.timerInterval) {
+            clearInterval(room.timerInterval);
+            room.timerInterval = undefined;
+          }
+
+          io.to(room.code).emit('timer_ended', {
+            speakerId: room.timer.speakerId,
+            speakerName: room.timer.speakerName,
+            timerType: room.timer.timerType || 'speech',
+          });
+
+          // Send direct buzz to the speaker if assigned
+          if (room.timer.speakerId) {
+            io.to(room.timer.speakerId).emit('buzz', {
+              type: 'warning',
+              message: '⏰ وقت شما به پایان رسید!',
+            });
+          }
+        }
+      }, 1000);
     } else if (action === 'pause') {
       room.timer.isRunning = false;
+      io.to(room.code).emit('timer_updated', room.timer);
     } else if (action === 'reset') {
       room.timer.isRunning = false;
       room.timer.seconds = seconds ?? 60;
       room.timer.speakerName = undefined;
       room.timer.speakerId = undefined;
+      io.to(room.code).emit('timer_updated', room.timer);
     }
-    io.to(room.code).emit('timer_updated', room.timer);
   });
 
   // Notify speaker and players when timer hits 0
   socket.on('timer_ended', ({ roomCode, speakerId, timerType }) => {
     const room = getOrCreateRoom(roomCode);
+    if (room.timerInterval) {
+      clearInterval(room.timerInterval);
+      room.timerInterval = undefined;
+    }
     room.timer.isRunning = false;
     room.timer.seconds = 0;
     io.to(room.code).emit('timer_ended', {
@@ -656,6 +709,11 @@ io.on('connection', (socket) => {
   // End game and declare victory
   socket.on('end_game', ({ roomCode, winner, reason }) => {
     const room = getOrCreateRoom(roomCode);
+    if (room.timerInterval) {
+      clearInterval(room.timerInterval);
+      room.timerInterval = undefined;
+    }
+    room.timer.isRunning = false;
     room.gameStarted = false;
     room.logs.push({
       id: Math.random().toString(36).substring(2, 9),
@@ -674,6 +732,10 @@ io.on('connection', (socket) => {
   // Reset entire game
   socket.on('reset_game', ({ roomCode }) => {
     const room = getOrCreateRoom(roomCode);
+    if (room.timerInterval) {
+      clearInterval(room.timerInterval);
+      room.timerInterval = undefined;
+    }
     room.gameStarted = false;
     room.cardsDistributed = false;
     room.rolesInGame = [];
