@@ -48,6 +48,33 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [hasVoted, setHasVoted] = useState(false);
   const [buzzAlert, setBuzzAlert] = useState<{ message: string; type: string } | null>(null);
   const [isChallengeRequested, setIsChallengeRequested] = useState(false);
+  const [localSeconds, setLocalSeconds] = useState(timer.seconds);
+
+  // Sync localSeconds when timer updates from socket
+  useEffect(() => {
+    setLocalSeconds(timer.seconds);
+  }, [timer.seconds]);
+
+  // Smooth client-side countdown on player's phone
+  useEffect(() => {
+    let interval: number | null = null;
+    if (timer.isRunning) {
+      interval = window.setInterval(() => {
+        setLocalSeconds((prev) => {
+          if (prev <= 1) {
+            return 0;
+          }
+          if (prev <= 5) {
+            audio.playTick();
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timer.isRunning]);
 
   // Load saved notes
   useEffect(() => {
@@ -245,30 +272,112 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         </div>
       </div>
 
-      {/* Synchronized Speech Timer Box */}
-      <div
-        className={`rounded-2xl border p-3 flex items-center justify-between transition-all ${
-          timer.seconds <= 10 && timer.isRunning
-            ? 'bg-rose-950/40 border-rose-600 shadow-lg shadow-rose-950/40 animate-pulse'
-            : 'bg-neutral-900/80 border-neutral-800'
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <Clock
-            className={`w-4 h-4 ${
-              timer.isRunning ? 'text-rose-400 animate-spin' : 'text-neutral-300'
-            }`}
-          />
-          <span className="text-xs text-white font-medium">
-            {timer.speakerName ? `نوبت: ${timer.speakerName}` : 'تایمر نوبت صحبت'}
-          </span>
-        </div>
+      {/* Synchronized Speech Timer Box for Mobile */}
+      {(() => {
+        const isMyTurn = Boolean(timer.speakerId && player && timer.speakerId === player.id);
+        const timerTypeLabels: Record<string, string> = {
+          speech: 'نوبت صحبت',
+          challenge: 'چالش',
+          defense: 'دفاعیه',
+          voting: 'رأی‌گیری',
+        };
+        const typeLabel = timer.timerType ? timerTypeLabels[timer.timerType] || 'صحبت' : 'صحبت';
+        const isCritical = localSeconds <= 10 && timer.isRunning;
 
-        <div className="font-mono font-black text-lg text-white">
-          {String(Math.floor(timer.seconds / 60)).padStart(2, '0')}:
-          {String(timer.seconds % 60).padStart(2, '0')}
-        </div>
-      </div>
+        return (
+          <div
+            className={`rounded-2xl border-2 p-3.5 transition-all shadow-xl overflow-hidden relative ${
+              isCritical
+                ? 'bg-rose-950/70 border-rose-500 shadow-rose-950/50 animate-pulse'
+                : isMyTurn
+                ? 'bg-amber-950/40 border-amber-500 shadow-amber-950/30'
+                : timer.isRunning
+                ? 'bg-neutral-900 border-neutral-700'
+                : 'bg-neutral-900/80 border-neutral-800'
+            }`}
+          >
+            {/* Top row: Status and Speaker info */}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <Clock
+                  className={`w-4 h-4 ${
+                    timer.isRunning ? 'text-amber-400 animate-spin' : 'text-neutral-500'
+                  }`}
+                />
+                <div className="text-xs">
+                  <span className="text-neutral-400 font-medium ml-1">
+                    {typeLabel}:
+                  </span>
+                  <span
+                    className={`font-black ${
+                      isMyTurn
+                        ? 'text-amber-400 underline decoration-amber-400 decoration-2'
+                        : 'text-white'
+                    }`}
+                  >
+                    {isMyTurn
+                      ? '🎙️ نوبت صحبت شماست!'
+                      : timer.speakerName
+                      ? timer.speakerName
+                      : 'عمومی / همگانی'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Running indicator badge */}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${
+                    timer.isRunning
+                      ? 'bg-emerald-500 animate-ping'
+                      : 'bg-neutral-600'
+                  }`}
+                />
+                <span className="text-[10px] font-bold text-neutral-400">
+                  {timer.isRunning ? 'در حال شمارش' : 'متوقف'}
+                </span>
+              </div>
+            </div>
+
+            {/* Middle row: Large digital timer */}
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-neutral-400 font-medium">
+                زمان باقی‌مانده:
+              </span>
+              <div
+                className={`font-mono font-black text-2xl tracking-tight ${
+                  isCritical
+                    ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]'
+                    : timer.isRunning
+                    ? 'text-amber-400'
+                    : 'text-neutral-300'
+                }`}
+              >
+                {String(Math.floor(localSeconds / 60)).padStart(2, '0')}:
+                {String(localSeconds % 60).padStart(2, '0')}
+              </div>
+            </div>
+
+            {/* Bottom progress bar */}
+            {timer.isRunning && (
+              <div className="w-full bg-neutral-950 rounded-full h-1.5 mt-2.5 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-1000 ${
+                    isCritical
+                      ? 'bg-rose-500'
+                      : isMyTurn
+                      ? 'bg-amber-400'
+                      : 'bg-emerald-500'
+                  }`}
+                  style={{
+                    width: `${Math.min(100, Math.max(0, (localSeconds / 60) * 100))}%`,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Challenge Button Section */}
       {gameStarted && player.isAlive && (
