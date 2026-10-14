@@ -47,6 +47,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>('');
   const [hasVoted, setHasVoted] = useState(false);
   const [buzzAlert, setBuzzAlert] = useState<{ message: string; type: string } | null>(null);
+  const [isChallengeRequested, setIsChallengeRequested] = useState(false);
 
   // Load saved notes
   useEffect(() => {
@@ -81,10 +82,24 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       audio.playFlip();
     });
 
+    const unChallenges = network.on('challenges_updated', (data: any) => {
+      if (Array.isArray(data) && player) {
+        setIsChallengeRequested(data.some((r: any) => r.playerId === player.id));
+      }
+    });
+
+    const unChallengeDismissed = network.on('challenge_dismissed', (data: any) => {
+      if (player && data?.playerId === player.id) {
+        setIsChallengeRequested(false);
+      }
+    });
+
     return () => {
       unBuzz();
       unTimerEnded();
       unVoteRecorded();
+      unChallenges();
+      unChallengeDismissed();
     };
   }, [player]);
 
@@ -99,6 +114,13 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const handleNotesChange = (val: string) => {
     setPersonalNotes(val);
     localStorage.setItem('mafia_personal_notes', val);
+  };
+
+  const handleRequestChallenge = () => {
+    if (!player || !player.isAlive || player.usedDailyChallenge || isChallengeRequested) return;
+    audio.playFlip();
+    network.requestChallenge(player.id);
+    setIsChallengeRequested(true);
   };
 
   const handleFlipCard = () => {
@@ -247,6 +269,29 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           {String(timer.seconds % 60).padStart(2, '0')}
         </div>
       </div>
+
+      {/* Challenge Button Section */}
+      {gameStarted && player.isAlive && (
+        <div className="flex justify-center">
+          {player.usedDailyChallenge ? (
+            <div className="w-full py-2.5 px-4 rounded-xl bg-neutral-900/60 border border-neutral-800 text-center text-xs text-neutral-500 font-bold">
+              🚫 سهمیه چالش روزانه شما استفاده شده است
+            </div>
+          ) : isChallengeRequested ? (
+            <div className="w-full py-2.5 px-4 rounded-xl bg-amber-950/40 border border-amber-600/60 text-center text-xs text-amber-300 font-bold flex items-center justify-center gap-2 animate-pulse">
+              <span>🙋‍♂️ درخواست چالش شما برای گرداننده ارسال شد (در صف)</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleRequestChallenge}
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 active:scale-95 text-white font-black text-xs shadow-lg shadow-amber-950/40 border border-amber-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Zap className="w-4 h-4 text-amber-200 animate-pulse" />
+              <span>تقاضای نوبت چالش (سهمیه امروز)</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* SECRET NIGHT VOTING PANEL (IF ACTIVE) */}
       {secretVote && secretVote.isActive && (
