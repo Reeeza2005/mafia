@@ -54,6 +54,7 @@ export default function App() {
   const [timer, setTimer] = useState<GameTimer>({ seconds: 60, isRunning: false });
   const [logs, setLogs] = useState<GameLog[]>([]);
   const [secretVote, setSecretVote] = useState<SecretVoteState | undefined>(undefined);
+  const [isVoteUnlocked, setIsVoteUnlocked] = useState<boolean>(false);
 
   // Game Victory / Results state
   const [gameResult, setGameResult] = useState<{
@@ -82,11 +83,12 @@ export default function App() {
       setRoomCode(codeParam.trim().replace(/[^0-9]/g, '').slice(0, 4));
     }
 
+    const pathname = window.location.pathname.toLowerCase();
     const roleParam = params.get('role');
-    if (roleParam === 'god') {
-      setClientType('god');
-    } else if (codeParam) {
-      setClientType('player');
+    if (pathname.includes("/admin") || roleParam === "god") {
+      setClientType("god");
+    } else {
+      setClientType("player");
     }
   }, []);
 
@@ -105,6 +107,13 @@ export default function App() {
       } catch (e) {}
     });
     const unDisconnected = network.on('disconnected', () => setIsConnected(false));
+    const unNameChanged = network.on('player_name_changed', (data: any) => {
+      if (data?.newName) {
+        try {
+          localStorage.setItem('mafia_player_name', data.newName);
+        } catch (e) {}
+      }
+    });
 
     const unRoomState = network.on('room_state', (data: any) => {
       if (data.players) setPlayers(Object.values(data.players));
@@ -157,7 +166,14 @@ export default function App() {
     const unGameStarted = network.on('game_started', (data: any) => {
       setCardsDistributed(true);
       setGameStarted(true);
-      if (data.players) setPlayers(data.players);
+      if (data.players) {
+        setPlayers(data.players);
+        setMyPlayer((prev) => {
+          if (!prev) return null;
+          const updatedSelf = (data.players as Player[]).find((p) => p.id === prev.id || (prev.name && p.name === prev.name));
+          return updatedSelf ? { ...prev, ...updatedSelf } : prev;
+        });
+      }
       if (data.rolesInGame) setRolesInGame(data.rolesInGame);
       if (data.logs) setLogs(data.logs);
 
@@ -212,7 +228,20 @@ export default function App() {
     });
 
     const unSecretVoteStarted = network.on('secret_vote_started', (data: any) => setSecretVote(data));
-    const unSecretVoteEnded = network.on('secret_vote_ended', () => setSecretVote(undefined));
+    const unSecretVoteEnded = network.on('secret_vote_ended', () => {
+      setSecretVote(undefined);
+      setIsVoteUnlocked(false);
+    });
+    const unSecretVoteUnlocked = network.on('secret_vote_unlocked', ({ duration }: any) => {
+      setIsVoteUnlocked(true);
+      const timerSec = typeof duration === 'number' ? duration : 5;
+      setTimeout(() => {
+        setIsVoteUnlocked(false);
+      }, timerSec * 1000);
+    });
+    const unSecretVoteUpdated = network.on('secret_vote_updated', (data: any) => {
+      setSecretVote((prev: any) => prev ? { ...prev, votes: data.votes } : prev);
+    });
 
     return () => {
       unConnected();
@@ -230,6 +259,7 @@ export default function App() {
       unErrorMessage();
       unSecretVoteStarted();
       unSecretVoteEnded();
+      if (typeof unSecretVoteUnlocked === 'function') unSecretVoteUnlocked();
     };
   }, []);
 
@@ -616,6 +646,7 @@ export default function App() {
                 gameStarted={gameStarted}
                 timer={timer}
                 secretVote={secretVote}
+                isVoteUnlocked={isVoteUnlocked}
                 onJoin={(name) => handleJoinAsPlayer(roomCode, name)}
               />
             </div>

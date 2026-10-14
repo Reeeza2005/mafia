@@ -122,6 +122,7 @@ interface Player {
   hasArmor: boolean;
   eliminationReason?: string;
   gunGiven?: 'war' | 'blank';
+  usedDailyChallenge?: boolean;
   notes?: string;
   connected: boolean;
   joinedAt: number;
@@ -162,12 +163,21 @@ interface GameRoom {
     speakerId?: string;
     timerType?: 'speech' | 'challenge' | 'defense' | 'voting';
   };
+  timerInterval?: NodeJS.Timeout;
+  challengeRequests?: { playerId: string; playerName: string; time: string }[];
   secretVote?: SecretVoteState;
   nightActions?: NightActions;
   logs: { id: string; time: string; text: string; type: 'info' | 'danger' | 'action' }[];
 }
 
 const rooms: Record<string, GameRoom> = {};
+
+function stopRoomTimer(room: GameRoom) {
+  if (room.timerInterval) {
+    clearInterval(room.timerInterval);
+    room.timerInterval = undefined;
+  }
+}
 
 function getOrCreateRoom(code: string): GameRoom {
   const upperCode = (code || '').trim().toUpperCase() || Math.floor(1000 + Math.random() * 9000).toString();
@@ -266,7 +276,8 @@ app.post('/api/room/:code/buzz', (req, res) => {
 // Socket.io handlers
 io.on('connection', (socket) => {
   socket.on('join_room', ({ roomCode, clientType, playerName, existingPlayerId }) => {
-    const room = getOrCreateRoom(roomCode);
+    const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+    const room = getOrCreateRoom(targetCode);
     socket.join(room.code);
 
     if (clientType === 'god') {
@@ -322,7 +333,8 @@ io.on('connection', (socket) => {
     if (existingPlayerId && room.players[existingPlayerId]) {
       const existing = room.players[existingPlayerId];
       existing.connected = true;
-      existing.name = cleanName;
+      // نام سرور اولویت دارد مگر نام قبلی خالی باشد
+      if (!existing.name) existing.name = cleanName;
       existing.id = socket.id;
       room.players[socket.id] = existing;
       delete room.players[existingPlayerId];
@@ -420,7 +432,8 @@ io.on('connection', (socket) => {
 
   // God distributes roles
   socket.on('distribute_roles', ({ roomCode, selectedRoleIds }) => {
-    const room = getOrCreateRoom(roomCode);
+    const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+    const room = getOrCreateRoom(targetCode);
     const activePlayers = Object.values(room.players).filter((p) => p.connected);
 
     if (selectedRoleIds.length !== activePlayers.length) {
@@ -475,11 +488,35 @@ io.on('connection', (socket) => {
   });
 
   // God updates player status (kill, silence, armor, notes, eliminationReason, kick)
+    // Player requests self rename from phone
+  socket.on("player_rename", ({ roomCode, playerId, newName }) => {
+    const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+    const room = getOrCreateRoom(targetCode);
+    if (!room) return;
+    const clean = (newName || "").trim();
+    if (!clean) return;
+
+    let player = Object.values(room.players).find(p => p.id === playerId || p.socketId === socket.id);
+    if (!player) player = room.players[socket.id];
+    if (player) {
+      const old = player.name;
+      player.name = clean;
+      io.to(room.code).emit("players_updated", {
+        players: Object.values(room.players),
+        logs: room.logs,
+      });
+      socket.emit("player_name_changed", { newName: clean });
+    }
+  });
+
   socket.on('update_player_status', ({ roomCode, playerId, updates }) => {
     const room = getOrCreateRoom(roomCode);
     const player = room.players[playerId];
     if (player) {
       Object.assign(player, updates);
+      if (updates.name && player.socketId) {
+        io.to(player.socketId).emit("player_name_changed", { newName: updates.name });
+      }
 
       if (updates.isAlive === false) {
         const reasonText = updates.eliminationReason === 'mafia_shot' ? ' (شات شب مافیا)'
@@ -524,36 +561,85 @@ io.on('connection', (socket) => {
 
   // Secret Night Voting
   socket.on('start_secret_vote', ({ roomCode, voteData }) => {
-    const room = getOrCreateRoom(roomCode);
-    room.secretVote = {
-      id: Math.random().toString(36).substring(2, 9),
-      isActive: true,
-      title: voteData.title || 'رأی‌گیری مخفی شبانه',
-      eligibleTeam: voteData.eligibleTeam || 'all',
-      candidates: voteData.candidates || [],
-      votes: {},
-      ended: false,
-    };
-    room.logs.push({
-      id: Math.random().toString(36).substring(2, 9),
-      time: new Date().toLocaleTimeString('fa-IR'),
-      text: `رأی‌گیری مخفی «${room.secretVote.title}» آغاز شد.`,
-      type: 'action',
-    });
-    io.to(room.code).emit('secret_vote_started', room.secretVote);
+    try {
+      const room = getOrCreateRoom(roomCode);
+      const safeData = voteData || {};
+      room.secretVote = {
+        id: Math.random().toString(36).substring(2, 9),
+        isActive: true,
+        isLocked: safeData.startsLocked === true,
+        title: safeData.title || 'رأی‌گیری مخفی شبانه',
+        eligibleTeam: safeData.eligibleTeam || 'all',
+        eligibleVoterIds: Array.isArray(safeData.eligibleVoterIds) ? safeData.eligibleVoterIds : null,
+        targetDefendantId: safeData.targetDefendantId || null,
+        candidates: Array.isArray(safeData.candidates) ? safeData.candidates : [],
+        votes: {},
+        ended: false,
+      };
+      if (!Array.isArray(room.logs)) room.logs = [];
+      room.logs.push({
+        id: Math.random().toString(36).substring(2, 9),
+        time: new Date().toLocaleTimeString('fa-IR'),
+        text: `رأی‌گیری مخفی «${room.secretVote.title}» آغاز شد.`,
+        type: 'action',
+      });
+      io.to(room.code).emit('secret_vote_started', room.secretVote);
+    } catch (err) {
+      console.error('[ERROR in start_secret_vote]', err);
+    }
   });
 
-  socket.on('submit_secret_vote', ({ roomCode, voterId, candidateId }) => {
-    const room = getOrCreateRoom(roomCode);
-    if (room.secretVote && room.secretVote.isActive) {
-      room.secretVote.votes[voterId] = candidateId;
-      // Notify God and participants that vote count changed
+  socket.on('unlock_secret_vote', ({ roomCode, duration }) => {
+    try {
+      const room = getOrCreateRoom(roomCode);
+      if (!room || !room.secretVote) return;
+      room.secretVote.isLocked = false;
+      const dur = typeof duration === 'number' ? duration : 5;
+      io.to(room.code).emit('secret_vote_unlocked', { duration: dur });
+
+      setTimeout(() => {
+        try {
+          if (room.secretVote && !room.secretVote.ended) {
+            room.secretVote.isActive = false;
+            room.secretVote.ended = true;
+            io.to(room.code).emit('secret_vote_ended', room.secretVote);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, dur * 1000);
+    } catch (err) {
+      console.error('[ERROR in unlock_secret_vote]', err);
+    }
+  });
+
+  socket.on('submit_secret_vote', ({ roomCode, voterId, candidateId }: any) => {
+    try {
+      const room = getOrCreateRoom(roomCode);
+      if (!room) return;
+
+      const vId = voterId || socket.id;
+      const cId = candidateId || 'exit';
+
+      if (!room.secretVote) {
+        room.secretVote = {
+          id: 'vote_' + Date.now(),
+          isActive: true,
+          votes: {},
+          title: 'رأی‌گیری شبانه'
+        } as any;
+      }
+      if (!room.secretVote.votes) room.secretVote.votes = {};
+
+      room.secretVote.votes[vId] = cId;
+      console.log(`[SUCCESSFUL VOTE] Voter: ${vId} voted for: ${cId} in Room: ${roomCode}`);
+
       io.to(room.code).emit('secret_vote_updated', {
         totalVotes: Object.keys(room.secretVote.votes).length,
         votes: room.secretVote.votes,
       });
-      // Confirm to voter
-      io.to(voterId).emit('vote_recorded', { candidateId });
+    } catch (err) {
+      console.error('[ERROR in submit_secret_vote]', err);
     }
   });
 
@@ -613,25 +699,57 @@ io.on('connection', (socket) => {
   socket.on('timer_control', ({ roomCode, action, seconds, speakerName, speakerId, timerType }) => {
     const room = getOrCreateRoom(roomCode);
     if (action === 'set') {
+      stopRoomTimer(room);
+      room.timer.isRunning = false;
       room.timer.seconds = seconds ?? 60;
       room.timer.speakerName = speakerName;
       room.timer.speakerId = speakerId;
       room.timer.timerType = timerType;
+      io.to(room.code).emit('timer_updated', room.timer);
     } else if (action === 'start') {
+      stopRoomTimer(room);
       room.timer.isRunning = true;
       if (seconds !== undefined) room.timer.seconds = seconds;
       if (speakerName !== undefined) room.timer.speakerName = speakerName;
       if (speakerId !== undefined) room.timer.speakerId = speakerId;
       if (timerType !== undefined) room.timer.timerType = timerType;
+
+      io.to(room.code).emit('timer_updated', room.timer);
+
+      room.timerInterval = setInterval(() => {
+        if (room.timer.seconds > 1) {
+          room.timer.seconds -= 1;
+          io.to(room.code).emit('timer_updated', room.timer);
+        } else {
+          stopRoomTimer(room);
+          room.timer.seconds = 0;
+          room.timer.isRunning = false;
+          io.to(room.code).emit('timer_updated', room.timer);
+          io.to(room.code).emit('timer_ended', {
+            speakerId: room.timer.speakerId,
+            speakerName: room.timer.speakerName,
+            timerType: room.timer.timerType || 'speech',
+          });
+          if (room.timer.speakerId) {
+            io.to(room.timer.speakerId).emit('buzz', {
+              type: 'warning',
+              message: '⏰ وقت شما به پایان رسید!',
+            });
+          }
+        }
+      }, 1000);
     } else if (action === 'pause') {
+      stopRoomTimer(room);
       room.timer.isRunning = false;
+      io.to(room.code).emit('timer_updated', room.timer);
     } else if (action === 'reset') {
+      stopRoomTimer(room);
       room.timer.isRunning = false;
       room.timer.seconds = seconds ?? 60;
       room.timer.speakerName = undefined;
       room.timer.speakerId = undefined;
+      io.to(room.code).emit('timer_updated', room.timer);
     }
-    io.to(room.code).emit('timer_updated', room.timer);
   });
 
   // Notify speaker and players when timer hits 0
@@ -672,34 +790,97 @@ io.on('connection', (socket) => {
   });
 
   // Reset entire game
-  socket.on('reset_game', ({ roomCode }) => {
-    const room = getOrCreateRoom(roomCode);
-    room.gameStarted = false;
-    room.cardsDistributed = false;
-    room.rolesInGame = [];
-    room.secretVote = undefined;
-    room.nightActions = {};
-    room.timer = { seconds: 60, isRunning: false };
-    Object.values(room.players).forEach((p) => {
-      p.roleId = undefined;
-      p.isAlive = true;
-      p.isSilenced = false;
-      p.hasArmor = false;
-      p.eliminationReason = undefined;
-      p.gunGiven = undefined;
-    });
-    room.logs.push({
-      id: Math.random().toString(36).substring(2, 9),
-      time: new Date().toLocaleTimeString('fa-IR'),
-      text: 'بازی توسط گرداننده ریست شد. تمامی کارت‌ها و نقش‌ها بازنشانی شدند.',
-      type: 'info',
-    });
-    io.to(room.code).emit('game_reset', {
+  
+  // Challenge Management
+    // Challenge Management
+  socket.on("request_challenge", (data) => {
+    const pId = typeof data === "object" ? data.playerId : data;
+    const rCode = (typeof data === "object" && data.roomCode) || Array.from(socket.rooms).find(r => r !== socket.id);
+    const room = getOrCreateRoom(rCode);
+    if (!room) return;
+
+    let player = Object.values(room.players).find(p => p.id === pId || p.socketId === socket.id);
+    if (!player) player = room.players[socket.id];
+    if (!player || !player.isAlive) return;
+
+    if (!room.challengeRequests) room.challengeRequests = [];
+    const exists = room.challengeRequests.some(r => r.playerId === player.id);
+    if (!exists) {
+      room.challengeRequests.push({
+        playerId: player.id,
+        playerName: player.name,
+        time: new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }),
+      });
+      // ارسال به تمام سوکت‌های اتاق و خود سوکت
+      io.to(room.code).emit("challenges_updated", room.challengeRequests);
+      socket.emit("challenges_updated", room.challengeRequests);
+      room.logs.push({
+        id: Math.random().toString(36).substring(2, 9),
+        time: new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }),
+        text: "«" + player.name + "» تقاضای چالش کرد.",
+        type: "challenge",
+      });
+      io.to(room.code).emit("challenges_updated", room.challengeRequests);
+    io.to(room.code).emit("logs_updated", room.logs);
+    }
+  });
+
+    
+  // 1. Dismiss / Cancel challenge (not consumed - unlocked for player)
+  socket.on("dismiss_challenge", (data) => {
+    const rCode = (typeof data === "object" && data?.roomCode) || Array.from(socket.rooms).find(r => r !== socket.id);
+    const playerId = typeof data === "object" ? data?.playerId : data;
+    const room = getOrCreateRoom(rCode);
+    if (!room) return;
+
+    if (Array.isArray(room.challengeRequests)) {
+      room.challengeRequests = room.challengeRequests.filter(req => req.playerId !== playerId);
+    }
+
+    io.to(room.code).emit("challenges_updated", room.challengeRequests || []);
+
+    // Broadcast to room so any device for this player instantly unlocks
+    io.to(room.code).emit("challenge_dismissed", { playerId });
+  });
+
+  // 2. Consume challenge (consumed for the day - locks button until reset)
+  socket.on("consume_challenge", (data) => {
+    const rCode = (typeof data === "object" && data?.roomCode) || Array.from(socket.rooms).find(r => r !== socket.id);
+    const playerId = typeof data === "object" ? data?.playerId : data;
+    const room = getOrCreateRoom(rCode);
+    if (!room) return;
+
+    if (Array.isArray(room.challengeRequests)) {
+      room.challengeRequests = room.challengeRequests.filter(req => req.playerId !== playerId);
+    }
+
+    const player = room.players[playerId] || Object.values(room.players).find(p => p.id === playerId || p.socketId === playerId);
+    if (player) {
+      player.usedDailyChallenge = true;
+    }
+
+    io.to(room.code).emit("challenges_updated", room.challengeRequests || []);
+    io.to(room.code).emit("players_updated", {
       players: Object.values(room.players),
-      logs: room.logs,
+      logs: room.logs
     });
-    io.to(room.code).emit('room_state', {
-      ...room,
+  });
+
+  socket.on("reset_daily_challenges", (data) => {
+    const rCode = (typeof data === "object" && data?.roomCode) || Array.from(socket.rooms).find(r => r !== socket.id);
+    const room = getOrCreateRoom(rCode);
+    if (!room) return;
+
+    room.challengeRequests = [];
+    Object.values(room.players).forEach(p => {
+      p.usedDailyChallenge = false;
+    });
+
+    io.to(room.code).emit("challenges_updated", []);
+    io.to(room.code).emit("daily_challenges_reset");
+    io.to(room.code).emit("players_updated", {
+      players: Object.values(room.players),
+      logs: room.logs
     });
   });
 

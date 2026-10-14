@@ -95,6 +95,7 @@ class NetworkService {
     this.socket.on('timer_updated', (data) => this.emitLocal('timer_updated', data));
     this.socket.on('timer_ended', (data) => this.emitLocal('timer_ended', data));
     this.socket.on('buzz', (data) => this.emitLocal('buzz', data));
+    this.socket.on('challenges_updated', (data) => this.emitLocal('challenges_updated', data));
     this.socket.on('secret_vote_started', (data) => this.emitLocal('secret_vote_started', data));
     this.socket.on('secret_vote_updated', (data) => this.emitLocal('secret_vote_updated', data));
     this.socket.on('secret_vote_ended', (data) => this.emitLocal('secret_vote_ended', data));
@@ -236,6 +237,39 @@ class NetworkService {
     }
   }
 
+  
+    public renamePlayer(playerId: string, newName: string) {
+    if (this.socket) {
+      this.socket.emit("player_rename", { roomCode: this.roomCode, playerId, newName });
+    }
+  }
+
+  public requestChallenge(playerId: string) {
+    if (this.socket) {
+      this.socket.emit("request_challenge", { roomCode: this.roomCode, playerId });
+    }
+  }
+
+  public dismissChallenge(playerId: string) {
+    if (this.socket) {
+      this.socket.emit("dismiss_challenge", { roomCode: this.roomCode, playerId });
+    }
+  }
+
+  public consumeChallenge(playerId: string) {
+    if (this.socket) {
+      this.socket.emit("consume_challenge", { roomCode: this.roomCode, playerId });
+    }
+  }
+
+  public resetDailyChallenges() {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('reset_daily_challenges', {
+        roomCode: this.roomCode,
+      });
+    }
+  }
+
   public startSecretVote(
     titleOrData: string | { title: string; eligibleTeam?: 'all' | 'mafia' | 'citizen'; candidates: { id: string; name: string }[] },
     eligibleTeam: 'all' | 'mafia' | 'citizen' = 'all',
@@ -258,10 +292,28 @@ class NetworkService {
     }
   }
 
-  public submitSecretVote(candidateId: string) {
+    public unlockSecretVote(duration: number = 5) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('unlock_secret_vote', {
+        roomCode: this.roomCode,
+        duration,
+      });
+    }
+  }
+
+  public endSecretVote() {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('end_secret_vote', {
+        roomCode: this.roomCode,
+      });
+    }
+  }
+
+  public submitSecretVote(voterId: string, candidateId: string) {
     if (this.socket && this.socket.connected) {
       this.socket.emit('submit_secret_vote', {
         roomCode: this.roomCode,
+        voterId,
         candidateId,
       });
     }

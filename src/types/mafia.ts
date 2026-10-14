@@ -37,6 +37,7 @@ export interface Player {
   connected: boolean;
   joinedAt?: number;
   gunGiven?: 'war' | 'blank'; // تفنگدار: جنگی یا مشقی
+  usedDailyChallenge?: boolean;
 }
 
 export interface GameLog {
