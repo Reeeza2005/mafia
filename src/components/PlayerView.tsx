@@ -160,8 +160,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   };
 
   const handleSubmitVote = () => {
-    if (!selectedCandidateId) return;
-    network.submitSecretVote(selectedCandidateId);
+    if (!selectedCandidateId || !player) return;
+    network.submitSecretVote(player.id, selectedCandidateId);
     setHasVoted(true);
   };
 
@@ -404,15 +404,17 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
       {/* SECRET NIGHT VOTING PANEL (IF ACTIVE) */}
       {secretVote && secretVote.isActive && (
-        <div className="bg-neutral-900 border-2 border-purple-600 rounded-3xl p-5 shadow-2xl space-y-3.5">
+        <div className="bg-neutral-900 border-2 border-purple-600 rounded-3xl p-5 shadow-2xl space-y-3.5 animate-in fade-in duration-200">
           <div className="flex items-center gap-2 border-b border-neutral-800 pb-2">
-            <Vote className="w-5 h-5 text-purple-400" />
+            <Vote className="w-5 h-5 text-purple-400 animate-pulse" />
             <div>
-              <h4 className="font-black text-sm text-white">
-                🗳️ {secretVote.title || 'رأی‌گیری مخفی شبانه'}
+              <h4 className="font-black text-sm text-white flex items-center gap-1.5">
+                <span>🗳️ {secretVote.title || 'رأی‌گیری مخفی شبانه'}</span>
               </h4>
-              <p className="text-[11px] text-purple-300">
-                رأی شما کاملاً مخفی است و هویت شما برای هیچ بازیکنی آشکار نخواهد شد.
+              <p className="text-[11px] text-purple-300 mt-0.5">
+                {secretVote.targetDefendantId 
+                  ? '⚠️ در حال رأی‌گیری برای خروج متهم از بازی (مخفی)' 
+                  : 'رأی شما کاملاً مخفی است و هویت شما برای هیچ بازیکنی آشکار نخواهد شد.'}
               </p>
             </div>
           </div>
