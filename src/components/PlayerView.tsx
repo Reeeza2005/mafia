@@ -470,96 +470,48 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         </div>
       ) : (
         /* ========================================================= */
-        /* FOOLPROOF 3D CARD: ZERO TEXT BLEEDING OR OVERLAPPING     */
+        /* ========================================================= */
+        /* COMPACT ROLE TOGGLE & EXPANDABLE ROLE DOSSIER             */
         /* ========================================================= */
         <div className="space-y-3">
-          {/* Top Toggle Button & Indicator */}
-          <div className="text-center">
-            <button
-              onClick={handleFlipCard}
-              className="text-xs text-white font-medium hover:text-white px-3.5 py-1.5 rounded-full bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
-            >
-              {isFlipped ? (
-                <>
-                  <EyeOff className="w-3.5 h-3.5 text-neutral-200 font-medium" />
-                  <span>برای بستن و پنهان‌سازی نقش کلیک کنید</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-rose-400" />
-                  <span>برای مشاهده نقش محرمانه کلیک کنید</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div
-            onClick={handleFlipCard}
-            className="w-full min-h-[480px] cursor-pointer select-none relative"
-          >
-            {/* Card Flip Transition Wrapper */}
+          {!isFlipped ? (
             <div
-              className={`relative w-full min-h-[500px] transition-transform duration-700  ${
-                isFlipped ? '' : ''
-              }`}
+              onClick={handleFlipCard}
+              className="w-full p-4 rounded-2xl bg-gradient-to-r from-neutral-900 via-neutral-950 to-neutral-900 border border-neutral-800 hover:border-rose-800/60 active:scale-[0.99] transition-all cursor-pointer shadow-lg flex items-center justify-between"
             >
-              {/* ---------------------------------------------------- */}
-              {/* 1. BACK FACE (SECRET CLOSED COVER)                   */}
-              {/* Fully hidden when isFlipped is true to stop bleeding */}
-              {/* ---------------------------------------------------- */}
-              <div
-                className={`w-full min-h-[500px] rounded-3xl bg-neutral-950 border-2 border-rose-900/60 shadow-2xl p-6 flex flex-col items-center justify-between overflow-hidden transition-all duration-300 ${
-                  isFlipped
-                    ? 'opacity-0 pointer-events-none invisible absolute inset-0 hidden'
-                    : 'opacity-100 pointer-events-auto visible relative flex'
-                }`}
-                style={{
-                  background: 'linear-gradient(180deg, #18181b 0%, #09090b 50%, #000000 100%)',
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
-                  display: isFlipped ? 'none' : 'flex',
-                }}
-              >
-                <div className="w-full flex items-center justify-between text-neutral-300 text-[10px] font-mono uppercase tracking-widest relative z-10">
-                  <span>MAFIA NOIR</span>
-                  <span>CONFIDENTIAL</span>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-center shadow-inner">
+                  <Lock className="w-5 h-5 text-rose-500" />
                 </div>
-
-                <div className="flex flex-col items-center gap-3.5 relative z-10 py-6">
-                  <div className="w-28 h-28 rounded-3xl bg-gradient-to-tr from-rose-950 via-neutral-900 to-neutral-950 border-2 border-rose-600/40 p-4 shadow-xl shadow-rose-950/60 flex items-center justify-center glow-mafia">
-                    <Skull className="w-14 h-14 text-rose-500" />
+                <div className="text-right">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-white">کارت نقش محرمانه شما</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-800/60 text-rose-300 font-bold">
+                      پنهان
+                    </span>
                   </div>
-                  <h4 className="text-xl font-black text-white tracking-wider">
-                    کارت محرمانه نقش
-                  </h4>
-                  <p className="text-xs text-neutral-200 font-medium text-center max-w-[240px] leading-relaxed">
-                    فقط زمانی که مطمئنید کسی به صفحه گوشی شما نگاه نمی‌کند لمس کنید
+                  <p className="text-[11px] text-neutral-400 mt-0.5 font-medium">
+                    هر زمان خواستید نقش خود را مجدداً ببینید لمس کنید
                   </p>
                 </div>
-
-                <div className="relative z-10 w-full">
-                  <div className="w-full py-3 rounded-2xl bg-rose-950/70 border border-rose-800/60 text-rose-300 text-xs font-bold text-center flex items-center justify-center gap-2 shadow-inner">
-                    <Sparkles className="w-4 h-4 text-rose-400" />
-                    <span>لمس برای باز کردن کارت نقش</span>
-                  </div>
-                </div>
               </div>
-
-              {/* ---------------------------------------------------- */}
-              {/* 2. FRONT FACE (RICH DETAILED ROLE DOSSIER)           */}
-              {/* Fully hidden when isFlipped is false to stop bleeding*/}
-              {/* ---------------------------------------------------- */}
+              <div className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold flex items-center gap-1.5 border border-neutral-700">
+                <Eye className="w-3.5 h-3.5 text-rose-400" />
+                <span>مشاهده نقش</span>
+              </div>
+            </div>
+          ) : (
+            <div
+              onClick={handleFlipCard}
+              className="w-full cursor-pointer select-none relative space-y-2.5"
+            >
               <div
-                className={`w-full min-h-[500px] rounded-3xl border-2 p-5 flex flex-col justify-between shadow-2xl transition-all duration-300  bg-neutral-950 ${
+                className={`w-full rounded-3xl border-2 p-5 flex flex-col justify-between shadow-2xl transition-all duration-300 bg-neutral-950 ${
                   role.team === 'mafia'
                     ? 'border-rose-600/80 glow-mafia'
                     : role.team === 'citizen'
                     ? 'border-sky-500/80 glow-citizen'
                     : 'border-purple-500/80 glow-neutral'
-                } ${
-                  isFlipped
-                    ? 'opacity-100 pointer-events-auto visible relative flex'
-                    : 'opacity-0 pointer-events-none invisible absolute inset-0 hidden'
                 }`}
                 style={{
                   background:
@@ -568,9 +520,6 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       : role.team === 'citizen'
                       ? 'linear-gradient(180deg, #0b1522 0%, #09090b 45%, #050505 100%)'
                       : 'linear-gradient(180deg, #180b22 0%, #09090b 45%, #050505 100%)',
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
-                  display: isFlipped ? 'flex' : 'none',
                 }}
               >
                 {/* Header: Team Badge & Hide Button */}
@@ -587,9 +536,9 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     {role.team === 'mafia' ? '🔴 ساید مافیا' : role.team === 'citizen' ? '🔵 ساید شهروند' : '🟣 ساید مستقل'}
                   </span>
 
-                  <span className="text-[10px] text-neutral-200 font-medium flex items-center gap-1 bg-neutral-900 px-2 py-0.5 rounded-lg border border-neutral-800">
-                    <EyeOff className="w-3 h-3 text-neutral-200 font-medium" />
-                    <span>لمس = پنهان‌سازی</span>
+                  <span className="text-[10px] text-rose-300 font-bold flex items-center gap-1 bg-rose-950/60 px-2.5 py-1 rounded-lg border border-rose-800/60">
+                    <EyeOff className="w-3 h-3 text-rose-400" />
+                    <span>بستن و پنهان‌سازی</span>
                   </span>
                 </div>
 
@@ -602,7 +551,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   <h3 className="text-xl font-black text-white tracking-wide">{role.name}</h3>
                   <span className="text-[11px] font-mono text-neutral-200 font-medium">{role.englishName}</span>
 
-                  <div className="mt-2 px-3 py-1.5 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs text-white font-medium font-medium leading-relaxed">
+                  <div className="mt-2 px-3 py-1.5 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs text-white font-medium leading-relaxed">
                     {role.summary}
                   </div>
                 </div>
@@ -671,15 +620,15 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                 </div>
 
                 {/* Bottom Hide Prompt */}
-                <div className="pt-2 text-center">
-                  <div className="w-full py-2 rounded-xl bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 text-neutral-200 font-medium text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors">
-                    <EyeOff className="w-3.5 h-3.5" />
+                <div className="pt-3 text-center">
+                  <div className="w-full py-2.5 rounded-xl bg-rose-950/50 hover:bg-rose-900/60 border border-rose-800/60 text-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors">
+                    <EyeOff className="w-4 h-4 text-rose-400" />
                     <span>لمس کارت برای بستن و پنهان‌سازی نقش</span>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
