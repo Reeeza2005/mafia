@@ -114,7 +114,8 @@ app.get('/api/standalone-bundle', (_req, res) => {
 
 // Game state management in memory
 interface Player {
-  id: string; // socket.id or player unique id
+  id: string;
+  socketId?: string; // socket.id or player unique id
   name: string;
   roleId?: string;
   isAlive: boolean;
@@ -130,11 +131,15 @@ interface Player {
 
 interface SecretVoteState {
   id: string;
+  targetDefendantId?: string | null;
+  eligibleVoterIds?: string[] | null;
+  isLocked?: boolean;
   isActive: boolean;
   title: string;
   eligibleTeam?: 'all' | 'mafia' | 'citizen';
   candidates: { id: string; name: string }[];
   votes: Record<string, string>; // voterId -> candidateId
+  voterDetails?: Record<string, { candidateId: string; voterName: string }>;
   ended: boolean;
 }
 
@@ -167,7 +172,7 @@ interface GameRoom {
   challengeRequests?: { playerId: string; playerName: string; time: string }[];
   secretVote?: SecretVoteState;
   nightActions?: NightActions;
-  logs: { id: string; time: string; text: string; type: 'info' | 'danger' | 'action' }[];
+  logs: { id: string; time: string; text: string; type: 'info' | 'danger' | 'action' | 'challenge' }[];
 }
 
 const rooms: Record<string, GameRoom> = {};
@@ -560,10 +565,12 @@ io.on('connection', (socket) => {
   });
 
   // Secret Night Voting
-  socket.on('start_secret_vote', ({ roomCode, voteData }) => {
+  socket.on('start_secret_vote', (payload: any) => {
     try {
+      const roomCode = payload?.roomCode;
       const room = getOrCreateRoom(roomCode);
-      const safeData = voteData || {};
+      const safeData = payload?.voteData || payload || {};
+      console.log('[SERVER VOTE START] room:', roomCode, 'title:', safeData.title, 'candidates:', safeData.candidates);
       room.secretVote = {
         id: Math.random().toString(36).substring(2, 9),
         isActive: true,
@@ -580,7 +587,7 @@ io.on('connection', (socket) => {
       room.logs.push({
         id: Math.random().toString(36).substring(2, 9),
         time: new Date().toLocaleTimeString('fa-IR'),
-        text: `رأی‌گیری مخفی «${room.secretVote.title}» آغاز شد.`,
+        text: `رأی‌گیری مخفی «${room.secretVote?.title}» آغاز شد.`,
         type: 'action',
       });
       io.to(room.code).emit('secret_vote_started', room.secretVote);
@@ -589,12 +596,18 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('unlock_secret_vote', ({ roomCode, duration }) => {
+  socket.on('unlock_secret_vote', (payload: any) => {
     try {
-      const room = getOrCreateRoom(roomCode);
-      if (!room || !room.secretVote) return;
+      const targetCode = payload?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      const room = getOrCreateRoom(targetCode);
+      console.log('[SERVER UNLOCK TRIGGERED] room:', targetCode, 'hasSecretVote:', !!room?.secretVote);
+      if (!room || !room.secretVote) {
+        console.warn('[SERVER UNLOCK WARN] Room or secretVote not found for:', targetCode);
+        return;
+      }
       room.secretVote.isLocked = false;
-      const dur = typeof duration === 'number' ? duration : 5;
+      const dur = (typeof payload?.duration === 'number' && payload.duration > 0) ? payload.duration : 5;
+      console.log('[SERVER EMITTING secret_vote_unlocked] to room:', room.code, 'duration:', dur);
       io.to(room.code).emit('secret_vote_unlocked', { duration: dur });
 
       setTimeout(() => {
@@ -613,7 +626,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('submit_secret_vote', ({ roomCode, voterId, candidateId }: any) => {
+  socket.on('submit_secret_vote', ({ roomCode, voterId, candidateId, voterName }: any) => {
     try {
       const room = getOrCreateRoom(roomCode);
       if (!room) return;
@@ -629,14 +642,23 @@ io.on('connection', (socket) => {
           title: 'رأی‌گیری شبانه'
         } as any;
       }
+      if (!room.secretVote) return;
       if (!room.secretVote.votes) room.secretVote.votes = {};
 
+      let voterPlayer = room.players ? room.players[vId] : null;
+      if (!voterPlayer && room.players) {
+        voterPlayer = Object.values(room.players).find((p: any) => p.id === vId || p.socketId === vId || p.socketId === socket.id) || null;
+      }
+      const vName = voterName || (voterPlayer ? voterPlayer.name : (socket.data?.name || "ناشناس"));
+      if (!room.secretVote.voterDetails) room.secretVote.voterDetails = {};
+      room.secretVote.voterDetails[vId] = { candidateId: cId, voterName: vName };
       room.secretVote.votes[vId] = cId;
-      console.log(`[SUCCESSFUL VOTE] Voter: ${vId} voted for: ${cId} in Room: ${roomCode}`);
+      console.log(`[VOTE] ${vName} (${vId}) -> ${cId} in Room: ${roomCode}`);
 
       io.to(room.code).emit('secret_vote_updated', {
         totalVotes: Object.keys(room.secretVote.votes).length,
         votes: room.secretVote.votes,
+        voterDetails: room.secretVote.voterDetails,
       });
     } catch (err) {
       console.error('[ERROR in submit_secret_vote]', err);
@@ -651,7 +673,7 @@ io.on('connection', (socket) => {
       room.logs.push({
         id: Math.random().toString(36).substring(2, 9),
         time: new Date().toLocaleTimeString('fa-IR'),
-        text: `رأی‌گیری مخفی «${room.secretVote.title}» پایان یافت.`,
+        text: `رأی‌گیری مخفی «${room.secretVote?.title}» پایان یافت.`,
         type: 'info',
       });
       io.to(room.code).emit('secret_vote_ended', room.secretVote);
@@ -902,7 +924,7 @@ io.on('connection', (socket) => {
 
 // Vite middleware in dev or static files in production
 async function startServer() {
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = true;
 
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');

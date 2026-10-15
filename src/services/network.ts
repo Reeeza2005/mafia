@@ -97,6 +97,7 @@ class NetworkService {
     this.socket.on('buzz', (data) => this.emitLocal('buzz', data));
     this.socket.on('challenges_updated', (data) => this.emitLocal('challenges_updated', data));
     this.socket.on('secret_vote_started', (data) => this.emitLocal('secret_vote_started', data));
+    this.socket.on('secret_vote_unlocked', (data) => this.emitLocal('secret_vote_unlocked', data));
     this.socket.on('secret_vote_updated', (data) => this.emitLocal('secret_vote_updated', data));
     this.socket.on('secret_vote_ended', (data) => this.emitLocal('secret_vote_ended', data));
     this.socket.on('vote_recorded', (data) => this.emitLocal('vote_recorded', data));
@@ -271,24 +272,28 @@ class NetworkService {
   }
 
   public startSecretVote(
-    titleOrData: string | { title: string; eligibleTeam?: 'all' | 'mafia' | 'citizen'; candidates: { id: string; name: string }[] },
+    titleOrData: string | {
+      title: string;
+      eligibleTeam?: 'all' | 'mafia' | 'citizen';
+      candidates: { id: string; name: string }[];
+      startsLocked?: boolean;
+      targetDefendantId?: string;
+      eligibleVoterIds?: string[];
+    },
     eligibleTeam: 'all' | 'mafia' | 'citizen' = 'all',
     candidates: { id: string; name: string }[] = []
   ) {
     if (this.socket && this.socket.connected) {
-      if (typeof titleOrData === 'object') {
-        this.socket.emit('start_secret_vote', {
-          roomCode: this.roomCode,
-          ...titleOrData,
-        });
-      } else {
-        this.socket.emit('start_secret_vote', {
-          roomCode: this.roomCode,
-          title: titleOrData,
-          eligibleTeam,
-          candidates,
-        });
-      }
+      const vData = typeof titleOrData === 'object' 
+        ? titleOrData 
+        : { title: titleOrData, eligibleTeam, candidates };
+      
+      console.log('[NETWORK] Emitting start_secret_vote:', vData);
+      this.socket.emit('start_secret_vote', {
+        roomCode: this.roomCode,
+        voteData: vData,
+        ...vData
+      });
     }
   }
 
@@ -309,23 +314,18 @@ class NetworkService {
     }
   }
 
-  public submitSecretVote(voterId: string, candidateId: string) {
+  public submitSecretVote(voterId: string, candidateId: string, voterName?: string) {
     if (this.socket && this.socket.connected) {
       this.socket.emit('submit_secret_vote', {
         roomCode: this.roomCode,
         voterId,
         candidateId,
+        voterName,
       });
     }
   }
 
-  public endSecretVote() {
-    if (this.socket && this.socket.connected) {
-      this.socket.emit('end_secret_vote', {
-        roomCode: this.roomCode,
-      });
-    }
-  }
+
 
   public endGame(winner: 'mafia' | 'citizen', reason: string) {
     if (this.socket && this.socket.connected) {

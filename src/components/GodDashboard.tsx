@@ -103,7 +103,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   const [dayVotes, setDayVotes] = useState<Record<string, number>>({});
   const [courtDefendants, setCourtDefendants] = useState<string[]>([]);
   const [exitVotes, setExitVotes] = useState<Record<string, number>>({});
-  const [dayVotePhase, setDayVotePhase] = useState<"idle" | "court_entry" | "defense">("idle");
+  const [dayVotePhase, setDayVotePhase] = useState<"idle" | "nomination" | "court_entry" | "defense">("idle");
 
   const [challengeRequests, setChallengeRequests] = useState<{ playerId: string; playerName: string; time: string }[]>([]);
 
@@ -142,9 +142,21 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   useEffect(() => {
     const unStart = network.on('secret_vote_started', (data: any) => setActiveSecretVote(data));
     const unUpdate = network.on('secret_vote_updated', (data: any) => {
-      setActiveSecretVote((prev) => (prev ? { ...prev, votes: data.votes } : null));
+      setActiveSecretVote((prev: any) => {
+        const nextState = prev ? { ...prev, votes: data.votes, voterDetails: data.voterDetails } : { votes: data.votes, voterDetails: data.voterDetails };
+        return nextState;
+      });
+      if (data.votes) {
+        const counts: Record<string, number> = {};
+        Object.values(data.votes).forEach((cId: any) => {
+          if (cId) counts[cId] = (counts[cId] || 0) + 1;
+        });
+        setExitVotes((prev) => ({ ...prev, ...counts }));
+      }
     });
-    const unEnd = network.on('secret_vote_ended', () => setActiveSecretVote(null));
+    const unEnd = network.on('secret_vote_ended', (data: any) => {
+      setActiveSecretVote((prev: any) => (prev ? { ...prev, ...(data || {}), isActive: false, ended: true } : null));
+    });
 
     return () => {
       unStart();
@@ -318,6 +330,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   };
 
   const handleResetDayVoting = () => {
+    setActiveSecretVote(null);
     setDayVotes({});
     setCourtDefendants([]);
     setExitVotes({});
@@ -331,11 +344,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     title: string
   ) => {
     audio.playFlip();
-    if (onStartTimer) {
-      onStartTimer(seconds, type, title);
-    } else {
-      network.startTimer(seconds, type, title);
-    }
     const currentSpeaker = players.find((p) => p.id === speakerId);
     const label = currentSpeaker ? `${currentSpeaker.name} (${title})` : title;
     setLocalSeconds(seconds);
@@ -616,38 +624,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           >
             اعلام رسمی پیروزی مافیا 🏆
           </button>
-        </div>
-      )}
-
-      {/* 2. LIVE SECRET VOTE STATUS (IF RUNNING) */}
-      {activeSecretVote && (
-        <div className="bg-gradient-to-r from-purple-950/90 to-neutral-950 border border-purple-600 rounded-3xl p-4 shadow-2xl animate-pulse">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <Vote className="w-6 h-6 text-purple-400" />
-              <div>
-                <h4 className="font-black text-sm text-white">
-                  رأی‌گیری مخفی فعال: «{activeSecretVote.title}»
-                </h4>
-                <p className="text-[11px] text-purple-300">
-                  آرا به صورت کاملاً محرمانه ثبت می‌شوند. مجموع آرا تا این لحظه:{' '}
-                  <span className="font-bold text-white font-mono">
-                    {Object.keys(activeSecretVote.votes || {}).length} رأی
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleEndSecretVote}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
-              >
-                <Gavel className="w-4 h-4" />
-                <span>پایان رأی‌گیری و ضربه چکش</span>
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -980,8 +956,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                         <div className="mt-2 p-2 rounded-xl bg-black/60 border border-purple-900 text-xs text-neutral-300">
                           <span className="font-bold text-amber-400">رأی‌دهندگان به خروج: </span>
                           {Object.keys(activeSecretVote.votes).map(voterId => {
+                            const detailName = activeSecretVote.voterDetails?.[voterId]?.voterName;
                             const voter = players.find(p => p.id === voterId);
-                            return voter ? voter.name : voterId;
+                            return voter ? voter.name : (detailName || voterId);
                           }).join(" ، ")}
                         </div>
                       )}

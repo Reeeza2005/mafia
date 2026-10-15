@@ -46,7 +46,7 @@ export default function App() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
   // God state
-  const [selectedRoleCounts, setSelectedRoleCounts] = useState<Record<string, number>>(PRESETS[1].roles);
+  const [selectedRoleCounts, setSelectedRoleCounts] = useState<Record<string, number>>(PRESETS?.[1]?.roles || PRESETS?.[0]?.roles || {});
   const [players, setPlayers] = useState<Player[]>([]);
   const [rolesInGame, setRolesInGame] = useState<string[]>([]);
   const [cardsDistributed, setCardsDistributed] = useState<boolean>(false);
@@ -101,8 +101,14 @@ export default function App() {
       try {
         const savedRoom = localStorage.getItem('mafia_room');
         const savedName = localStorage.getItem('mafia_player_name');
-        if (savedRoom && savedName && !clientType) {
-          network.joinRoom(savedRoom, 'player', savedName);
+        const urlParams = new URLSearchParams(window.location.search);
+        const isGodUrl = urlParams.get("role") === "god";
+
+        if (!isGodUrl && savedRoom && savedName) {
+          console.log("[AUTO-REJOIN] Joining room:", savedRoom, "as:", savedName);
+          setRoomCode(savedRoom);
+          setClientType("player");
+          network.joinRoom(savedRoom, "player", savedName);
         }
       } catch (e) {}
     });
@@ -227,14 +233,22 @@ export default function App() {
       setErrorMessage(typeof msg === 'string' ? msg : 'خطایی رخ داد.');
     });
 
-    const unSecretVoteStarted = network.on('secret_vote_started', (data: any) => setSecretVote(data));
+    const unSecretVoteStarted = network.on('secret_vote_started', (data: any) => {
+      console.log('[CLIENT APP] secret_vote_started received:', data);
+      console.log('[CLIENT APP] secret_vote_started received:', data);
+      setIsVoteUnlocked(!data?.isLocked);
+      setSecretVote(data);
+    });
     const unSecretVoteEnded = network.on('secret_vote_ended', () => {
       setSecretVote(undefined);
       setIsVoteUnlocked(false);
     });
     const unSecretVoteUnlocked = network.on('secret_vote_unlocked', ({ duration }: any) => {
+      console.log('[CLIENT APP] secret_vote_unlocked received, duration:', duration);
+      console.log('[CLIENT APP] secret_vote_unlocked received, duration:', duration);
       setIsVoteUnlocked(true);
-      const timerSec = typeof duration === 'number' ? duration : 5;
+      setSecretVote((prev: any) => prev ? { ...prev, isLocked: false } : prev);
+      const timerSec = (typeof duration === 'number' && duration > 0) ? duration : 5;
       setTimeout(() => {
         setIsVoteUnlocked(false);
       }, timerSec * 1000);

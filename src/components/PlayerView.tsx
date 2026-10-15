@@ -28,6 +28,7 @@ interface PlayerViewProps {
   gameStarted: boolean;
   timer: GameTimer;
   secretVote?: SecretVoteState;
+  isVoteUnlocked?: boolean;
   onJoin: (name: string) => void;
   onToggleReady?: () => void;
 }
@@ -38,6 +39,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   gameStarted,
   timer,
   secretVote,
+  isVoteUnlocked,
   onJoin,
 }) => {
   const [nameInput, setNameInput] = useState('');
@@ -48,6 +50,17 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [hasVoted, setHasVoted] = useState(false);
   const [buzzAlert, setBuzzAlert] = useState<{ message: string; type: string } | null>(null);
   const [isChallengeRequested, setIsChallengeRequested] = useState(false);
+  const [voteCountdown, setVoteCountdown] = useState(5);
+
+  useEffect(() => {
+    if (isVoteUnlocked) {
+      setVoteCountdown(5);
+      const timer = setInterval(() => {
+        setVoteCountdown(prev => (prev > 1 ? prev - 1 : 1));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [isVoteUnlocked]);
   const [localSeconds, setLocalSeconds] = useState(timer.seconds);
 
   // Sync localSeconds when timer updates from socket
@@ -161,7 +174,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
   const handleSubmitVote = () => {
     if (!selectedCandidateId || !player) return;
-    network.submitSecretVote(player.id, selectedCandidateId);
+    network.submitSecretVote(player.id, selectedCandidateId, player.name);
     setHasVoted(true);
   };
 
@@ -403,55 +416,77 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       )}
 
       {/* SECRET NIGHT VOTING PANEL (IF ACTIVE) */}
-      {secretVote && secretVote.isActive && (
-        <div className="bg-neutral-900 border-2 border-purple-600 rounded-3xl p-5 shadow-2xl space-y-3.5 animate-in fade-in duration-200">
-          <div className="flex items-center gap-2 border-b border-neutral-800 pb-2">
-            <Vote className="w-5 h-5 text-purple-400 animate-pulse" />
-            <div>
-              <h4 className="font-black text-sm text-white flex items-center gap-1.5">
-                <span>🗳️ {secretVote.title || 'رأی‌گیری مخفی شبانه'}</span>
-              </h4>
-              <p className="text-[11px] text-purple-300 mt-0.5">
-                {secretVote.targetDefendantId 
-                  ? '⚠️ در حال رأی‌گیری برای خروج متهم از بازی (مخفی)' 
-                  : 'رأی شما کاملاً مخفی است و هویت شما برای هیچ بازیکنی آشکار نخواهد شد.'}
-              </p>
+      {secretVote && secretVote.isActive && player.isAlive && secretVote.targetDefendantId !== player.id && (
+        <div className="bg-neutral-950 border-2 border-purple-700/80 rounded-3xl p-5 shadow-2xl space-y-4 animate-in fade-in duration-200 select-none">
+          <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Vote className="w-5 h-5 text-purple-400" />
+              <div>
+                <h4 className="font-black text-sm text-white">
+                  🗳️ {secretVote.title || 'رأی‌گیری مخفی شبانه'}
+                </h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  حالت شب (Anti-Peek): بدون تغییر نور صفحه
+                </p>
+              </div>
             </div>
+            {isVoteUnlocked && (
+              <span className="px-3 py-1 rounded-xl bg-amber-500 text-neutral-950 text-xs font-black shadow-lg shadow-amber-500/20 animate-bounce flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                ⏳ مهلت رأی: {voteCountdown} ثانیه
+              </span>
+            )}
           </div>
 
-          {hasVoted ? (
-            <div className="py-4 text-center space-y-2">
-              <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-              <p className="text-xs text-emerald-300 font-bold">
-                رأی شما با موفقیت و به صورت محرمانه ثبت گردید.
+          {(secretVote.isLocked && !isVoteUnlocked) ? (
+            <div className="py-8 text-center space-y-2 bg-neutral-900/60 rounded-2xl border border-neutral-800">
+              <Lock className="w-8 h-8 text-neutral-500 mx-auto animate-pulse" />
+              <p className="text-xs text-neutral-300 font-bold">
+                کارت رأی آماده است. منتظر فرمان ۵ ثانیه‌ای گرداننده باشید...
+              </p>
+            </div>
+          ) : hasVoted ? (
+            <div className="py-8 text-center space-y-2 bg-neutral-900/40 rounded-2xl border border-neutral-800">
+              <p className="text-xs text-neutral-400 font-bold">
+                ✓ رأی خروج شما در سکوت ثبت شد. (تا پایان ۵ ثانیه صبر کنید)
               </p>
             </div>
           ) : (
             <div className="space-y-3">
-              <span className="text-xs text-neutral-200 font-medium block font-bold">انتخاب گزینه / بازیکن:</span>
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                {secretVote.candidates?.map((candidate) => (
-                  <button
-                    key={candidate.id}
-                    onClick={() => setSelectedCandidateId(candidate.id)}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      selectedCandidateId === candidate.id
-                        ? 'bg-purple-600 text-white border-purple-400 shadow-md'
-                        : 'bg-neutral-950 text-white font-medium border-neutral-800 hover:border-neutral-700'
-                    }`}
-                  >
-                    {candidate.name}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={handleSubmitVote}
-                disabled={!selectedCandidateId}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-40 text-white font-black text-xs shadow-lg shadow-purple-950/50 active:scale-95 transition-all cursor-pointer"
-              >
-                ثبت رأی محرمانه
-              </button>
+              {secretVote.candidates && secretVote.candidates.length === 1 ? (
+                <button
+                  onClick={() => {
+                    const cId = secretVote.candidates![0].id;
+                    console.log("[VOTE CLICKED] by:", player.name, "for candidate:", cId);
+                    setSelectedCandidateId(cId);
+                    network.submitSecretVote(player.id, cId, player.name);
+                    setHasVoted(true);
+                  }}
+                  className="w-full py-8 rounded-2xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-900 border-2 border-purple-600/60 text-white font-black text-sm shadow-inner transition-none cursor-pointer flex flex-col items-center justify-center gap-2"
+                >
+                  <span>لمس برای رأی خروج به «{secretVote.candidates[0].name}»</span>
+                  <span className="text-[11px] text-neutral-400 font-normal">(اگر رأی نمی‌دهید، صفحه را لمس نکنید)</span>
+                </button>
+              ) : (
+                <>
+                  <span className="text-xs text-neutral-200 font-bold block">برای ثبت فوری رأی، روی نام گزینه لمس کنید:</span>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    {secretVote.candidates?.map((candidate) => (
+                      <button
+                        key={candidate.id}
+                        onClick={() => {
+                          setSelectedCandidateId(candidate.id);
+                          network.submitSecretVote(player.id, candidate.id, player.name);
+                          setHasVoted(true);
+                        }}
+                        className="p-3.5 rounded-xl border bg-neutral-900 text-white font-bold border-purple-700/50 hover:border-purple-500 text-xs cursor-pointer"
+                      >
+                        رأی به {candidate.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

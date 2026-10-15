@@ -1,24 +1,24 @@
 export type Team = 'mafia' | 'citizen' | 'independent';
 
 export type EliminationReason =
-  | 'mafia_shot'       // شات شب مافیا
-  | 'court_vote'        // رأی دادگاه
-  | 'sniper_shot'      // تیر اسنایپر / حرفه‌ای
-  | 'gunsmith_shot'    // شلیک با تفنگ جنگی
-  | 'misfire_death'    // شلیک اشتباه اسنایپر به شهروند
-  | 'terrorist_kill'   // ترور انتحاری
-  | 'disciplinary'     // خروج انضباطی گرداننده
-  | 'other';           // سایر
+  | 'mafia_shot'
+  | 'court_vote'
+  | 'sniper_shot'
+  | 'gunsmith_shot'
+  | 'misfire_death'
+  | 'terrorist_kill'
+  | 'disciplinary'
+  | 'other';
 
 export interface Role {
   id: string;
   name: string;
   englishName: string;
   team: Team;
-  isSimple: boolean; // only true for simple_citizen and simple_mafia
+  isSimple: boolean;
   summary: string;
   description: string;
-  nightOrder?: number; // order of waking up at night (1, 2, 3...)
+  nightOrder?: number;
   wakeUpText?: string;
   abilities?: string[];
   winningCondition?: string;
@@ -28,6 +28,7 @@ export interface Role {
 export interface Player {
   id: string;
   name: string;
+  socketId?: string;
   roleId?: string;
   isAlive: boolean;
   isSilenced: boolean;
@@ -36,7 +37,7 @@ export interface Player {
   notes?: string;
   connected: boolean;
   joinedAt?: number;
-  gunGiven?: 'war' | 'blank'; // تفنگدار: جنگی یا مشقی
+  gunGiven?: 'war' | 'blank';
   usedDailyChallenge?: boolean;
 }
 
@@ -44,7 +45,7 @@ export interface GameLog {
   id: string;
   time: string;
   text: string;
-  type: 'info' | 'danger' | 'action';
+  type: 'info' | 'danger' | 'action' | 'challenge';
 }
 
 export interface GameTimer {
@@ -56,13 +57,18 @@ export interface GameTimer {
 }
 
 export interface SecretVoteState {
+  voterDetails?: Record<string, { candidateId: string; voterName: string }>;
+
   id: string;
   isActive: boolean;
   title: string;
   eligibleTeam?: 'all' | 'mafia' | 'citizen';
   candidates: { id: string; name: string }[];
-  votes: Record<string, string>; // voterId -> candidateId
+  votes: Record<string, string>;
   ended: boolean;
+  isLocked?: boolean;
+  targetDefendantId?: string;
+  startsLocked?: boolean;
 }
 
 export interface NightActions {
@@ -77,4 +83,3 @@ export interface NightActions {
 }
 
 export type NetworkMode = 'socket' | 'peer';
-
