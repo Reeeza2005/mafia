@@ -1,14 +1,17 @@
 export type Team = 'mafia' | 'citizen' | 'independent';
 
 export type EliminationReason =
+  | 'vote'
   | 'mafia_shot'
-  | 'court_vote'
   | 'sniper_shot'
-  | 'gunsmith_shot'
-  | 'misfire_death'
-  | 'terrorist_kill'
-  | 'disciplinary'
-  | 'other';
+  | 'sheriff_shot'
+  | 'bomber'
+  | 'terrorist'
+  | 'jester_revenge'
+  | 'suicide'
+  | 'leave'
+  | 'god'
+  | string;
 
 export interface Role {
   id: string;
@@ -43,9 +46,9 @@ export interface Player {
 
 export interface GameLog {
   id: string;
-  time: string;
-  text: string;
-  type: 'info' | 'danger' | 'action' | 'challenge';
+  timestamp: number;
+  message: string;
+  type?: 'info' | 'action' | 'elimination' | 'system';
 }
 
 export interface GameTimer {
@@ -58,7 +61,6 @@ export interface GameTimer {
 
 export interface SecretVoteState {
   voterDetails?: Record<string, { candidateId: string; voterName: string }>;
-
   id: string;
   isActive: boolean;
   title: string;
@@ -72,14 +74,44 @@ export interface SecretVoteState {
 }
 
 export interface NightActions {
+  // مافیا
   mafiaShotId?: string;
+  doctorLecterSaveId?: string;
+  silencerTargetId?: string;
+  thiefTargetId?: string;
+  hostageTargetId?: string;
+  bomberTargetId?: string;
+  bomberWireConfig?: { deathWire: string; defuseWire: string; bombSelfWire: string };
+  jokerTargetId?: string;
+  informantGuess?: { targetId: string; guessedRoleId: string };
+  infiltratorTargetId?: string;
+  negotiatorTargetId?: string;
+
+  // شهروند
   doctorSaveId?: string;
   detectiveInquiryId?: string;
   detectiveResult?: 'positive' | 'negative' | null;
   sniperShotId?: string;
+  bodyguardTargetId?: string;
+  priestTargetId?: string;
+  watcherTargetId?: string;
+  hackerTargetIds?: [string, string];
   gunsmithTargetId?: string;
   gunsmithGunType?: 'war' | 'blank';
-  silencerTargetId?: string;
+  journalistInquiry?: boolean;
+}
+
+export interface NightResolutionReport {
+  deaths: string[];
+  healed: string[];
+  silencedId?: string;
+  hostageId?: string;
+  detectiveReport?: { targetId: string; isPositive: boolean };
+  watcherVisitors?: string[];
+  hackerReport?: { sameTeam: boolean };
+  bombedPlayerId?: string;
+  negotiationSuccessful?: boolean;
+  logs: string[];
 }
 
 export type NetworkMode = 'socket' | 'peer';

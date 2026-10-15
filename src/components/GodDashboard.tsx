@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Player, GameTimer, GameLog, EliminationReason, SecretVoteState, NightActions } from '../types/mafia';
 import { ROLE_MAP } from '../data/roles';
+import { getActiveNightRoles, resolveNight } from '../services/nightEngine';
 import { RoleIcon } from './RoleIcons';
 import {
   Play,
@@ -14,22 +15,10 @@ import {
   Skull,
   UserX,
   Moon,
-  Sun,
   Smartphone,
   Music,
-  Bell,
   Vibrate,
-  Vote,
-  Target,
-  Search,
-  Crosshair,
-  Award,
-  AlertTriangle,
-  CheckCircle2,
   Sparkles,
-  Gavel,
-  Check,
-  ChevronDown,
 } from 'lucide-react';
 import { audio } from '../utils/audio';
 import { network } from '../services/network';
@@ -85,29 +74,30 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   const [nightActions, setNightActions] = useState<NightActions>({
     mafiaShotId: undefined,
     doctorSaveId: undefined,
+    doctorLecterSaveId: undefined,
     detectiveInquiryId: undefined,
     detectiveResult: null,
     sniperShotId: undefined,
     gunsmithTargetId: undefined,
     gunsmithGunType: 'war',
     silencerTargetId: undefined,
+    hostageTargetId: undefined,
+    bomberTargetId: undefined,
+    jokerTargetId: undefined,
+    priestTargetId: undefined,
+    watcherTargetId: undefined,
   });
 
   // Secret Voting State
-  const [isSecretVoteModalOpen, setIsSecretVoteModalOpen] = useState(false);
-  const [secretVoteTitle, setSecretVoteTitle] = useState('رأی‌گیری مخفی شبانه مافیا');
-  const [secretVoteTargetTeam, setSecretVoteTargetTeam] = useState<'all' | 'mafia' | 'citizen'>('mafia');
   const [activeSecretVote, setActiveSecretVote] = useState<SecretVoteState | null>(null);
-  
+
   // Day Voting & Defense Court States
   const [dayVotes, setDayVotes] = useState<Record<string, number>>({});
   const [courtDefendants, setCourtDefendants] = useState<string[]>([]);
   const [exitVotes, setExitVotes] = useState<Record<string, number>>({});
-  const [dayVotePhase, setDayVotePhase] = useState<"idle" | "nomination" | "court_entry" | "defense">("idle");
+  const [dayVotePhase, setDayVotePhase] = useState<'idle' | 'nomination' | 'court_entry' | 'defense'>('idle');
 
   const [challengeRequests, setChallengeRequests] = useState<{ playerId: string; playerName: string; time: string }[]>([]);
-
-  const timerRef = useRef<number | null>(null);
 
   // Sync timer state
   useEffect(() => {
@@ -128,13 +118,13 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
   // Listen to challenge queue updates
   useEffect(() => {
-    const unSub = network.on("challenges_updated", (data: any) => {
+    const unSub = network.on('challenges_updated', (data: any) => {
       if (Array.isArray(data)) {
         setChallengeRequests(data);
       }
     });
     return () => {
-      if (typeof unSub === "function") unSub();
+      if (typeof unSub === 'function') unSub();
     };
   }, []);
 
@@ -143,8 +133,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     const unStart = network.on('secret_vote_started', (data: any) => setActiveSecretVote(data));
     const unUpdate = network.on('secret_vote_updated', (data: any) => {
       setActiveSecretVote((prev: any) => {
-        const nextState = prev ? { ...prev, votes: data.votes, voterDetails: data.voterDetails } : { votes: data.votes, voterDetails: data.voterDetails };
-        return nextState;
+        return prev ? { ...prev, votes: data.votes, voterDetails: data.voterDetails } : { votes: data.votes, voterDetails: data.voterDetails };
       });
       if (data.votes) {
         const counts: Record<string, number> = {};
@@ -184,6 +173,18 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     }).length;
   }, [alivePlayers]);
 
+  // استخراج نقش‌های فعال شب بر اساس سناریو و بازیکنان زنده
+  const activeNightRoleIds = useMemo(() => {
+    return new Set(getActiveNightRoles(players).map((r) => r.id));
+  }, [players]);
+
+  const hasAliveMafia = useMemo(() => {
+    return players.some((p) => {
+      if (!p.isAlive || !p.roleId) return false;
+      return ROLE_MAP[p.roleId]?.team === 'mafia';
+    });
+  }, [players]);
+
   // Required votes calculation
   const requiredCourtVotes = Math.max(1, Math.ceil(aliveCount / 2));
   const requiredEliminationVotes = Math.max(1, Math.floor(aliveCount / 2) + 1);
@@ -207,7 +208,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   }, [players, cardsDistributed]);
 
   // Quick timer presets
-    const handleAcceptChallenge = (playerId: string, playerName: string) => {
+  const handleAcceptChallenge = (playerId: string, playerName: string) => {
     audio.playFlip();
     onTimerControl('set', 20, `چالش: ${playerName}`, playerId, 'challenge');
     onTimerControl('start', 20, `چالش: ${playerName}`, playerId, 'challenge');
@@ -224,11 +225,10 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     }
   };
 
-  
   const courtThreshold = Math.ceil(alivePlayers.length / 2);
 
   const handleDayVoteChange = (playerId: string, delta: number) => {
-    setDayVotes(prev => {
+    setDayVotes((prev) => {
       const current = prev[playerId] || 0;
       const maxAllowed = alivePlayers.length;
       if (delta > 0 && current >= maxAllowed) return prev;
@@ -239,36 +239,31 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
   const handleCalculateCourt = () => {
     const qualified = alivePlayers
-      .filter(p => (dayVotes[p.id] || 0) >= courtThreshold)
-      .map(p => p.id);
+      .filter((p) => (dayVotes[p.id] || 0) >= courtThreshold)
+      .map((p) => p.id);
     setCourtDefendants(qualified);
     setExitVotes({});
     if (qualified.length > 0) {
-      setDayVotePhase("defense");
+      setDayVotePhase('defense');
       audio.playCourt();
     } else {
-      alert("هیچ بازیکنی به حد نصاب ورود به دادگاه (" + courtThreshold + " رأی) نرسید.");
+      alert('هیچ بازیکنی به حد نصاب ورود به دادگاه (' + courtThreshold + ' رأی) نرسید.');
     }
   };
 
-    // بررسی هوشمند نتیجه دادگاه بر اساس حد نصاب و تساوی
-    // بررسی نتیجه رأی‌گیری نهایی دادگاه (۳ حالت)
-  
-  // حالت دوم: راه‌اندازی رأی‌گیری شبانه برای متهم تک‌نفره
   const handleLaunchSingleDefendantNightVote = () => {
     if (courtDefendants.length !== 1) return;
     const defId = courtDefendants[0];
-    const defPlayer = players.find(p => p.id === defId);
-    
-    // رأی‌دهندگان: همه زنده‌ها به جز خود متهم
-    const eligibleVoterIds = alivePlayers.filter(p => p.id !== defId).map(p => p.id);
+    const defPlayer = players.find((p) => p.id === defId);
+
+    const eligibleVoterIds = alivePlayers.filter((p) => p.id !== defId).map((p) => p.id);
 
     network.startSecretVote({
-      title: "رأی‌گیری خروج شب: " + (defPlayer ? defPlayer.name : ""),
+      title: 'رأی‌گیری خروج شب: ' + (defPlayer ? defPlayer.name : ''),
       startsLocked: true,
       targetDefendantId: defId,
       eligibleVoterIds,
-      candidates: [{ id: defId, name: defPlayer ? defPlayer.name : "متهم" }],
+      candidates: [{ id: defId, name: defPlayer ? defPlayer.name : 'متهم' }],
     });
     audio.playGong();
   };
@@ -282,47 +277,46 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     if (courtDefendants.length === 0) return;
     const quorum = Math.ceil(alivePlayers.length / 2);
 
-    const results = courtDefendants.map(id => {
-      const p = players.find(x => x.id === id);
-      return { id, name: p ? p.name : "نامشخص", votes: exitVotes[id] || 0 };
+    const results = courtDefendants.map((id) => {
+      const p = players.find((x) => x.id === id);
+      return { id, name: p ? p.name : 'نامشخص', votes: exitVotes[id] || 0 };
     });
 
     results.sort((a, b) => b.votes - a.votes);
     const maxVotes = results[0].votes;
 
-    // زیر حد نصاب خروج
     if (maxVotes < quorum) {
-      alert("⚖️ نتیجه دادگاه:\n\nبیشترین رأی (" + maxVotes + " رأی) کمتر از حد نصاب (" + quorum + " رأی) است.\n\n❌ هیچ بازیکنی حذف نمی‌شود.");
+      alert('⚖️ نتیجه دادگاه:\n\nبیشترین رأی (' + maxVotes + ' رأی) کمتر از حد نصاب (' + quorum + ' رأی) است.\n\n❌ هیچ بازیکنی حذف نمی‌شود.');
       handleResetDayVoting();
       return;
     }
 
-    const topCandidates = results.filter(r => r.votes === maxVotes);
+    const topCandidates = results.filter((r) => r.votes === maxVotes);
     if (topCandidates.length > 1) {
-      const tiedNames = topCandidates.map(c => "«" + c.name + "»").join(" و ");
-      alert("⚖️ نتیجه دادگاه:\n\nتساوی آرا بین " + tiedNames + " با " + maxVotes + " رأی!\n\n❌ هیچ بازیکنی خارج نمی‌شود و بازی ادامه می‌یابد.");
+      const tiedNames = topCandidates.map((c) => '«' + c.name + '»').join(' و ');
+      alert('⚖️ نتیجه دادگاه:\n\nتساوی آرا بین ' + tiedNames + ' با ' + maxVotes + ' رأی!\n\n❌ هیچ بازیکنی خارج نمی‌شود و بازی ادامه می‌یابد.');
       handleResetDayVoting();
       return;
     }
 
-    // حالت سوم: رسیدن به حد نصاب با یک نامزد قطعی
     const condemned = topCandidates[0];
     const isConfirmed = confirm(
-      "⚖️ نتیجه دادگاه:\n\n«" + condemned.name + "» با " + condemned.votes + " رأی (حد نصاب: " + quorum + ") باید از بازی اخراج شود.\n\nآیا اخراج قطعی این بازیکن را تأیید می‌کنید؟"
+      '⚖️ نتیجه دادگاه:\n\n«' + condemned.name + '» با ' + condemned.votes + ' رأی (حد نصاب: ' + quorum + ') باید از بازی اخراج شود.\n\nآیا اخراج قطعی این بازیکن را تأیید می‌کنید؟'
     );
 
     if (isConfirmed) {
-      onUpdatePlayer(condemned.id, { isAlive: false, eliminationReason: "court_vote" });
+      onUpdatePlayer(condemned.id, { isAlive: false, eliminationReason: 'court_vote' });
       handleResetDayVoting();
     }
   };
 
   const handleExitVoteChange = (playerId: string, delta: number) => {
-    setExitVotes(prev => {
+    setExitVotes((prev) => {
       const current = prev[playerId] || 0;
-      const maxAllowed = courtDefendants.length >= 4
-        ? Math.max(0, alivePlayers.length - 1)
-        : Math.max(0, alivePlayers.length - courtDefendants.length);
+      const maxAllowed =
+        courtDefendants.length >= 4
+          ? Math.max(0, alivePlayers.length - 1)
+          : Math.max(0, alivePlayers.length - courtDefendants.length);
       if (delta > 0 && current >= maxAllowed) return prev;
       const next = Math.min(maxAllowed, Math.max(0, current + delta));
       return { ...prev, [playerId]: next };
@@ -334,7 +328,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     setDayVotes({});
     setCourtDefendants([]);
     setExitVotes({});
-    setDayVotePhase("idle");
+    setDayVotePhase('idle');
     network.endSecretVote();
   };
 
@@ -350,13 +344,11 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     onTimerControl('start', seconds, label, speakerId, type);
   };
 
-  // Quick Buzz player
   const handleBuzzPlayer = (playerId: string, name: string) => {
     audio.playWakeBuzz();
     network.buzzPlayer(playerId, 'warning', `اخطار / بیدارباش اختصاصی از سوی گرداننده برای «${name}»`);
   };
 
-  // Global buzz
   const handleBuzzAll = () => {
     audio.playWarningBeep();
     network.buzzAll('warning', '📢 اعلامیه و بیدارباش همگانی از سوی گرداننده!');
@@ -367,12 +359,11 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     const targetPlayer = players.find((p) => p.id === targetId);
     if (!targetPlayer || !targetPlayer.roleId) return;
 
-    // Godfather returns negative; Joker changes inquiry
     let result: 'positive' | 'negative' = 'negative';
     if (targetPlayer.roleId === 'godfather') {
-      result = 'negative'; // استعلام پدرخوانده منفی است
+      result = 'negative';
     } else if (targetPlayer.roleId === 'joker') {
-      result = 'negative'; // جوکر نتیجه را وارونه می‌کند
+      result = 'negative';
     } else {
       const role = ROLE_MAP[targetPlayer.roleId];
       result = role?.team === 'mafia' ? 'positive' : 'negative';
@@ -386,71 +377,58 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     audio.playGong();
   };
 
-  // Apply night action outcomes automatically
+  // Apply night action outcomes automatically via nightEngine
   const handleApplyNightActions = () => {
-    let killCount = 0;
-    const { mafiaShotId, doctorSaveId, sniperShotId } = nightActions;
+    const currentArmors: Record<string, boolean> = {};
+    players.forEach((p) => {
+      currentArmors[p.id] = p.hasArmor;
+    });
 
-    // 1. Mafia Shot vs Doctor Save
-    if (mafiaShotId) {
-      if (mafiaShotId === doctorSaveId) {
-        // Saved by doctor!
-        audio.playFlip();
-      } else {
-        const victim = players.find((p) => p.id === mafiaShotId);
-        if (victim && victim.isAlive) {
-          if (victim.hasArmor) {
-            // Armor broke
-            onUpdatePlayer(victim.id, { hasArmor: false });
-          } else {
-            onUpdatePlayer(victim.id, { isAlive: false, eliminationReason: 'mafia_shot' });
-            killCount++;
-          }
+    const { updatedPlayers, report, updatedArmors } = resolveNight(players, nightActions, currentArmors);
+
+    updatedPlayers.forEach((up) => {
+      const orig = players.find((p) => p.id === up.id);
+      if (orig) {
+        const updates: Partial<Player> = {};
+        if (orig.isAlive !== up.isAlive) {
+          updates.isAlive = up.isAlive;
+          if (!up.isAlive) updates.eliminationReason = 'mafia_shot';
+        }
+        if (orig.isSilenced !== up.isSilenced) {
+          updates.isSilenced = up.isSilenced;
+        }
+        if (orig.hasArmor !== updatedArmors[up.id]) {
+          updates.hasArmor = updatedArmors[up.id];
+        }
+
+        if (Object.keys(updates).length > 0) {
+          onUpdatePlayer(up.id, updates);
         }
       }
+    });
+
+    if (report.deaths.length > 0) {
+      audio.playShot();
+    } else {
+      audio.playFlip();
     }
 
-    // 2. Sniper Shot
-    if (sniperShotId) {
-      const sniperVictim = players.find((p) => p.id === sniperShotId);
-      if (sniperVictim && sniperVictim.isAlive) {
-        const victimRole = sniperVictim.roleId ? ROLE_MAP[sniperVictim.roleId] : null;
-        if (victimRole?.team === 'mafia') {
-          // Mafia killed by sniper
-          onUpdatePlayer(sniperVictim.id, { isAlive: false, eliminationReason: 'sniper_shot' });
-          killCount++;
-        } else {
-          // Backfired! Sniper themselves die
-          const sniperPlayer = players.find((p) => p.roleId === 'sniper');
-          if (sniperPlayer && sniperPlayer.isAlive) {
-            onUpdatePlayer(sniperPlayer.id, { isAlive: false, eliminationReason: 'misfire_death' });
-            killCount++;
-          }
-        }
-      }
-    }
-
-    audio.playShot();
-    // Reset night action selections for next round
     setNightActions({
       mafiaShotId: undefined,
       doctorSaveId: undefined,
+      doctorLecterSaveId: undefined,
       detectiveInquiryId: undefined,
       detectiveResult: null,
       sniperShotId: undefined,
       gunsmithTargetId: undefined,
       gunsmithGunType: 'war',
       silencerTargetId: undefined,
+      hostageTargetId: undefined,
+      bomberTargetId: undefined,
+      jokerTargetId: undefined,
+      priestTargetId: undefined,
+      watcherTargetId: undefined,
     });
-  };
-
-  // Start Secret Vote
-  
-
-  const handleEndSecretVote = () => {
-    audio.playGavel();
-    network.endSecretVote();
-    setActiveSecretVote(null);
   };
 
   return (
@@ -523,8 +501,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               <Vibrate className="w-4 h-4 text-rose-400 animate-pulse" />
               <span>📳 بیدارباش همگانی</span>
             </button>
-
-            {/* Secret Night Vote Modal Trigger removed to prevent conflicts */}
 
             {/* End Game / Declare Winner Trigger */}
             {onEndGame && (
@@ -627,7 +603,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
         </div>
       )}
 
-      {/* 3. TIMER & TALKING STATION (نوبت، چالش، دفاعیه، رأی‌گیری) */}
+      {/* 3. TIMER & TALKING STATION */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-2xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           {/* Clock Visual & Speaker Select */}
@@ -682,7 +658,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
           {/* Quick Timer Presets */}
           <div className="flex flex-wrap items-center justify-center gap-2 w-full lg:w-auto">
-            {/* Play/Pause */}
             {timer.isRunning ? (
               <button
                 onClick={() => onTimerControl('pause')}
@@ -705,7 +680,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               </button>
             )}
 
-            {/* Reset */}
             <button
               onClick={() => {
                 audio.playFlip();
@@ -718,7 +692,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               <RotateCcw className="w-4 h-4" />
             </button>
 
-            {/* Presets */}
             <button
               onClick={() => handleStartTimerPreset(60, 'speech', 'نوبت صحبت')}
               className="px-3.5 py-3 rounded-2xl bg-neutral-800 hover:bg-neutral-750 text-neutral-200 text-xs font-bold border border-neutral-700 active:scale-95 transition-all"
@@ -800,7 +773,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
         </div>
       </div>
 
-      
       {/* ================= DAY VOTING & DEFENSE COURT DESK ================= */}
       {cardsDistributed && (
         <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
@@ -812,7 +784,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {dayVotePhase !== "idle" && (
+              {dayVotePhase !== 'idle' && (
                 <button
                   onClick={handleResetDayVoting}
                   className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-300 text-xs font-bold border border-neutral-700 transition-colors"
@@ -820,9 +792,12 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   🔄 ریست رأی‌گیری
                 </button>
               )}
-              {dayVotePhase === "idle" && (
+              {dayVotePhase === 'idle' && (
                 <button
-                  onClick={() => { setDayVotePhase("court_entry"); audio.playCourt(); }}
+                  onClick={() => {
+                    setDayVotePhase('court_entry');
+                    audio.playCourt();
+                  }}
                   className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-neutral-950 text-xs font-black transition-all shadow-md active:scale-95"
                 >
                   شروع ثبت آرای ورود به دادگاه
@@ -831,21 +806,23 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             </div>
           </div>
 
-          {dayVotePhase === "court_entry" && (
+          {dayVotePhase === 'court_entry' && (
             <div className="space-y-3">
               <p className="text-xs text-neutral-300">
-                دست‌های بلند شده برای هر بازیکن را ثبت کنید (حداقل رأی ورود: <strong className="text-amber-400">{courtThreshold}</strong>):
+                دست‌های بلند شده برای هر بازیکن را ثبت کنید (حداقل رأی ورود:{' '}
+                <strong className="text-amber-400">{courtThreshold}</strong>):
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                {alivePlayers.map(p => {
+                {alivePlayers.map((p) => {
                   const votes = dayVotes[p.id] || 0;
                   const isQualified = votes >= courtThreshold;
                   return (
                     <div
                       key={p.id}
-                      className={"p-2.5 rounded-2xl border flex items-center justify-between " + (
-                        isQualified ? "bg-amber-950/40 border-amber-600" : "bg-neutral-950 border-neutral-800"
-                      )}
+                      className={
+                        'p-2.5 rounded-2xl border flex items-center justify-between ' +
+                        (isQualified ? 'bg-amber-950/40 border-amber-600' : 'bg-neutral-950 border-neutral-800')
+                      }
                     >
                       <div>
                         <span className="text-xs font-bold text-white block">{p.name}</span>
@@ -880,12 +857,10 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   تشکیل دادگاه و انتقال واجدین شرایط ⚖️
                 </button>
               </div>
-
-
             </div>
           )}
 
-          {dayVotePhase === "defense" && (
+          {dayVotePhase === 'defense' && (
             <div className="space-y-4 bg-neutral-950/60 p-3.5 rounded-2xl border border-neutral-800">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -907,15 +882,15 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {courtDefendants.map(id => {
-                  const def = players.find(p => p.id === id);
+                {courtDefendants.map((id) => {
+                  const def = players.find((p) => p.id === id);
                   const votes = exitVotes[id] || 0;
                   return (
                     <div key={id} className="p-3 rounded-2xl bg-neutral-900 border border-neutral-700 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-black text-white">{def?.name}</span>
                         <button
-                          onClick={() => onTimerControl("start", 45, "دفاع: " + (def?.name || ""), id, "defense")}
+                          onClick={() => onTimerControl('start', 45, 'دفاع: ' + (def?.name || ''), id, 'defense')}
                           className="px-2 py-0.5 rounded-lg bg-sky-950 border border-sky-800 text-[10px] text-sky-300 font-bold hover:bg-sky-900"
                         >
                           تایمر دفاع (۴۵s)
@@ -932,7 +907,12 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                           </button>
                           <span className="w-6 text-center text-xs font-black text-amber-400">{votes}</span>
                           <button
-                            disabled={(exitVotes[id] || 0) >= (courtDefendants.length >= 4 ? Math.max(0, alivePlayers.length - 1) : Math.max(0, alivePlayers.length - courtDefendants.length))}
+                            disabled={
+                              (exitVotes[id] || 0) >=
+                              (courtDefendants.length >= 4
+                                ? Math.max(0, alivePlayers.length - 1)
+                                : Math.max(0, alivePlayers.length - courtDefendants.length))
+                            }
                             onClick={() => handleExitVoteChange(id, 1)}
                             className="w-6 h-6 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-black text-xs"
                           >
@@ -940,13 +920,11 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                           </button>
                         </div>
                       </div>
-                      
                     </div>
                   );
                 })}
               </div>
 
-              {/* پنل اختصاصی حالت ۲: دقیقاً ۱ متهم و رأی‌گیری مخفی در شب */}
               {courtDefendants.length === 1 && (
                 <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-800/80 space-y-3 mt-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -955,11 +933,13 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       {activeSecretVote && activeSecretVote.votes && Object.keys(activeSecretVote.votes).length > 0 && (
                         <div className="mt-2 p-2 rounded-xl bg-black/60 border border-purple-900 text-xs text-neutral-300">
                           <span className="font-bold text-amber-400">رأی‌دهندگان به خروج: </span>
-                          {Object.keys(activeSecretVote.votes).map(voterId => {
-                            const detailName = activeSecretVote.voterDetails?.[voterId]?.voterName;
-                            const voter = players.find(p => p.id === voterId);
-                            return voter ? voter.name : (detailName || voterId);
-                          }).join(" ، ")}
+                          {Object.keys(activeSecretVote.votes)
+                            .map((voterId) => {
+                              const detailName = activeSecretVote.voterDetails?.[voterId]?.voterName;
+                              const voter = players.find((p) => p.id === voterId);
+                              return voter ? voter.name : detailName || voterId;
+                            })
+                            .join(' ، ')}
                         </div>
                       )}
                       <p className="text-[11px] text-neutral-400 mt-0.5">
@@ -990,10 +970,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 </div>
               )}
 
-              {/* دکمه‌های کنترل و محاسبه نتیجه نهایی دادگاه */}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-neutral-800">
                 <button
-                  onClick={() => setDayVotePhase("nomination")}
+                  onClick={() => setDayVotePhase('nomination')}
                   className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all"
                 >
                   ← بازگشت به مرحله شمارش آرا
@@ -1006,14 +985,12 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   ⚖️ ارزیابی و محاسبه نتیجه دادگاه
                 </button>
               </div>
-
             </div>
           )}
         </div>
       )}
 
-
-      {/* 4. NIGHT ACTION DESK (شات مافیا، سیو دکتر، استعلام کارآگاه، اسنایپر، تفنگدار) */}
+      {/* 4. NIGHT ACTION DESK - کاملاً پویا منطبق بر سناریو و نقش‌های زنده */}
       {cardsDistributed && (
         <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-xl space-y-3">
           <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
@@ -1031,55 +1008,80 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
-            {/* Mafia Shot */}
-            <div className="bg-neutral-950 p-3 rounded-2xl border border-rose-950 space-y-1.5">
-              <span className="font-bold text-rose-400 flex items-center gap-1">
-                🎯 هدف شات شب مافیا:
-              </span>
-              <select
-                value={nightActions.mafiaShotId || ''}
-                onChange={(e) => setNightActions((prev) => ({ ...prev, mafiaShotId: e.target.value || undefined }))}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
-              >
-                <option value="">-- بدون شلیک مافیا --</option>
-                {alivePlayers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Doctor Save */}
-            <div className="bg-neutral-950 p-3 rounded-2xl border border-sky-950 space-y-1.5">
-              <span className="font-bold text-sky-400 flex items-center gap-1">
-                💉 هدف سیو دکتر:
-              </span>
-              <select
-                value={nightActions.doctorSaveId || ''}
-                onChange={(e) => setNightActions((prev) => ({ ...prev, doctorSaveId: e.target.value || undefined }))}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
-              >
-                <option value="">-- بدون نجات پزشک --</option>
-                {alivePlayers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              {nightActions.mafiaShotId && nightActions.doctorSaveId === nightActions.mafiaShotId && (
-                <span className="text-[10px] text-emerald-400 font-bold block">
-                  ✨ سیو موفق! جان بازیکن حفظ می‌شود.
+            {/* ۱. شلیک شب مافیا (نمایش تا زمانی که حداقل یک مافیا زنده باشد) */}
+            {hasAliveMafia && (
+              <div className="bg-neutral-950 p-3 rounded-2xl border border-rose-950 space-y-1.5">
+                <span className="font-bold text-rose-400 flex items-center gap-1">
+                  🎯 هدف شات شب مافیا:
                 </span>
-              )}
-            </div>
+                <select
+                  value={nightActions.mafiaShotId || ''}
+                  onChange={(e) => setNightActions((prev) => ({ ...prev, mafiaShotId: e.target.value || undefined }))}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                >
+                  <option value="">-- بدون شلیک مافیا --</option>
+                  {alivePlayers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-            {/* Detective Inquiry */}
-            <div className="bg-neutral-950 p-3 rounded-2xl border border-amber-950 space-y-1.5">
-              <span className="font-bold text-amber-400 flex items-center gap-1">
-                🔍 استعلام کارآگاه:
-              </span>
-              <div className="flex gap-1.5">
+            {/* ۲. سیو دکتر (فقط در صورت وجود پزشک زنده در سناریو) */}
+            {activeNightRoleIds.has('doctor') && (
+              <div className="bg-neutral-950 p-3 rounded-2xl border border-sky-950 space-y-1.5">
+                <span className="font-bold text-sky-400 flex items-center gap-1">
+                  💉 هدف سیو دکتر:
+                </span>
+                <select
+                  value={nightActions.doctorSaveId || ''}
+                  onChange={(e) => setNightActions((prev) => ({ ...prev, doctorSaveId: e.target.value || undefined }))}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                >
+                  <option value="">-- بدون نجات پزشک --</option>
+                  {alivePlayers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                {nightActions.mafiaShotId && nightActions.doctorSaveId === nightActions.mafiaShotId && (
+                  <span className="text-[10px] text-emerald-400 font-bold block">
+                    ✨ سیو موفق! جان بازیکن حفظ می‌شود.
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* ۳. سیو دکتر لکتور (فقط در صورت حضور لکتور زنده) */}
+            {activeNightRoleIds.has('dr_lecter') && (
+              <div className="bg-neutral-950 p-3 rounded-2xl border border-red-950 space-y-1.5">
+                <span className="font-bold text-rose-300 flex items-center gap-1">
+                  🩸 هدف نجات دکتر لکتور:
+                </span>
+                <select
+                  value={nightActions.doctorLecterSaveId || ''}
+                  onChange={(e) => setNightActions((prev) => ({ ...prev, doctorLecterSaveId: e.target.value || undefined }))}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                >
+                  <option value="">-- بدون نجات لکتور --</option>
+                  {alivePlayers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* ۴. استعلام کارآگاه (فقط در صورت حضور کارآگاه زنده) */}
+            {activeNightRoleIds.has('detective') && (
+              <div className="bg-neutral-950 p-3 rounded-2xl border border-amber-950 space-y-1.5">
+                <span className="font-bold text-amber-400 flex items-center gap-1">
+                  🔍 استعلام کارآگاه:
+                </span>
                 <select
                   value={nightActions.detectiveInquiryId || ''}
                   onChange={(e) => {
@@ -1096,41 +1098,64 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     </option>
                   ))}
                 </select>
+                {nightActions.detectiveResult && (
+                  <span
+                    className={`text-[10px] font-bold block ${
+                      nightActions.detectiveResult === 'positive' ? 'text-rose-400' : 'text-emerald-400'
+                    }`}
+                  >
+                    نتیجه: {nightActions.detectiveResult === 'positive' ? 'مثبت 🔴 (مافیا)' : 'منفی 🟢 (شهروند)'}
+                  </span>
+                )}
               </div>
-              {nightActions.detectiveResult && (
-                <span
-                  className={`text-[10px] font-bold block ${
-                    nightActions.detectiveResult === 'positive' ? 'text-rose-400' : 'text-emerald-400'
-                  }`}
-                >
-                  نتیجه: {nightActions.detectiveResult === 'positive' ? 'مثبت 🔴 (مافیا)' : 'منفی 🟢 (شهروند)'}
-                </span>
-              )}
-            </div>
+            )}
 
-            {/* Sniper Shot */}
-            <div className="bg-neutral-950 p-3 rounded-2xl border border-purple-950 space-y-1.5">
-              <span className="font-bold text-purple-400 flex items-center gap-1">
-                🔫 شلیک تک‌تیرانداز / اسنایپر:
-              </span>
-              <select
-                value={nightActions.sniperShotId || ''}
-                onChange={(e) => setNightActions((prev) => ({ ...prev, sniperShotId: e.target.value || undefined }))}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
-              >
-                <option value="">-- بدون شلیک اسنایپر --</option>
-                {alivePlayers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* ۵. شلیک اسنایپر (فقط در صورت حضور اسنایپر زنده) */}
+            {activeNightRoleIds.has('sniper') && (
+              <div className="bg-neutral-950 p-3 rounded-2xl border border-purple-950 space-y-1.5">
+                <span className="font-bold text-purple-400 flex items-center gap-1">
+                  🔫 شلیک اسنایپر / حرفه‌ای:
+                </span>
+                <select
+                  value={nightActions.sniperShotId || ''}
+                  onChange={(e) => setNightActions((prev) => ({ ...prev, sniperShotId: e.target.value || undefined }))}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                >
+                  <option value="">-- بدون شلیک اسنایپر --</option>
+                  {alivePlayers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* ۶. سایلنس ناتاشا (فقط در صورت حضور ناتاشا زنده) */}
+            {activeNightRoleIds.has('natasha') && (
+              <div className="bg-neutral-950 p-3 rounded-2xl border border-fuchsia-950 space-y-1.5">
+                <span className="font-bold text-fuchsia-400 flex items-center gap-1">
+                  🤫 سکوت ناتاشا:
+                </span>
+                <select
+                  value={nightActions.silencerTargetId || ''}
+                  onChange={(e) => setNightActions((prev) => ({ ...prev, silencerTargetId: e.target.value || undefined }))}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                >
+                  <option value="">-- بدون سایلنس --</option>
+                  {alivePlayers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* 5. UNIFIED MASTER PLAYERS LIST (یک لیست یکپارچه و جامع از تمام بازیکنان) */}
+      {/* 5. UNIFIED MASTER PLAYERS LIST */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-3">
         <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
           <div>
@@ -1183,13 +1208,14 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     {/* Index / Night Step badge */}
                     <div className="flex flex-col items-center justify-center w-8 text-center shrink-0">
                       {cardsDistributed && role?.nightOrder ? (
-                        <span className="text-[10px] font-mono font-bold text-purple-400 bg-purple-950/80 px-1.5 py-0.5 rounded-md border border-purple-800" title={`اولویت شبانه #${role.nightOrder}`}>
+                        <span
+                          className="text-[10px] font-mono font-bold text-purple-400 bg-purple-950/80 px-1.5 py-0.5 rounded-md border border-purple-800"
+                          title={`اولویت شبانه #${role.nightOrder}`}
+                        >
                           #{role.nightOrder}
                         </span>
                       ) : (
-                        <span className="text-xs font-mono text-neutral-500">
-                          {index + 1}
-                        </span>
+                        <span className="text-xs font-mono text-neutral-500">{index + 1}</span>
                       )}
                     </div>
 
@@ -1211,7 +1237,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                           <h4 className="font-bold text-sm text-white">{player.name}</h4>
                           <button
                             onClick={() => {
-                              const newName = prompt("ویرایش نام بازیکن:", player.name);
+                              const newName = prompt('ویرایش نام بازیکن:', player.name);
                               if (newName && newName.trim() && newName.trim() !== player.name) {
                                 onUpdatePlayer(player.id, { name: newName.trim() });
                               }
@@ -1260,9 +1286,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* Right Column: Game Master Tools (چگونه حذف شدن، ویبره، وضعیت، یادداشت) */}
+                  {/* Right Column: Game Master Tools */}
                   <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
-                    {/* Elimination Reason Selector (چگونه حذف شدن) */}
+                    {/* Elimination Reason Selector */}
                     <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2 py-1">
                       <span className="text-[10px] text-neutral-400">وضعیت:</span>
                       <select
@@ -1345,7 +1371,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       </button>
                     )}
 
-                    {/* Silent Wake-up / Buzz Button for this player */}
+                    {/* Silent Wake-up / Buzz Button */}
                     <button
                       onClick={() => handleBuzzPlayer(player.id, player.name)}
                       className="px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-bold flex items-center gap-1 active:scale-95 transition-all"
@@ -1403,7 +1429,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           </div>
         )}
       </div>
-
-      </div>
+    </div>
   );
 };
