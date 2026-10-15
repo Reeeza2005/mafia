@@ -7,6 +7,9 @@ export type SoundKey =
   | 'flip'
   | 'shot'
   | 'gavel'
+  | 'court'
+  | 'morning'
+  | 'night'
   | 'wakeBuzz'
   | 'warningBeep'
   | 'gong'
@@ -21,6 +24,40 @@ export interface SoundDefinition {
 }
 
 export const SOUND_DEFINITIONS: SoundDefinition[] = [
+  {
+    key: 'court',
+    name: 'رسمیت دادگاه و محاکمه',
+    category: 'action',
+    description: 'صدای رسمی ورود به دادگاه و آغاز زمان دفاعیه متهمان',
+    presets: [
+      { id: 'classic', name: 'چکش دو ضرب سنگین' },
+      { id: 'dramatic', name: 'کوبش دراماتیک دادگاه' },
+      { id: 'fanfare', name: 'ترومپت فراخوان متهم' },
+    ],
+  },
+  {
+    key: 'morning',
+    name: 'طلوع صبح و بیداری شهر',
+    category: 'game',
+    description: 'صدای ناقوس پرانرژی و روشن آغاز فاز روز',
+    presets: [
+      { id: 'classic', name: 'ناقوس سه ضربی سپیده‌دم' },
+      { id: 'chime', name: 'زنگوله‌های صبحگاهی' },
+      { id: 'brass', name: 'شیپور آفتاب' },
+    ],
+  },
+  {
+    key: 'night',
+    name: 'غروب و آغاز فاز شب',
+    category: 'game',
+    description: 'صدای مرموز و تاریک خوابیدن شهر و آغاز فعالیت مافیا',
+    presets: [
+      { id: 'classic', name: 'ناقوس مرگ عمیق' },
+      { id: 'wind', name: 'طنین باد سرد شبانه' },
+      { id: 'subtle', name: 'خواب آرام و دلهره' },
+    ],
+  },
+
   {
     key: 'tick',
     name: 'تیک‌تاک تایمر',
@@ -131,6 +168,20 @@ class AudioManager {
 
   constructor() {
     this.loadSettings();
+    this.initUserGestureUnlock();
+  }
+
+    private initUserGestureUnlock() {
+    if (typeof window === 'undefined') return;
+    const unlock = () => {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+    window.addEventListener('keydown', unlock, { once: true, passive: true });
   }
 
   private loadSettings() {
@@ -375,6 +426,78 @@ class AudioManager {
   }
 
   // 5. Gavel Strike
+    // Court Trial & Defense Sound
+  public playCourt() {
+    this.playOrSynth('court', () => {
+      try {
+        const ctx = this.getContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        // Two consecutive heavy wood hammer blows with resonant reverb
+        [0, 0.16].forEach((offset) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(180, now + offset);
+          osc.frequency.exponentialRampToValueAtTime(50, now + offset + 0.28);
+          gain.gain.setValueAtTime(0.45, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.28);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.28);
+        });
+      } catch {}
+    });
+  }
+
+  // Morning Day Sunrise Sound
+  public playMorning() {
+    this.playOrSynth('morning', () => {
+      try {
+        const ctx = this.getContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        // Bright cheerful 3-note chime (C5 -> E5 -> G5)
+        const notes = [523.25, 659.25, 783.99];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+          gain.gain.setValueAtTime(0.3, now + idx * 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.65);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.14);
+          osc.stop(now + idx * 0.14 + 0.65);
+        });
+      } catch {}
+    });
+  }
+
+  // Night Fall Ominous Sound
+  public playNight() {
+    this.playOrSynth('night', () => {
+      try {
+        const ctx = this.getContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(130, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 1.8);
+        gain.gain.setValueAtTime(0.38, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.8);
+      } catch {}
+    });
+  }
+
   public playGavel() {
     this.playOrSynth('gavel', () => {
       try {
@@ -511,6 +634,15 @@ class AudioManager {
         break;
       case 'shot':
         this.playShot();
+        break;
+            case 'court':
+        this.playCourt();
+        break;
+      case 'morning':
+        this.playMorning();
+        break;
+      case 'night':
+        this.playNight();
         break;
       case 'gavel':
         this.playGavel();

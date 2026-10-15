@@ -245,7 +245,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     setExitVotes({});
     if (qualified.length > 0) {
       setDayVotePhase("defense");
-      audio.playWarningBeep();
+      audio.playCourt();
     } else {
       alert("هیچ بازیکنی به حد نصاب ورود به دادگاه (" + courtThreshold + " رأی) نرسید.");
     }
@@ -822,7 +822,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               )}
               {dayVotePhase === "idle" && (
                 <button
-                  onClick={() => setDayVotePhase("court_entry")}
+                  onClick={() => { setDayVotePhase("court_entry"); audio.playCourt(); }}
                   className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-neutral-950 text-xs font-black transition-all shadow-md active:scale-95"
                 >
                   شروع ثبت آرای ورود به دادگاه

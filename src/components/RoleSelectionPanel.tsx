@@ -96,6 +96,8 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
 
   // Mafia team on Right, Citizens & Independent on Left
   const mafiaRoles = useMemo(() => filteredRoles.filter((r) => r.team === 'mafia'), [filteredRoles]);
+  const citizenRoles = useMemo(() => filteredRoles.filter((r) => r.team === 'citizen'), [filteredRoles]);
+  const independentRoles = useMemo(() => filteredRoles.filter((r) => r.team === 'independent'), [filteredRoles]);
   const citizenAndIndRoles = useMemo(() => filteredRoles.filter((r) => r.team !== 'mafia'), [filteredRoles]);
 
   const handleAutoFillWithCitizens = () => {
@@ -470,20 +472,42 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
         </div>
 
         {/* LEFT COLUMN: CITIZEN & INDEPENDENT TEAMS */}
-        <div className="bg-neutral-950/70 border border-sky-900/50 rounded-2xl sm:rounded-3xl p-3 sm:p-4 space-y-3 shadow-lg shadow-sky-950/20">
-          <div className="flex items-center justify-between border-b border-sky-900/60 pb-2">
-            <h3 className="text-xs sm:text-sm font-black text-sky-400 flex items-center gap-1.5 truncate">
-              <Shield className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>شهروند و مستقل</span>
-            </h3>
-            <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-sky-950/80 border border-sky-700/60 text-sky-300 font-mono font-bold shrink-0">
-              {citizenAndIndRoles.length}
-            </span>
+        <div className="space-y-3 sm:space-y-4">
+          {/* CITIZEN ROLES */}
+          <div className="bg-neutral-950/70 border border-sky-900/50 rounded-2xl sm:rounded-3xl p-3 sm:p-4 space-y-3 shadow-lg shadow-sky-950/20">
+            <div className="flex items-center justify-between border-b border-sky-900/60 pb-2">
+              <h3 className="text-xs sm:text-sm font-black text-sky-400 flex items-center gap-1.5 truncate">
+                <Shield className="w-4 h-4 text-sky-400 shrink-0" />
+                <span>شهروندان</span>
+              </h3>
+              <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-sky-950/80 border border-sky-700/60 text-sky-300 font-mono font-bold shrink-0">
+                {citizenRoles.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
+              {citizenRoles.map(renderRoleCard)}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
-            {citizenAndIndRoles.map(renderRoleCard)}
-          </div>
+          {/* INDEPENDENT ROLES */}
+          {independentRoles.length > 0 && (
+            <div className="bg-neutral-950/70 border border-purple-900/50 rounded-2xl sm:rounded-3xl p-3 sm:p-4 space-y-3 shadow-lg shadow-purple-950/20">
+              <div className="flex items-center justify-between border-b border-purple-900/60 pb-2">
+                <h3 className="text-xs sm:text-sm font-black text-purple-400 flex items-center gap-1.5 truncate">
+                  <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span>نقش‌های مستقل و خاکستری</span>
+                </h3>
+                <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-700/60 text-purple-300 font-mono font-bold shrink-0">
+                  {independentRoles.length}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
+                {independentRoles.map(renderRoleCard)}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

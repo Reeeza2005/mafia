@@ -235,7 +235,6 @@ export default function App() {
 
     const unSecretVoteStarted = network.on('secret_vote_started', (data: any) => {
       console.log('[CLIENT APP] secret_vote_started received:', data);
-      console.log('[CLIENT APP] secret_vote_started received:', data);
       setIsVoteUnlocked(!data?.isLocked);
       setSecretVote(data);
     });
@@ -244,7 +243,6 @@ export default function App() {
       setIsVoteUnlocked(false);
     });
     const unSecretVoteUnlocked = network.on('secret_vote_unlocked', ({ duration }: any) => {
-      console.log('[CLIENT APP] secret_vote_unlocked received, duration:', duration);
       console.log('[CLIENT APP] secret_vote_unlocked received, duration:', duration);
       setIsVoteUnlocked(true);
       setSecretVote((prev: any) => prev ? { ...prev, isLocked: false } : prev);
