@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Player, GameTimer, GameLog, EliminationReason, SecretVoteState, NightActions } from '../types/mafia';
-import { ROLE_MAP } from '../data/roles';
+import { ROLE_MAP, ALL_ROLES } from '../data/roles';
 import { getActiveNightRoles, resolveNight } from '../services/nightEngine';
 import { RoleIcon } from './RoleIcons';
 import {
@@ -1288,6 +1288,28 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
                   {/* Right Column: Game Master Tools */}
                   <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+                    {/* Debug Live Role Switcher */}
+                    <div className="flex items-center gap-1 bg-neutral-900 border border-amber-800/60 rounded-xl px-2 py-1 shadow-sm">
+                      <span className="text-[10px] text-amber-400 font-bold">🧪 نقش:</span>
+                      <select
+                        value={player.roleId || ''}
+                        onChange={(e) => {
+                          const newRoleId = e.target.value;
+                          if (newRoleId) {
+                            network.debugAssignRole(player.id, newRoleId);
+                            audio.playFlip();
+                          }
+                        }}
+                        className="bg-transparent text-xs font-bold text-amber-300 focus:outline-none cursor-pointer"
+                      >
+                        {ALL_ROLES.map((r) => (
+                          <option key={r.id} value={r.id} className="bg-neutral-900 text-white">
+                            {r.name} ({r.team === 'mafia' ? 'مافیا' : 'شهروند'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     {/* Elimination Reason Selector */}
                     <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2 py-1">
                       <span className="text-[10px] text-neutral-400">وضعیت:</span>
