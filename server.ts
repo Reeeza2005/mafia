@@ -492,6 +492,47 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Debug Mode: assign role to a specific player instantly
+  socket.on('debug_assign_role', ({ roomCode, playerId, roleId }) => {
+    const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+    const room = getOrCreateRoom(targetCode);
+    if (!room) return;
+
+    let player = Object.values(room.players).find(p => p.id === playerId || p.socketId === playerId);
+    if (!player) player = room.players[playerId];
+    if (!player) return;
+
+    player.roleId = roleId;
+    player.isAlive = true;
+    player.isSilenced = false;
+    player.eliminationReason = undefined;
+    if (roleId === 'armored') {
+      player.hasArmor = true;
+    }
+
+    room.cardsDistributed = true;
+    room.gameStarted = true;
+    if (!room.rolesInGame.includes(roleId)) {
+      room.rolesInGame.push(roleId);
+    }
+
+    const targetSocketId = player.socketId || player.id;
+    io.to(targetSocketId).emit('role_assigned', {
+      roleId: player.roleId,
+      player,
+    });
+
+    io.to(room.code).emit('players_updated', {
+      players: Object.values(room.players),
+      logs: room.logs,
+    });
+    io.to(room.code).emit('game_started', {
+      players: Object.values(room.players),
+      rolesInGame: room.rolesInGame,
+      logs: room.logs,
+    });
+  });
+
   // God updates player status (kill, silence, armor, notes, eliminationReason, kick)
     // Player requests self rename from phone
   socket.on("player_rename", ({ roomCode, playerId, newName }) => {

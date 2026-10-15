@@ -160,6 +160,16 @@ class NetworkService {
     }
   }
 
+  public debugAssignRole(playerId: string, roleId: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('debug_assign_role', {
+        roomCode: this.roomCode,
+        playerId,
+        roleId,
+      });
+    }
+  }
+
   public updatePlayerStatus(playerId: string, updates: Partial<Player>) {
     if (this.socket && this.socket.connected) {
       this.socket.emit('update_player_status', {
