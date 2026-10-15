@@ -450,38 +450,38 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
         />
       </div>
 
-      {/* 2-COLUMN LAYOUT: MAFIA ON RIGHT, CITIZENS ON LEFT */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 2-COLUMN STRICT SPLIT: RIGHT = MAFIA | LEFT = CITIZENS & INDEPENDENTS */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 items-start">
         {/* RIGHT COLUMN: MAFIA TEAM */}
-        <div className="bg-neutral-950/40 border border-rose-950/40 rounded-3xl p-4 space-y-3">
-          <div className="flex items-center justify-between border-b border-rose-950/60 pb-2">
-            <h3 className="text-sm font-black text-rose-400 flex items-center gap-2">
-              <Skull className="w-4 h-4" />
-              <span>گروه مافیا (سمت راست)</span>
+        <div className="bg-neutral-950/70 border border-rose-900/50 rounded-2xl sm:rounded-3xl p-3 sm:p-4 space-y-3 shadow-lg shadow-rose-950/20">
+          <div className="flex items-center justify-between border-b border-rose-900/60 pb-2">
+            <h3 className="text-xs sm:text-sm font-black text-rose-400 flex items-center gap-1.5 truncate">
+              <Skull className="w-4 h-4 text-rose-500 shrink-0" />
+              <span>مافیا</span>
             </h3>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-rose-950/60 text-rose-300 font-mono font-bold">
-              {mafiaRoles.length} کارت
+            <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-700/60 text-rose-300 font-mono font-bold shrink-0">
+              {mafiaRoles.length}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
             {mafiaRoles.map(renderRoleCard)}
           </div>
         </div>
 
         {/* LEFT COLUMN: CITIZEN & INDEPENDENT TEAMS */}
-        <div className="bg-neutral-950/40 border border-sky-950/40 rounded-3xl p-4 space-y-3">
-          <div className="flex items-center justify-between border-b border-sky-950/60 pb-2">
-            <h3 className="text-sm font-black text-sky-400 flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span>گروه شهروندان و مستقل (سمت چپ)</span>
+        <div className="bg-neutral-950/70 border border-sky-900/50 rounded-2xl sm:rounded-3xl p-3 sm:p-4 space-y-3 shadow-lg shadow-sky-950/20">
+          <div className="flex items-center justify-between border-b border-sky-900/60 pb-2">
+            <h3 className="text-xs sm:text-sm font-black text-sky-400 flex items-center gap-1.5 truncate">
+              <Shield className="w-4 h-4 text-sky-400 shrink-0" />
+              <span>شهروند و مستقل</span>
             </h3>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-sky-950/60 text-sky-300 font-mono font-bold">
-              {citizenAndIndRoles.length} کارت
+            <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-sky-950/80 border border-sky-700/60 text-sky-300 font-mono font-bold shrink-0">
+              {citizenAndIndRoles.length}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
             {citizenAndIndRoles.map(renderRoleCard)}
           </div>
         </div>

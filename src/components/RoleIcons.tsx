@@ -419,6 +419,162 @@ export const RoleIcon: React.FC<IconProps & { roleId: string }> = ({ roleId, cla
         </svg>
       );
 
+    
+    case 'negotiator':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#170308" stroke="#e11d48" strokeWidth="2.5" />
+          <rect x="26" y="38" width="48" height="34" rx="4" fill="#310b17" stroke="#fb7185" strokeWidth="1.8" />
+          <path d="M40 38 V30 C40 26 60 26 60 30 V38" stroke="#fb7185" strokeWidth="2" fill="none" />
+          <line x1="26" y1="52" x2="74" y2="52" stroke="#e11d48" strokeWidth="1.5" />
+          <rect x="46" y="49" width="8" height="6" rx="1" fill="#facc15" />
+          <circle cx="36" cy="62" r="3" fill="#fb7185" />
+          <circle cx="64" cy="62" r="3" fill="#fb7185" />
+        </svg>
+      );
+
+    case 'thief':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#140207" stroke="#e11d48" strokeWidth="2.5" />
+          <ellipse cx="50" cy="46" rx="28" ry="16" fill="#2d0611" stroke="#f43f5e" strokeWidth="1.8" />
+          <ellipse cx="38" cy="46" rx="7" ry="5" fill="#09090b" stroke="#fb7185" strokeWidth="1.2" />
+          <ellipse cx="62" cy="46" rx="7" ry="5" fill="#09090b" stroke="#fb7185" strokeWidth="1.2" />
+          <circle cx="38" cy="46" r="2.5" fill="#ef4444" />
+          <circle cx="62" cy="46" r="2.5" fill="#ef4444" />
+          <path d="M42 68 C42 64 58 64 58 68 L60 78 H40 Z" fill="#4c0519" stroke="#fb7185" strokeWidth="1.2" />
+          <path d="M30 78 L24 84 M70 78 L76 84" stroke="#e11d48" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+
+    case 'bomber':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#1c0407" stroke="#e11d48" strokeWidth="2.5" />
+          <rect x="28" y="44" width="12" height="36" rx="2" fill="#7f1d1d" stroke="#f87171" strokeWidth="1.5" />
+          <rect x="44" y="44" width="12" height="36" rx="2" fill="#991b1b" stroke="#f87171" strokeWidth="1.5" />
+          <rect x="60" y="44" width="12" height="36" rx="2" fill="#7f1d1d" stroke="#f87171" strokeWidth="1.5" />
+          <rect x="24" y="58" width="52" height="6" fill="#1e1b4b" stroke="#e11d48" strokeWidth="1" />
+          <path d="M50 44 C50 32 66 36 68 24" stroke="#d97706" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="69" cy="23" r="3" fill="#ef4444" />
+          <polygon points="69,18 71,22 75,23 72,26 73,30 69,27 65,30 66,26 63,23 67,22" fill="#f59e0b" />
+        </svg>
+      );
+
+    case 'hostage_taker':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#18040a" stroke="#e11d48" strokeWidth="2.5" />
+          <circle cx="50" cy="40" r="16" fill="#2d0611" stroke="#f43f5e" strokeWidth="1.5" />
+          <ellipse cx="50" cy="44" rx="14" ry="4" fill="#09090b" stroke="#fb7185" strokeWidth="1.5" />
+          <path d="M30 74 C30 60 70 60 70 74" stroke="#fb7185" strokeWidth="2" fill="none" />
+          <ellipse cx="50" cy="68" rx="22" ry="5" stroke="#facc15" strokeWidth="2.5" strokeDasharray="4 2" fill="none" />
+          <ellipse cx="50" cy="74" rx="20" ry="5" stroke="#facc15" strokeWidth="2.5" strokeDasharray="4 2" fill="none" />
+        </svg>
+      );
+
+    case 'informant_mafia':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#160207" stroke="#e11d48" strokeWidth="2.5" />
+          <rect x="42" y="24" width="16" height="28" rx="8" fill="#310b17" stroke="#f43f5e" strokeWidth="1.8" />
+          <line x1="42" y1="36" x2="58" y2="36" stroke="#fb7185" strokeWidth="1" />
+          <path d="M34 38 C34 52 66 52 66 38" stroke="#fb7185" strokeWidth="2" fill="none" />
+          <line x1="50" y1="52" x2="50" y2="68" stroke="#fb7185" strokeWidth="2" />
+          <line x1="36" y1="68" x2="64" y2="68" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M72 28 C76 34 76 44 72 50" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+          <path d="M78 22 C84 32 84 50 78 60" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+
+    case 'infiltrator':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#150209" stroke="#e11d48" strokeWidth="2.5" />
+          <path d="M30 30 L50 18 L70 30 V50 C70 66 50 78 50 78 C50 78 30 66 30 50 Z" fill="#2d0611" stroke="#f43f5e" strokeWidth="1.8" />
+          <path d="M50 28 L50 64" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M42 42 L58 42" stroke="#fb7185" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="50" cy="68" r="2.5" fill="#ef4444" />
+        </svg>
+      );
+
+    case 'shadow_mafia':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#0d0105" stroke="#be123c" strokeWidth="2.5" />
+          <path d="M28 78 C28 48 38 24 50 24 C62 24 72 48 72 78 C64 72 58 76 50 72 C42 76 36 72 28 78 Z" fill="#20040b" stroke="#f43f5e" strokeWidth="1.8" />
+          <circle cx="42" cy="44" r="3.5" fill="#f43f5e" />
+          <circle cx="58" cy="44" r="3.5" fill="#f43f5e" />
+        </svg>
+      );
+
+    case 'bodyguard':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#041326" stroke="#0284c7" strokeWidth="2.5" />
+          <path d="M26 30 L50 20 L74 30 V54 C74 70 50 82 50 82 C50 82 26 70 26 54 Z" fill="#0c2d48" stroke="#38bdf8" strokeWidth="2" />
+          <circle cx="50" cy="44" r="10" fill="#075985" stroke="#7dd3fc" strokeWidth="1.5" />
+          <path d="M38 66 C38 56 62 56 62 66" stroke="#7dd3fc" strokeWidth="2" fill="none" />
+        </svg>
+      );
+
+    case 'bulletproof':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#03162b" stroke="#0284c7" strokeWidth="2.5" />
+          <path d="M30 26 H42 L46 36 H54 L58 26 H70 L76 46 L70 78 H30 L24 46 Z" fill="#075985" stroke="#38bdf8" strokeWidth="2" />
+          <circle cx="44" cy="54" r="4" fill="#03162b" stroke="#facc15" strokeWidth="1.5" />
+          <path d="M48 50 L58 42 M48 58 L58 64" stroke="#facc15" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      );
+
+    case 'sheriff':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#041528" stroke="#0284c7" strokeWidth="2.5" />
+          <polygon points="50,22 54,34 66,34 56,42 60,54 50,46 40,54 44,42 34,34 46,34" fill="#ca8a04" stroke="#fde047" strokeWidth="1.8" />
+          <circle cx="50" cy="38" r="4" fill="#713f12" />
+          <path d="M32 68 C38 62 62 62 68 68" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="50" y1="62" x2="50" y2="78" stroke="#38bdf8" strokeWidth="2.5" />
+        </svg>
+      );
+
+    case 'watcher':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#031627" stroke="#0284c7" strokeWidth="2.5" />
+          <path d="M20 50 C30 32 70 32 80 50 C70 68 30 68 20 50 Z" fill="#0c4a6e" stroke="#38bdf8" strokeWidth="2" />
+          <circle cx="50" cy="50" r="12" fill="#0284c7" stroke="#7dd3fc" strokeWidth="1.5" />
+          <circle cx="50" cy="50" r="6" fill="#082f49" />
+          <circle cx="47" cy="47" r="2.5" fill="#ffffff" />
+        </svg>
+      );
+
+    case 'journalist':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#04172a" stroke="#0284c7" strokeWidth="2.5" />
+          <rect x="24" y="36" width="52" height="36" rx="6" fill="#0c4a6e" stroke="#38bdf8" strokeWidth="2" />
+          <circle cx="50" cy="54" r="11" fill="#031627" stroke="#7dd3fc" strokeWidth="1.8" />
+          <circle cx="50" cy="54" r="5" fill="#38bdf8" />
+          <rect x="34" y="28" width="14" height="8" rx="2" fill="#0284c7" stroke="#38bdf8" strokeWidth="1.2" />
+          <circle cx="64" cy="44" r="3" fill="#facc15" />
+        </svg>
+      );
+
+    case 'independent_jester':
+      return (
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
+          <circle cx="50" cy="50" r="46" fill="#160826" stroke="#9333ea" strokeWidth="2.5" />
+          <path d="M30 52 C24 34 38 24 44 34 C48 22 62 26 58 38 C68 28 80 40 70 52 Z" fill="#581c87" stroke="#c084fc" strokeWidth="1.8" />
+          <circle cx="28" cy="48" r="3" fill="#facc15" />
+          <circle cx="52" cy="24" r="3" fill="#facc15" />
+          <circle cx="74" cy="50" r="3" fill="#facc15" />
+          <circle cx="50" cy="58" r="14" fill="#3b0764" stroke="#a855f7" strokeWidth="1.5" />
+          <path d="M42 64 C46 70 54 70 58 64" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" fill="none" />
+        </svg>
+      );
+
     default:
       return (
         <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
