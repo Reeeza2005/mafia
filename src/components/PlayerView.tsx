@@ -1,3 +1,4 @@
+import { MafiaChat, MafiaChatMessage } from "./MafiaChat";
 import React, { useState, useEffect } from 'react';
 import { Player, GameTimer, SecretVoteState } from '../types/mafia';
 import { ROLE_MAP } from '../data/roles';
@@ -24,6 +25,7 @@ import {
 
 interface PlayerViewProps {
   player: Player | null;
+  players?: Player[];
   cardsDistributed: boolean;
   gameStarted: boolean;
   timer: GameTimer;
@@ -33,8 +35,13 @@ interface PlayerViewProps {
   onToggleReady?: () => void;
 }
 
+
+const MAFIA_ROLE_IDS = new Set(['godfather', 'dr_lecter', 'doctor_lecter', 'saul_goodman', 'simple_mafia', 'mafia_simple', 'matador', 'bomber', 'natasha']);
+const isMafia = (roleId?: string) => Boolean(roleId && MAFIA_ROLE_IDS.has(roleId.toLowerCase()));
+
 export const PlayerView: React.FC<PlayerViewProps> = ({
   player,
+  players = [],
   cardsDistributed,
   gameStarted,
   timer,
@@ -47,6 +54,18 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [personalNotes, setPersonalNotes] = useState('');
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>('');
+  const [mafiaChatActive, setMafiaChatActive] = useState(false);
+  const [mafiaChatMessages, setMafiaChatMessages] = useState<MafiaChatMessage[]>([]);
+  const [livePlayers, setLivePlayers] = useState<Player[]>([]);
+
+  useEffect(() => {
+    const unPlayers = network.on("players_updated", (data: any) => {
+      if (Array.isArray(data?.players)) setLivePlayers(data.players);
+    });
+    return () => {
+      unPlayers();
+    };
+  }, []);
   const [hasVoted, setHasVoted] = useState(false);
   const [buzzAlert, setBuzzAlert] = useState<{ message: string; type: string } | null>(null);
   const [isChallengeRequested, setIsChallengeRequested] = useState(false);
@@ -128,6 +147,15 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       }
     });
 
+        const unMafiaChat = network.on("mafia_chat_sync", (data: any) => {
+      if (typeof data?.active === "boolean") setMafiaChatActive(data.active);
+      if (Array.isArray(data?.messages)) setMafiaChatMessages(data.messages);
+    });
+
+    const unMafiaChatState = network.on("mafia_chat_state", (data: any) => {
+      if (typeof data?.active === "boolean") setMafiaChatActive(data.active);
+    });
+
     const unChallengeDismissed = network.on('challenge_dismissed', (data: any) => {
       if (player && data?.playerId === player.id) {
         setIsChallengeRequested(false);
@@ -135,6 +163,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
     });
 
     return () => {
+      unMafiaChat();
+      unMafiaChatState();
       unBuzz();
       unTimerEnded();
       unVoteRecorded();
@@ -669,7 +699,62 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         </div>
       )}
 
+      
+      {/* Mafia Night Chat for Mafia Members */}
+      {player && isMafia(player.roleId) && (
+        <div className="mt-4">
+          <MafiaChat
+            isGod={false}
+            isActive={mafiaChatActive}
+            messages={mafiaChatMessages}
+            currentUserId={player.id}
+            onSendMessage={(text) => network.sendMafiaMessage(player.id, text)}
+          />
+        </div>
+      )}
+
+      {/* Night Action Panel for Night Roles */}
+      {player && player.isAlive && (player.roleId === "godfather" || player.roleId === "doctor" || player.roleId === "detective") && (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3.5 mt-4 shadow-lg space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-400">
+              {player.roleId === "godfather" && "🎯 شلیک شبانه گادفادر"}
+              {player.roleId === "doctor" && "💉 انتخاب نجات پزشک"}
+              {player.roleId === "detective" && "🔍 استعلام شبانه کارآگاه"}
+            </span>
+            <span className="text-[10px] text-neutral-400">فاز شب</span>
+          </div>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              const targetId = e.target.value;
+              if (player.roleId === "godfather") {
+                network.updateNightActions({ mafiaShotId: targetId || undefined });
+              } else if (player.roleId === "doctor") {
+                network.updateNightActions({ doctorSaveId: targetId || undefined });
+              } else if (player.roleId === "detective") {
+                network.updateNightActions({ detectiveInquiryId: targetId || undefined });
+              }
+            }}
+            className="w-full bg-neutral-950 border border-neutral-700 rounded-xl p-2.5 text-xs text-white"
+          >
+            <option value="">-- انتخاب هدف از میان بازیکنان --</option>
+            {(players.length > 0 ? players : livePlayers)
+              .filter((p: Player) => p.isAlive && p.id !== player.id)
+              .map((p: Player) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            {player.roleId === "doctor" && (
+              <option value={player.id}>خودم ({player.name})</option>
+            )}
+          </select>
+        </div>
+      )}
+
       {/* Personal Notebook */}
+
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-lg mt-4">
         <button
           onClick={() => setIsNotesOpen((prev) => !prev)}

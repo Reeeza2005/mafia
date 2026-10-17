@@ -102,6 +102,7 @@ class NetworkService {
     this.socket.on('secret_vote_ended', (data) => this.emitLocal('secret_vote_ended', data));
     this.socket.on('vote_recorded', (data) => this.emitLocal('vote_recorded', data));
     this.socket.on('night_actions_updated', (data) => this.emitLocal('night_actions_updated', data));
+    this.socket.on('mafia_chat_sync', (data) => this.emitLocal('mafia_chat_sync', data));
     this.socket.on('kicked', () => this.emitLocal('kicked', {}));
     this.socket.on('error_message', (msg) => this.emitLocal('error_message', msg));
     this.socket.on('game_ended', (data) => this.emitLocal('game_ended', data));
@@ -156,6 +157,15 @@ class NetworkService {
       this.socket.emit('distribute_roles', {
         roomCode: this.roomCode,
         selectedRoleIds,
+      });
+    }
+  }
+
+  public debugCreateSoloTest(roleId: string = 'godfather') {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('debug_create_solo_test', {
+        roomCode: this.roomCode,
+        roleId,
       });
     }
   }
@@ -355,6 +365,33 @@ class NetworkService {
         targetId,
         extra,
       });
+    }
+  }
+
+sendMafiaMessage(playerId: string, text: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("mafia_send_message", { playerId, text });
+    }
+  }
+
+  toggleMafiaChat(active: boolean) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("god_toggle_mafia_chat", { roomCode: this.roomCode, active });
+    }
+  }
+
+  updateNightActions(nightActions: any) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("update_night_actions", {
+        roomCode: this.roomCode,
+        nightActions,
+      });
+    }
+  }
+
+  clearMafiaChat() {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("god_clear_mafia_chat", { roomCode: this.roomCode });
     }
   }
 }

@@ -154,6 +154,15 @@ interface NightActions {
   silencerTargetId?: string;
 }
 
+export interface MafiaChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  text: string;
+  time: string;
+}
+
 interface GameRoom {
   code: string;
   godSocketId?: string;
@@ -172,6 +181,8 @@ interface GameRoom {
   challengeRequests?: { playerId: string; playerName: string; time: string }[];
   secretVote?: SecretVoteState;
   nightActions?: NightActions;
+  mafiaChatActive?: boolean;
+  mafiaChatMessages?: MafiaChatMessage[];
   logs: { id: string; time: string; text: string; type: 'info' | 'danger' | 'action' | 'challenge' }[];
 }
 
@@ -199,6 +210,8 @@ function getOrCreateRoom(code: string): GameRoom {
       },
       secretVote: undefined,
       nightActions: {},
+      mafiaChatActive: false,
+      mafiaChatMessages: [],
       logs: [
         {
           id: Math.random().toString(36).substring(2, 9),
@@ -279,7 +292,119 @@ app.post('/api/room/:code/buzz', (req, res) => {
 });
 
 // Socket.io handlers
+
+const MAFIA_ROLES = new Set(['godfather', 'dr_lecter', 'doctor_lecter', 'saul_goodman', 'simple_mafia', 'mafia_simple', 'matador', 'bomber', 'natasha']);
+
+function isMafiaRole(roleId?: string): boolean {
+  if (!roleId) return false;
+  return MAFIA_ROLES.has(roleId.toLowerCase());
+}
+
+function broadcastMafiaChatUpdate(io: any, room: GameRoom) {
+  const payload = {
+    active: !!room.mafiaChatActive,
+    messages: room.mafiaChatMessages || []
+  };
+
+  // 1. Send to God
+  if (room.godSocketId) {
+    io.to(room.godSocketId).emit('mafia_chat_sync', payload);
+  }
+
+  // 2. Send to all mafia players (by socketId or player id)
+  Object.values(room.players).forEach((p) => {
+    if (p.isAlive && isMafiaRole(p.roleId)) {
+      if (p.socketId) io.to(p.socketId).emit('mafia_chat_sync', payload);
+      io.to(p.id).emit('mafia_chat_sync', payload);
+    }
+  });
+  // Also emit room-wide event with team filter in client
+  io.to(room.code).emit('mafia_chat_state', { active: !!room.mafiaChatActive });
+}
+
 io.on('connection', (socket) => {
+    // --- MAFIA PRIVATE CHAT SYSTEM ---
+    socket.on('god_toggle_mafia_chat', (data: { roomCode?: string; active: boolean }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room) return;
+
+      room.mafiaChatActive = !!data.active;
+      room.logs.push({
+        id: Math.random().toString(36).substring(2, 9),
+        time: new Date().toLocaleTimeString('fa-IR'),
+        text: room.mafiaChatActive ? '💬 چت شبانه مافیا توسط گرداننده باز شد.' : '🔒 چت شبانه مافیا توسط گرداننده بسته شد.',
+        type: 'action',
+      });
+
+      broadcastMafiaChatUpdate(io, room);
+      io.to(room.code).emit('room_state_update', room);
+    });
+
+    socket.on('god_clear_mafia_chat', (data: { roomCode?: string }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room) return;
+
+      room.mafiaChatMessages = [];
+      room.logs.push({
+        id: Math.random().toString(36).substring(2, 9),
+        time: new Date().toLocaleTimeString('fa-IR'),
+        text: '🧹 تاریخچه چت مافیا توسط گرداننده پاک‌سازی شد.',
+        type: 'info',
+      });
+
+      broadcastMafiaChatUpdate(io, room);
+    });
+
+    socket.on('mafia_send_message', (data: { roomCode?: string; text: string; playerId: string }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room) return;
+
+      // Security Checks:
+      // 1. Is chat currently activated by God?
+      if (!room.mafiaChatActive) {
+        socket.emit('buzz', { type: 'warning', message: 'چت مافیا در حال حاضر توسط گرداننده بسته است!' });
+        return;
+      }
+
+      // 2. Identify Player & Role
+      const sender = room.players[data.playerId] || Object.values(room.players).find(p => p.socketId === socket.id);
+      if (!sender || !sender.isAlive || !isMafiaRole(sender.roleId)) {
+        socket.emit('buzz', { type: 'danger', message: 'شما دسترسی به چت گروه مافیا را ندارید!' });
+        return;
+      }
+
+      const cleanText = (data.text || '').trim();
+      if (!cleanText) return;
+
+      const newMsg: MafiaChatMessage = {
+        id: Math.random().toString(36).substring(2, 9),
+        senderId: sender.id,
+        senderName: sender.name,
+        senderRole: sender.roleId || 'mafia',
+        text: cleanText,
+        time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      };
+
+      if (!room.mafiaChatMessages) room.mafiaChatMessages = [];
+      room.mafiaChatMessages.push(newMsg);
+
+      // Log in God audit history
+      room.logs.push({
+        id: Math.random().toString(36).substring(2, 9),
+        time: newMsg.time,
+        text: `[چت مافیا] ${sender.name}: ${cleanText}`,
+        type: 'danger'
+      });
+
+      broadcastMafiaChatUpdate(io, room);
+    });
+
   socket.on('join_room', ({ roomCode, clientType, playerName, existingPlayerId }) => {
     const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
     const room = getOrCreateRoom(targetCode);
@@ -485,47 +610,6 @@ io.on('connection', (socket) => {
     });
 
     // Inform God panel with full master list
-    io.to(room.code).emit('game_started', {
-      players: Object.values(room.players),
-      rolesInGame: room.rolesInGame,
-      logs: room.logs,
-    });
-  });
-
-  // Debug Mode: assign role to a specific player instantly
-  socket.on('debug_assign_role', ({ roomCode, playerId, roleId }) => {
-    const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
-    const room = getOrCreateRoom(targetCode);
-    if (!room) return;
-
-    let player = Object.values(room.players).find(p => p.id === playerId || p.socketId === playerId);
-    if (!player) player = room.players[playerId];
-    if (!player) return;
-
-    player.roleId = roleId;
-    player.isAlive = true;
-    player.isSilenced = false;
-    player.eliminationReason = undefined;
-    if (roleId === 'armored') {
-      player.hasArmor = true;
-    }
-
-    room.cardsDistributed = true;
-    room.gameStarted = true;
-    if (!room.rolesInGame.includes(roleId)) {
-      room.rolesInGame.push(roleId);
-    }
-
-    const targetSocketId = player.socketId || player.id;
-    io.to(targetSocketId).emit('role_assigned', {
-      roleId: player.roleId,
-      player,
-    });
-
-    io.to(room.code).emit('players_updated', {
-      players: Object.values(room.players),
-      logs: room.logs,
-    });
     io.to(room.code).emit('game_started', {
       players: Object.values(room.players),
       rolesInGame: room.rolesInGame,
@@ -965,7 +1049,7 @@ io.on('connection', (socket) => {
 
 // Vite middleware in dev or static files in production
 async function startServer() {
-  const isProd = true;
+  const isProd = false;
 
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
@@ -1002,3 +1086,16 @@ async function startServer() {
 startServer().catch((err) => {
   console.error('Failed to start server:', err);
 });
+
+
+// Graceful shutdown to release port 3000 cleanly
+const cleanupAndExit = () => {
+  console.log("\n[Mafia Game] Closing server and freeing port...");
+  httpServer.close(() => {
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 1000);
+};
+
+process.on("SIGINT", cleanupAndExit);
+process.on("SIGTERM", cleanupAndExit);
