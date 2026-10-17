@@ -305,6 +305,11 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               جلیقه‌دار 🛡️
             </span>
           )}
+          {player.gunGiven && (
+            <span className="px-2 py-0.5 rounded-md bg-rose-950 border border-rose-800 text-[10px] text-rose-300 font-bold animate-pulse">
+              مسلح 🔫
+            </span>
+          )}
           <button
             onClick={handleTestVibrate}
             className="p-1.5 rounded-lg bg-neutral-950 text-neutral-200 font-medium hover:text-white transition-colors cursor-pointer"
@@ -314,6 +319,34 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Gunsmith Action Box for Player Card in Day Phase */}
+      {player.isAlive && player.gunGiven && (
+        <div className="rounded-2xl border-2 border-rose-600/70 bg-rose-950/40 p-3.5 shadow-xl space-y-2.5 animate-in fade-in">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">
+              🔫 شما توسط تفنگدار مسلح شده‌اید!
+            </span>
+            <span className="text-[10px] text-rose-400 font-bold">فاز روز</span>
+          </div>
+          <p className="text-[11px] text-neutral-300 leading-relaxed">
+            شما یک اسلحه در اختیار دارید. می‌توانید در فاز روز شلیک خود را از طریق اعلام به گرداننده یا کلیک روی دکمه شلیک انجام دهید.
+          </p>
+          <div className="pt-1 flex items-center justify-between border-t border-rose-900/60">
+            <span className="text-[10px] text-neutral-400">وضعیت اسلحه: آماده شلیک</span>
+            <button
+              onClick={() => {
+                if (confirm("آیا از شلیک تفنگ خود اطمینان دارید؟")) {
+                  network.updatePlayerStatus(player.id, { gunGiven: undefined });
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              ثبت شلیک تفنگ 💥
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Synchronized Speech Timer Box for Mobile */}
       {(() => {

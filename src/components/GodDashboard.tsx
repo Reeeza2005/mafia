@@ -2,7 +2,16 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Player, GameTimer, GameLog, EliminationReason, SecretVoteState, NightActions } from '../types/mafia';
 import { ROLE_MAP, ALL_ROLES } from '../data/roles';
 import { getActiveNightRoles, resolveNight } from '../services/nightEngine';
+import { 
+  ROLES_RULES_MATRIX, 
+  getValidTargets, 
+  getMafiaShooter, 
+  isMafiaRoleId, 
+  getOutPlayersStatus,
+  QuotaTracker 
+} from '../data/rolesRulesMatrix';
 import { RoleIcon } from './RoleIcons';
+import { MafiaChat, MafiaChatMessage } from './MafiaChat';
 import {
   Play,
   Pause,
@@ -65,12 +74,23 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   onResetGame,
 }) => {
   const [isDeclareWinnerModalOpen, setIsDeclareWinnerModalOpen] = useState(false);
+  const [mafiaChatActive, setMafiaChatActive] = useState(false);
+  const [mafiaChatMessages, setMafiaChatMessages] = useState<MafiaChatMessage[]>([]);
+  const [isMafiaChatWidgetOpen, setIsMafiaChatWidgetOpen] = useState(false);
   const [speakerId, setSpeakerId] = useState<string>('');
   const [localSeconds, setLocalSeconds] = useState(timer.seconds);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
 
   // Night Actions State
+  // --- Night / Day Unified Engine States ---
+  const [isNightDeskOpen, setIsNightDeskOpen] = useState(false);
+  const [showMorningReportModal, setShowMorningReportModal] = useState(false);
+  const [showCityInquiry, setShowCityInquiry] = useState(false);
+  const [morningReportText, setMorningReportText] = useState<string[]>([]);
+  const [quotas, setQuotas] = useState<QuotaTracker>({});
+  const [dayGuns, setDayGuns] = useState<{ targetId: string; targetName: string; type: "war" | "blank"; used: boolean }[]>([]);
+
   const [nightActions, setNightActions] = useState<NightActions>({
     mafiaShotId: undefined,
     doctorSaveId: undefined,
@@ -101,6 +121,11 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
   // Sync timer state
   useEffect(() => {
+    const unGodMafiaChat = network.on("mafia_chat_sync", (data: any) => {
+      if (typeof data?.active === "boolean") setMafiaChatActive(data.active);
+      if (Array.isArray(data?.messages)) setMafiaChatMessages(data.messages);
+    });
+
     setLocalSeconds(timer.seconds);
     if (timer.speakerId) setSpeakerId(timer.speakerId);
   }, [timer.seconds, timer.speakerId]);
@@ -377,8 +402,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     audio.playGong();
   };
 
-  // Apply night action outcomes automatically via nightEngine
-  const handleApplyNightActions = () => {
+  // اعمال خودکار نتایج شب و انتقال به فاز روز
+  const handleTransitionToDay = () => {
     const currentArmors: Record<string, boolean> = {};
     players.forEach((p) => {
       currentArmors[p.id] = p.hasArmor;
@@ -400,12 +425,53 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
         if (orig.hasArmor !== updatedArmors[up.id]) {
           updates.hasArmor = updatedArmors[up.id];
         }
-
         if (Object.keys(updates).length > 0) {
           onUpdatePlayer(up.id, updates);
         }
       }
     });
+
+    // ثبت تفنگ اعطایی تفنگدار برای فاز روز
+    if (nightActions.gunsmithTargetId && nightActions.gunsmithGunType) {
+      const targetP = players.find((p) => p.id === nightActions.gunsmithTargetId);
+      if (targetP) {
+        setDayGuns((prev) => [
+          ...prev.filter((g) => g.targetId !== targetP.id),
+          {
+            targetId: targetP.id,
+            targetName: targetP.name,
+            type: nightActions.gunsmithGunType as "war" | "blank",
+            used: false,
+          },
+        ]);
+        // ثبت رسمی تفنگ اهدا شده روی شیء پلیر جهت نمایش در کارت بازیکن
+        onUpdatePlayer(targetP.id, { 
+          gunGiven: nightActions.gunsmithGunType as "war" | "blank"
+        });
+      }
+    }
+
+    // آماده‌سازی گزارش صبحگاهی شهر
+    const reportAnnouncement = (report as any).publicAnnouncement || [];
+    if (reportAnnouncement.length === 0) {
+      if (report.deaths.length === 0 && !report.silencedId) {
+        reportAnnouncement.push("☀️ شهروندان محترم! دیشب شب آرامی بود و هیچ بازیکنی حذف یا سایلنت نشد.");
+      } else {
+        report.deaths.forEach((dId) => {
+          const dp = players.find((p) => p.id === dId);
+          if (dp) reportAnnouncement.push(`❌ بازیکن «${dp.name}» در فاز شب از بازی خارج شد.`);
+        });
+        if (report.silencedId) {
+          const sp = players.find((p) => p.id === report.silencedId);
+          if (sp) reportAnnouncement.push(`🤫 بازیکن «${sp.name}» برای امروز سایلنت است.`);
+        }
+      }
+    }
+
+    setMorningReportText(reportAnnouncement);
+    setShowMorningReportModal(true);
+    setShowCityInquiry(false);
+    setIsNightDeskOpen(false);
 
     if (report.deaths.length > 0) {
       audio.playShot();
@@ -421,7 +487,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       detectiveResult: null,
       sniperShotId: undefined,
       gunsmithTargetId: undefined,
-      gunsmithGunType: 'war',
+      gunsmithGunType: undefined,
       silencerTargetId: undefined,
       hostageTargetId: undefined,
       bomberTargetId: undefined,
@@ -430,6 +496,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       watcherTargetId: undefined,
     });
   };
+
+  const handleApplyNightActions = handleTransitionToDay;
 
   return (
     <div className="space-y-4">
@@ -990,168 +1058,306 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
         </div>
       )}
 
-      {/* 4. NIGHT ACTION DESK - کاملاً پویا منطبق بر سناریو و نقش‌های زنده */}
+            {/* 4. UNIFIED NIGHT / DAY PHASE CONTROLLER */}
       {cardsDistributed && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-xl space-y-3">
-          <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
-            <div className="flex items-center gap-2">
-              <Moon className="w-5 h-5 text-purple-400" />
-              <h3 className="text-sm font-black text-white">میز تصمیمات شبانه گرداننده</h3>
+        <div className="space-y-3">
+          {/* پنل وضعیت تفنگ‌های اهدا شده در فاز روز */}
+          {dayGuns.length > 0 && (
+            <div className="bg-amber-950/30 border border-amber-800/60 rounded-3xl p-4 shadow-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                  🔫 اسلحه‌های فعال در فاز روز (اهدایی تفنگدار):
+                </span>
+                <span className="text-[10px] text-amber-400/80">برای اعمال شلیک، نوع اسلحه را بررسی کنید</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {dayGuns.map((gun, idx) => (
+                  <div key={idx} className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-2.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-white block">{gun.targetName}</span>
+                      <span className={`text-[10px] font-mono ${gun.type === "war" ? "text-rose-400 font-bold" : "text-sky-400"}`}>
+                        نوع سلاح: {gun.type === "war" ? "تیر جنگی 💥" : "تیر مشقی 💨"}
+                      </span>
+                    </div>
+                    {!gun.used ? (
+                      <button
+                        onClick={() => {
+                          if (gun.type === "war") {
+                            network.updatePlayerStatus(gun.targetId, { isAlive: false, eliminationReason: "court_vote" });
+                          }
+                          setDayGuns(prev => prev.map((g, i) => i === idx ? { ...g, used: true } : g));
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition-all"
+                      >
+                        ثبت شلیک
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-neutral-500 font-bold">شلیک شد ✓</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* نوار بالایی فاز شب: دکمه باز کردن میز شب */}
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-3.5 sm:p-4 shadow-xl flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">🌙</span>
+              <div>
+                <h3 className="text-sm font-black text-white">مدیریت فاز شب و روز بازی</h3>
+                <p className="text-[11px] text-neutral-400">استعلام خودکار کارت‌های زنده و اجرای گام‌به‌گام سناریو</p>
+              </div>
             </div>
             <button
-              onClick={handleApplyNightActions}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white text-xs font-black flex items-center gap-1.5 shadow-lg shadow-rose-950/50 active:scale-95 transition-all"
+              onClick={() => setIsNightDeskOpen(!isNightDeskOpen)}
+              className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
+                isNightDeskOpen
+                  ? "bg-purple-950 text-purple-300 border border-purple-700/80 hover:bg-purple-900"
+                  : "bg-gradient-to-r from-purple-700 to-indigo-700 text-white shadow-lg shadow-purple-950/50 hover:brightness-110 active:scale-95"
+              }`}
             >
-              <Sparkles className="w-4 h-4" />
-              <span>⚡ اعمال خودکار نتایج شب</span>
+              <span>{isNightDeskOpen ? "🔼 بستن موقت میز شب" : "🌙 ورود به فاز شب"}</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
-            {/* ۱. شلیک شب مافیا (نمایش تا زمانی که حداقل یک مافیا زنده باشد) */}
-            {hasAliveMafia && (
-              <div className="bg-neutral-950 p-3 rounded-2xl border border-rose-950 space-y-1.5">
-                <span className="font-bold text-rose-400 flex items-center gap-1">
-                  🎯 هدف شات شب مافیا:
-                </span>
-                <select
-                  value={nightActions.mafiaShotId || ''}
-                  onChange={(e) => setNightActions((prev) => ({ ...prev, mafiaShotId: e.target.value || undefined }))}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+          {/* میز شبانه باز شونده هوشمند بر اساس کارت‌های زنده */}
+          {isNightDeskOpen && (
+            <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Moon className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-sm font-black text-white">میز تصمیمات شبانه گرداننده</h3>
+                </div>
+                <button
+                  onClick={handleTransitionToDay}
+                  className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-600 via-rose-600 to-rose-700 hover:from-amber-500 hover:to-rose-600 text-white text-xs font-black flex items-center gap-2 shadow-lg shadow-rose-950/50 active:scale-95 transition-all cursor-pointer"
                 >
-                  <option value="">-- بدون شلیک مافیا --</option>
-                  {alivePlayers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  <Sparkles className="w-4 h-4" />
+                  <span>☀️ رفتن به فاز روز و اعلام نتایج</span>
+                </button>
               </div>
-            )}
 
-            {/* ۲. سیو دکتر (فقط در صورت وجود پزشک زنده در سناریو) */}
-            {activeNightRoleIds.has('doctor') && (
-              <div className="bg-neutral-950 p-3 rounded-2xl border border-sky-950 space-y-1.5">
-                <span className="font-bold text-sky-400 flex items-center gap-1">
-                  💉 هدف سیو دکتر:
-                </span>
-                <select
-                  value={nightActions.doctorSaveId || ''}
-                  onChange={(e) => setNightActions((prev) => ({ ...prev, doctorSaveId: e.target.value || undefined }))}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
-                >
-                  <option value="">-- بدون نجات پزشک --</option>
-                  {alivePlayers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                {nightActions.mafiaShotId && nightActions.doctorSaveId === nightActions.mafiaShotId && (
-                  <span className="text-[10px] text-emerald-400 font-bold block">
-                    ✨ سیو موفق! جان بازیکن حفظ می‌شود.
-                  </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                {/* ۱. شلیک شب مافیا (تا زمانی که حداقل یک مافیا زنده باشد) */}
+                {hasAliveMafia && (
+                  <div className="bg-neutral-950 p-3.5 rounded-2xl border border-rose-950 space-y-2">
+                    <span className="font-bold text-rose-400 flex items-center gap-1">
+                      🎯 هدف شات مافیا:
+                    </span>
+                    <select
+                      value={nightActions.mafiaShotId || ""}
+                      onChange={(e) => setNightActions((prev) => ({ ...prev, mafiaShotId: e.target.value || undefined }))}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                    >
+                      <option value="">-- بدون شلیک --</option>
+                      {alivePlayers.filter((p) => !isMafiaRoleId(p.roleId)).map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* ۲. سیو پزشک */}
+                {activeNightRoleIds.has("doctor") && (
+                  <div className="bg-neutral-950 p-3.5 rounded-2xl border border-sky-950 space-y-2">
+                    <span className="font-bold text-sky-400 flex items-center gap-1">
+                      💉 هدف سیو پزشک:
+                    </span>
+                    <select
+                      value={nightActions.doctorSaveId || ""}
+                      onChange={(e) => setNightActions((prev) => ({ ...prev, doctorSaveId: e.target.value || undefined }))}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                    >
+                      <option value="">-- بدون محافظت --</option>
+                      {alivePlayers.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* ۳. سیو دکتر لکتور */}
+                {activeNightRoleIds.has("dr_lecter") && (
+                  <div className="bg-neutral-950 p-3.5 rounded-2xl border border-rose-950 space-y-2">
+                    <span className="font-bold text-rose-300 flex items-center gap-1">
+                      🩸 سیو دکتر لکتور (مافیا):
+                    </span>
+                    <select
+                      value={nightActions.doctorLecterSaveId || ""}
+                      onChange={(e) => setNightActions((prev) => ({ ...prev, doctorLecterSaveId: e.target.value || undefined }))}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                    >
+                      <option value="">-- بدون سیو --</option>
+                      {alivePlayers.filter((p) => isMafiaRoleId(p.roleId)).map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* ۴. استعلام کارآگاه */}
+                {activeNightRoleIds.has("detective") && (
+                  <div className="bg-neutral-950 p-3.5 rounded-2xl border border-emerald-950 space-y-2">
+                    <span className="font-bold text-emerald-400 flex items-center gap-1">
+                      🔍 استعلام کارآگاه:
+                    </span>
+                    <select
+                      value={nightActions.detectiveInquiryId || ""}
+                      onChange={(e) => setNightActions((prev) => ({ ...prev, detectiveInquiryId: e.target.value || undefined }))}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                    >
+                      <option value="">-- بدون استعلام --</option>
+                      {alivePlayers.filter((p) => p.roleId !== "detective").map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* ۵. شلیک اسنایپر */}
+                {activeNightRoleIds.has("sniper") && (
+                  <div className="bg-neutral-950 p-3.5 rounded-2xl border border-purple-950 space-y-2">
+                    <span className="font-bold text-purple-400 flex items-center gap-1">
+                      🔫 شلیک اسنایپر:
+                    </span>
+                    <select
+                      value={nightActions.sniperShotId || ""}
+                      onChange={(e) => setNightActions((prev) => ({ ...prev, sniperShotId: e.target.value || undefined }))}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                    >
+                      <option value="">-- بدون شلیک --</option>
+                      {alivePlayers.filter((p) => p.roleId !== "sniper").map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* ۶. سکوت ناتاشا */}
+                {activeNightRoleIds.has("natasha") && (
+                  <div className="bg-neutral-950 p-3.5 rounded-2xl border border-fuchsia-950 space-y-2">
+                    <span className="font-bold text-fuchsia-400 flex items-center gap-1">
+                      🤫 سکوت ناتاشا:
+                    </span>
+                    <select
+                      value={nightActions.silencerTargetId || ""}
+                      onChange={(e) => setNightActions((prev) => ({ ...prev, silencerTargetId: e.target.value || undefined }))}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                    >
+                      <option value="">-- بدون سایلنس --</option>
+                      {alivePlayers.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* ۷. تفنگدار (اهدای سلاح) */}
+                {activeNightRoleIds.has("gunsmith") && (
+                  <div className="bg-neutral-950 p-3.5 rounded-2xl border border-amber-950 space-y-2">
+                    <span className="font-bold text-amber-400 flex items-center gap-1">
+                      🛠️ اهدای سلاح تفنگدار:
+                    </span>
+                    <select
+                      value={nightActions.gunsmithTargetId || ""}
+                      onChange={(e) => setNightActions((prev) => ({ ...prev, gunsmithTargetId: e.target.value || undefined }))}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white mb-1.5"
+                    >
+                      <option value="">-- بدون اهدا --</option>
+                      {alivePlayers.filter((p) => p.roleId !== "gunsmith").map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    {nightActions.gunsmithTargetId && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNightActions((prev) => ({ ...prev, gunsmithGunType: "war" }))}
+                          className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                            nightActions.gunsmithGunType === "war"
+                              ? "bg-rose-950 text-rose-300 border-rose-700"
+                              : "bg-neutral-900 text-neutral-400 border-neutral-800"
+                          }`}
+                        >
+                          تیر جنگی 💥
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNightActions((prev) => ({ ...prev, gunsmithGunType: "blank" }))}
+                          className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                            nightActions.gunsmithGunType === "blank"
+                              ? "bg-sky-950 text-sky-300 border-sky-700"
+                              : "bg-neutral-900 text-neutral-400 border-neutral-800"
+                          }`}
+                        >
+                          تیر مشقی 💨
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* ۳. سیو دکتر لکتور (فقط در صورت حضور لکتور زنده) */}
-            {activeNightRoleIds.has('dr_lecter') && (
-              <div className="bg-neutral-950 p-3 rounded-2xl border border-red-950 space-y-1.5">
-                <span className="font-bold text-rose-300 flex items-center gap-1">
-                  🩸 هدف نجات دکتر لکتور:
-                </span>
-                <select
-                  value={nightActions.doctorLecterSaveId || ''}
-                  onChange={(e) => setNightActions((prev) => ({ ...prev, doctorLecterSaveId: e.target.value || undefined }))}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
-                >
-                  <option value="">-- بدون نجات لکتور --</option>
-                  {alivePlayers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+          {/* پنجره مودال گزارش صبحگاهی فاز روز + دو دکمه بستن و استعلام */}
+          {showMorningReportModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+              <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">☀️</span>
+                    <h3 className="text-base font-black text-white">گزارش رسمی صبحگاهی برای قرائت در شهر</h3>
+                  </div>
+                </div>
 
-            {/* ۴. استعلام کارآگاه (فقط در صورت حضور کارآگاه زنده) */}
-            {activeNightRoleIds.has('detective') && (
-              <div className="bg-neutral-950 p-3 rounded-2xl border border-amber-950 space-y-1.5">
-                <span className="font-bold text-amber-400 flex items-center gap-1">
-                  🔍 استعلام کارآگاه:
-                </span>
-                <select
-                  value={nightActions.detectiveInquiryId || ''}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    if (id) handleRunDetectiveInquiry(id);
-                    else setNightActions((prev) => ({ ...prev, detectiveInquiryId: undefined, detectiveResult: null }));
-                  }}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
-                >
-                  <option value="">-- انتخاب مظنون --</option>
-                  {alivePlayers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
+                <div className="bg-neutral-950 rounded-2xl p-4 border border-neutral-850 space-y-2 text-sm text-neutral-200 leading-relaxed">
+                  {morningReportText.map((line, idx) => (
+                    <p key={idx} className="font-medium">{line}</p>
                   ))}
-                </select>
-                {nightActions.detectiveResult && (
-                  <span
-                    className={`text-[10px] font-bold block ${
-                      nightActions.detectiveResult === 'positive' ? 'text-rose-400' : 'text-emerald-400'
-                    }`}
+                </div>
+
+                {/* استعلام وضعیت شهر در صورت فعال شدن */}
+                {showCityInquiry && (
+                  <div className="bg-purple-950/40 border border-purple-800/80 rounded-2xl p-4 space-y-2 animate-in fade-in">
+                    <span className="text-xs font-bold text-purple-300 block">📊 استعلام وضعیت شهر و خارج‌شدگان:</span>
+                    {(() => {
+                      const stat = getOutPlayersStatus(players);
+                      return (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-neutral-900/80 p-2 rounded-xl border border-neutral-800">
+                            <span className="text-neutral-400 block text-[11px]">شهروندان بیرون از شهر:</span>
+                            <span className="text-base font-black text-emerald-400">{stat.deadCitizensCount} نفر</span>
+                          </div>
+                          <div className="bg-neutral-900/80 p-2 rounded-xl border border-neutral-800">
+                            <span className="text-neutral-400 block text-[11px]">مافیاهای بیرون از شهر:</span>
+                            <span className="text-base font-black text-rose-400">{stat.deadMafiaCount} نفر</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* دو دکمه بستن و استعلام */}
+                <div className="flex items-center gap-2 pt-2 border-t border-neutral-800">
+                  <button
+                    onClick={() => setShowMorningReportModal(false)}
+                    className="flex-1 py-2.5 rounded-2xl bg-neutral-800 hover:bg-neutral-750 text-white text-xs font-bold transition-all cursor-pointer"
                   >
-                    نتیجه: {nightActions.detectiveResult === 'positive' ? 'مثبت 🔴 (مافیا)' : 'منفی 🟢 (شهروند)'}
-                  </span>
-                )}
+                    بستن پنجره گزارش
+                  </button>
+                  <button
+                    onClick={() => setShowCityInquiry(!showCityInquiry)}
+                    className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white text-xs font-black transition-all cursor-pointer shadow-lg shadow-purple-950/40"
+                  >
+                    {showCityInquiry ? "مخفی‌سازی استعلام" : "📊 استعلام شهر (تعداد کشته‌ها)"}
+                  </button>
+                </div>
               </div>
-            )}
-
-            {/* ۵. شلیک اسنایپر (فقط در صورت حضور اسنایپر زنده) */}
-            {activeNightRoleIds.has('sniper') && (
-              <div className="bg-neutral-950 p-3 rounded-2xl border border-purple-950 space-y-1.5">
-                <span className="font-bold text-purple-400 flex items-center gap-1">
-                  🔫 شلیک اسنایپر / حرفه‌ای:
-                </span>
-                <select
-                  value={nightActions.sniperShotId || ''}
-                  onChange={(e) => setNightActions((prev) => ({ ...prev, sniperShotId: e.target.value || undefined }))}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
-                >
-                  <option value="">-- بدون شلیک اسنایپر --</option>
-                  {alivePlayers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* ۶. سایلنس ناتاشا (فقط در صورت حضور ناتاشا زنده) */}
-            {activeNightRoleIds.has('natasha') && (
-              <div className="bg-neutral-950 p-3 rounded-2xl border border-fuchsia-950 space-y-1.5">
-                <span className="font-bold text-fuchsia-400 flex items-center gap-1">
-                  🤫 سکوت ناتاشا:
-                </span>
-                <select
-                  value={nightActions.silencerTargetId || ''}
-                  onChange={(e) => setNightActions((prev) => ({ ...prev, silencerTargetId: e.target.value || undefined }))}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
-                >
-                  <option value="">-- بدون سایلنس --</option>
-                  {alivePlayers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1288,27 +1494,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
                   {/* Right Column: Game Master Tools */}
                   <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
-                    {/* Debug Live Role Switcher */}
-                    <div className="flex items-center gap-1 bg-neutral-900 border border-amber-800/60 rounded-xl px-2 py-1 shadow-sm">
-                      <span className="text-[10px] text-amber-400 font-bold">🧪 نقش:</span>
-                      <select
-                        value={player.roleId || ''}
-                        onChange={(e) => {
-                          const newRoleId = e.target.value;
-                          if (newRoleId) {
-                            network.debugAssignRole(player.id, newRoleId);
-                            audio.playFlip();
-                          }
-                        }}
-                        className="bg-transparent text-xs font-bold text-amber-300 focus:outline-none cursor-pointer"
-                      >
-                        {ALL_ROLES.map((r) => (
-                          <option key={r.id} value={r.id} className="bg-neutral-900 text-white">
-                            {r.name} ({r.team === 'mafia' ? 'مافیا' : 'شهروند'})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+
+
+
 
                     {/* Elimination Reason Selector */}
                     <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2 py-1">
@@ -1449,6 +1637,51 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               );
             })}
           </div>
+        )}
+      </div>
+      {/* Mafia Chat Audit & Control Widget for God */}
+      <div className="fixed bottom-6 left-6 z-40">
+        {isMafiaChatWidgetOpen ? (
+          <div className="w-80 shadow-2xl animate-fade-in">
+            <div className="flex justify-end mb-1">
+              <button
+                type="button"
+                onClick={() => setIsMafiaChatWidgetOpen(false)}
+                className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs px-2 py-0.5 rounded cursor-pointer"
+              >
+                ✕ بستن کادر
+              </button>
+            </div>
+            <MafiaChat
+              isGod={true}
+              isActive={mafiaChatActive}
+              messages={mafiaChatMessages}
+              onSendMessage={(text) => {
+                setMafiaChatMessages((prev) => [
+                  ...prev,
+                  {
+                    id: Math.random().toString(),
+                    senderId: 'god',
+                    senderName: 'گرداننده 👑',
+                    senderRole: 'god',
+                    text,
+                    time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
+                  }
+                ]);
+              }}
+              onToggleChat={(active) => network.toggleMafiaChat(active)}
+              onClearChat={() => network.clearMafiaChat()}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsMafiaChatWidgetOpen(true)}
+            className="flex items-center gap-2 bg-red-950/90 hover:bg-red-900 border border-red-700/60 text-red-200 px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold cursor-pointer transition-all active:scale-95"
+          >
+            <span>🕶️ مانیتور چت مافیا</span>
+            <span className={"w-2 h-2 rounded-full " + (mafiaChatActive ? "bg-emerald-500 animate-ping" : "bg-neutral-500")} />
+          </button>
         )}
       </div>
     </div>
