@@ -681,6 +681,15 @@ io.on('connection', (socket) => {
         roleId: player.roleId,
         player,
       });
+      io.to(room.code).emit('players_updated', {
+        players: Object.values(room.players),
+        logs: room.logs,
+      });
+      io.to(room.code).emit('game_started', {
+        rolesInGame: room.rolesInGame,
+        logs: room.logs,
+        players: Object.values(room.players),
+      });
     });
 
     // Inform God panel with full master list

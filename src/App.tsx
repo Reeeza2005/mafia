@@ -145,7 +145,7 @@ export default function App() {
         // Functional update so myPlayer is never a stale dependency
         setMyPlayer((prev) => {
           if (!prev) return null;
-          const updatedSelf = (data.players as Player[]).find((p) => p.id === prev.id);
+          const updatedSelf = (data.players as Player[]).find((p) => p.id === prev.id || (Boolean(prev.name) && p.name === prev.name));
           return updatedSelf ? { ...prev, ...updatedSelf } : prev;
         });
       }
