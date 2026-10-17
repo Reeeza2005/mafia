@@ -85,12 +85,14 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   // Night Actions State
   // --- Night / Day Unified Engine States ---
   const [isNightDeskOpen, setIsNightDeskOpen] = useState(false);
+  const [currentActiveNightStep, setCurrentActiveNightStep] = useState<string | null>(null);
   const [incomingNightTargets, setIncomingNightTargets] = useState<{
     playerId: string;
     playerName: string;
     roleId: string;
     targetId: string;
     targetName: string;
+    extraType?: string;
     time: string;
   }[]>([]);
   const [showMorningReportModal, setShowMorningReportModal] = useState(false);
@@ -184,6 +186,23 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       unStart();
       unUpdate();
       unEnd();
+    };
+  }, []);
+
+  // دریافت تارگت‌ها و درخواست‌های ارسالی بازیکنان در شب
+  useEffect(() => {
+    const unNightTarget = network.on("night_target_received", (data: any) => {
+      if (data && data.playerId) {
+        setIncomingNightTargets((prev) => [
+          ...prev.filter((t) => t.playerId !== data.playerId),
+          data,
+        ]);
+        audio.playFlip();
+      }
+    });
+
+    return () => {
+      if (typeof unNightTarget === "function") unNightTarget();
     };
   }, []);
 
@@ -1118,7 +1137,11 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               </div>
             </div>
             <button
-              onClick={() => setIsNightDeskOpen(!isNightDeskOpen)}
+              onClick={() => {
+                const nextState = !isNightDeskOpen;
+                setIsNightDeskOpen(nextState);
+                network.toggleNightPhase(nextState);
+              }}
               className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
                 isNightDeskOpen
                   ? "bg-purple-950 text-purple-300 border border-purple-700/80 hover:bg-purple-900"
@@ -1132,6 +1155,120 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           {/* میز شبانه باز شونده هوشمند بر اساس کارت‌های زنده */}
           {isNightDeskOpen && (
             <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+              {/* نوار کنترل ترتیبی بیدارباش نقش‌ها در فاز شب */}
+              <div className="bg-neutral-950/80 border border-neutral-800 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-neutral-300">
+                  <span>🌙 بیدارباش نوبتی نقش‌ها:</span>
+                  {currentActiveNightStep ? (
+                    <span className="text-[11px] text-amber-400 animate-pulse bg-amber-950/60 border border-amber-800 px-2.5 py-0.5 rounded-full">
+                      نوبت فعال: {currentActiveNightStep}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-neutral-500">همه خواب هستند 💤</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = currentActiveNightStep === "mafia" ? null : "mafia";
+                      setCurrentActiveNightStep(next);
+                      network.setNightStep(next);
+                      network.toggleMafiaChat(next === "mafia");
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      currentActiveNightStep === "mafia"
+                        ? "bg-red-700 text-white shadow-lg ring-2 ring-red-500"
+                        : "bg-red-950/50 text-red-300 border border-red-900/60 hover:bg-red-900/70"
+                    }`}
+                  >
+                    🕶️ بیدارباش مافیا (چت + شات)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = currentActiveNightStep === "doctor" ? null : "doctor";
+                      setCurrentActiveNightStep(next);
+                      network.setNightStep(next);
+                      if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      currentActiveNightStep === "doctor"
+                        ? "bg-sky-700 text-white shadow-lg ring-2 ring-sky-500"
+                        : "bg-sky-950/50 text-sky-300 border border-sky-900/60 hover:bg-sky-900/70"
+                    }`}
+                  >
+                    💉 بیدارباش پزشک
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = currentActiveNightStep === "detective" ? null : "detective";
+                      setCurrentActiveNightStep(next);
+                      network.setNightStep(next);
+                      if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      currentActiveNightStep === "detective"
+                        ? "bg-emerald-700 text-white shadow-lg ring-2 ring-emerald-500"
+                        : "bg-emerald-950/50 text-emerald-300 border border-emerald-900/60 hover:bg-emerald-900/70"
+                    }`}
+                  >
+                    🔍 بیدارباش کارآگاه
+                  </button>
+
+                  {alivePlayers.some(p => p.roleId === "sniper") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = currentActiveNightStep === "sniper" ? null : "sniper";
+                        setCurrentActiveNightStep(next);
+                        network.setNightStep(next);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        currentActiveNightStep === "sniper"
+                          ? "bg-purple-700 text-white shadow-lg ring-2 ring-purple-500"
+                          : "bg-purple-950/50 text-purple-300 border border-purple-900/60 hover:bg-purple-900/70"
+                      }`}
+                    >
+                      🔫 بیدارباش اسنایپر
+                    </button>
+                  )}
+
+                  {alivePlayers.some(p => p.roleId === "gunsmith") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = currentActiveNightStep === "gunsmith" ? null : "gunsmith";
+                        setCurrentActiveNightStep(next);
+                        network.setNightStep(next);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        currentActiveNightStep === "gunsmith"
+                          ? "bg-amber-600 text-white shadow-lg ring-2 ring-amber-400"
+                          : "bg-amber-950/50 text-amber-300 border border-amber-900/60 hover:bg-amber-900/70"
+                      }`}
+                    >
+                      🔫 بیدارباش تفنگدار
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentActiveNightStep(null);
+                      network.setNightStep(null);
+                      network.toggleMafiaChat(false);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 text-xs font-bold border border-neutral-800 cursor-pointer"
+                  >
+                    💤 خواباندن همه
+                  </button>
+                </div>
+              </div>
+
               {/* تارگت‌های ارسال شده توسط بازیکنان در فاز شب */}
               {incomingNightTargets.length > 0 && (
                 <div className="bg-purple-950/40 border border-purple-800/80 rounded-2xl p-3.5 space-y-2">
@@ -1157,26 +1294,91 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             <>
                               <button
                                 type="button"
-                                onClick={() => network.sendNightResultToPlayer(item.playerId, "استعلام شما: مثبت 🟢 (مافیا)", "positive")}
+                                onClick={() => {
+                                  network.sendNightResultToPlayer(item.playerId, "استعلام شما: مثبت 🟢 (مافیا)", "positive");
+                                  network.setNightStep(null);
+                                  setCurrentActiveNightStep(null);
+                                }}
                                 className="px-2 py-1 rounded-lg bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-bold hover:bg-rose-900 cursor-pointer"
                               >
-                                پاسخ مثبت
+                                مثبت 🟢
                               </button>
                               <button
                                 type="button"
-                                onClick={() => network.sendNightResultToPlayer(item.playerId, "استعلام شما: منفی ⚪ (شهروند)", "negative")}
+                                onClick={() => {
+                                  network.sendNightResultToPlayer(item.playerId, "استعلام شما: منفی ⚪ (شهروند)", "negative");
+                                  network.setNightStep(null);
+                                  setCurrentActiveNightStep(null);
+                                }}
                                 className="px-2 py-1 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-300 text-[10px] font-bold hover:bg-emerald-900 cursor-pointer"
                               >
-                                پاسخ منفی
+                                منفی ⚪
                               </button>
                             </>
+                          ) : item.roleId === "gunsmith" ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const isReal = item.extraType !== "blank";
+                                setNightActions(prev => ({
+                                  ...prev,
+                                  gunsmithTargetId: item.targetId,
+                                  gunsmithGunType: isReal ? "war" : "blank",
+                                }));
+                                setDayGuns(prev => [
+                                  ...prev.filter(g => g.targetId !== item.targetId),
+                                  {
+                                    targetId: item.targetId,
+                                    targetName: item.targetName,
+                                    type: isReal ? "war" : "blank",
+                                    used: false,
+                                  }
+                                ]);
+                                network.sendNightResultToPlayer(
+                                  item.playerId,
+                                  `اسلحه (${isReal ? "جنگی 💥" : "مشقی ⚪"}) با موفقیت به «${item.targetName}» تحویل داده شد ✓`
+                                );
+                                network.setNightStep(null);
+                                setCurrentActiveNightStep(null);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-amber-950 border border-amber-700 text-amber-200 text-[10px] font-bold hover:bg-amber-900 cursor-pointer"
+                            >
+                              تایید اهدا اسلحه 🔫
+                            </button>
+                          ) : item.roleId === "godfather" ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNightActions(prev => ({ ...prev, mafiaShotId: item.targetId }));
+                                network.sendNightResultToPlayer(item.playerId, `شلیک مافیا روی «${item.targetName}» تایید و ثبت شد 💥`);
+                                network.toggleMafiaChat(false);
+                                network.setNightStep(null);
+                                setCurrentActiveNightStep(null);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-red-950 border border-red-700 text-red-200 text-[10px] font-bold hover:bg-red-900 cursor-pointer"
+                            >
+                              تایید و ثبت شات مافیا 💥
+                            </button>
+                          ) : item.roleId === "doctor" ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNightActions(prev => ({ ...prev, doctorSaveId: item.targetId }));
+                                network.sendNightResultToPlayer(item.playerId, `انتخاب نجات «${item.targetName}» تایید شد 💉`);
+                                network.setNightStep(null);
+                                setCurrentActiveNightStep(null);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-200 text-[10px] font-bold hover:bg-emerald-900 cursor-pointer"
+                            >
+                              تایید نجات 💉
+                            </button>
                           ) : (
                             <button
                               type="button"
-                              onClick={() => network.sendNightResultToPlayer(item.playerId, "اقدام شما در شب با موفقیت ثبت شد ✓")}
-                              className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[10px] font-bold cursor-pointer"
+                              onClick={() => network.sendNightResultToPlayer(item.playerId, `اقدام شما روی «${item.targetName}» ثبت شد ✓`)}
+                              className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[10px] font-bold cursor-pointer"
                             >
-                              تایید به بازیکن
+                              تایید به بازیکن ✓
                             </button>
                           )}
                         </div>

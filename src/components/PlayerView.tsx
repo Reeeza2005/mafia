@@ -57,7 +57,11 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [mafiaChatActive, setMafiaChatActive] = useState(false);
   const [mafiaChatMessages, setMafiaChatMessages] = useState<MafiaChatMessage[]>([]);
   const [selectedNightTargetId, setSelectedNightTargetId] = useState<string>("");
+  const [gunType, setGunType] = useState<"bullet" | "blank">("bullet");
+  const [currentNightRole, setCurrentNightRole] = useState<string | null>(null);
+  const [nightActionDone, setNightActionDone] = useState(false);
   const [nightActionSent, setNightActionSent] = useState(false);
+  const [nightPhaseActive, setNightPhaseActive] = useState(false);
   const [nightResultMessage, setNightResultMessage] = useState<{ message: string; resultType?: string; time: string } | null>(null);
   const [livePlayers, setLivePlayers] = useState<Player[]>([]);
 
@@ -150,9 +154,20 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       }
     });
 
-        const unNightResult = network.on("night_result_received", (data: any) => {
+        const unNightStep = network.on("night_step_state", (data: any) => {
+      setCurrentNightRole(data?.role || null);
+      setNightActionDone(false);
+      setSelectedNightTargetId("");
+    });
+
+    const unNightPhase = network.on("night_phase_state", (data: any) => {
+      if (typeof data?.active === "boolean") setNightPhaseActive(data.active);
+    });
+
+    const unNightResult = network.on("night_result_received", (data: any) => {
       if (data?.message) {
         setNightResultMessage(data);
+        setNightActionDone(true);
         audio.playFlip();
       }
     });
@@ -331,7 +346,10 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       </div>
 
       {/* Night Action Selector & In-game Feedback for Player */}
-      {player.isAlive && player.roleId && (
+      {cardsDistributed && isFlipped && player.isAlive && !nightActionDone && (
+        (currentNightRole === "mafia" && isMafia(player.roleId) && player.roleId !== "simple_mafia") ||
+        (currentNightRole && currentNightRole === player.roleId)
+      ) && (
         <div className="rounded-2xl border border-purple-900/60 bg-purple-950/30 p-3.5 space-y-3 shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
@@ -344,7 +362,31 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          {player.roleId === "gunsmith" && (
+              <div className="flex items-center gap-2 pb-1">
+                <span className="text-[11px] text-neutral-300 font-bold">نوع تیر:</span>
+                <button
+                  type="button"
+                  onClick={() => setGunType("bullet")}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                    gunType === "bullet" ? "bg-red-700 text-white ring-1 ring-red-400" : "bg-neutral-800 text-neutral-400"
+                  }`}
+                >
+                  جنگی 💥
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGunType("blank")}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                    gunType === "blank" ? "bg-amber-600 text-white ring-1 ring-amber-300" : "bg-neutral-800 text-neutral-400"
+                  }`}
+                >
+                  مشقی ⚪
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
             <select
               value={selectedNightTargetId}
               onChange={(e) => {
@@ -363,7 +405,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               disabled={!selectedNightTargetId}
               onClick={() => {
                 if (!selectedNightTargetId) return;
-                network.sendNightTarget(player.id, player.roleId || "", selectedNightTargetId);
+                network.sendNightTarget(player.id, player.roleId || "", selectedNightTargetId, player.roleId === "gunsmith" ? gunType : undefined);
                 setNightActionSent(true);
                 audio.playFlip();
               }}
@@ -802,7 +844,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
       
       {/* Mafia Night Chat for Mafia Members */}
-      {player && isMafia(player.roleId) && (
+      {player && isMafia(player.roleId) && mafiaChatActive && (
         <div className="mt-4">
           <MafiaChat
             isGod={false}
@@ -811,46 +853,6 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
             currentUserId={player.id}
             onSendMessage={(text) => network.sendMafiaMessage(player.id, text)}
           />
-        </div>
-      )}
-
-      {/* Night Action Panel for Night Roles */}
-      {player && player.isAlive && (player.roleId === "godfather" || player.roleId === "doctor" || player.roleId === "detective") && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3.5 mt-4 shadow-lg space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-400">
-              {player.roleId === "godfather" && "🎯 شلیک شبانه گادفادر"}
-              {player.roleId === "doctor" && "💉 انتخاب نجات پزشک"}
-              {player.roleId === "detective" && "🔍 استعلام شبانه کارآگاه"}
-            </span>
-            <span className="text-[10px] text-neutral-400">فاز شب</span>
-          </div>
-          <select
-            defaultValue=""
-            onChange={(e) => {
-              const targetId = e.target.value;
-              if (player.roleId === "godfather") {
-                network.updateNightActions({ mafiaShotId: targetId || undefined });
-              } else if (player.roleId === "doctor") {
-                network.updateNightActions({ doctorSaveId: targetId || undefined });
-              } else if (player.roleId === "detective") {
-                network.updateNightActions({ detectiveInquiryId: targetId || undefined });
-              }
-            }}
-            className="w-full bg-neutral-950 border border-neutral-700 rounded-xl p-2.5 text-xs text-white"
-          >
-            <option value="">-- انتخاب هدف از میان بازیکنان --</option>
-            {(players.length > 0 ? players : livePlayers)
-              .filter((p: Player) => p.isAlive && p.id !== player.id)
-              .map((p: Player) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            {player.roleId === "doctor" && (
-              <option value={player.id}>خودم ({player.name})</option>
-            )}
-          </select>
         </div>
       )}
 

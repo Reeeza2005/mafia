@@ -397,6 +397,18 @@ sendMafiaMessage(playerId: string, text: string) {
     }
   }
 
+  setNightStep(role: string | null) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("god_set_night_step", { roomCode: this.roomCode, role });
+    }
+  }
+
+  toggleNightPhase(active: boolean) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("toggle_night_phase", { roomCode: this.roomCode, active });
+    }
+  }
+
   toggleMafiaChat(active: boolean) {
     if (this.socket && this.socket.connected) {
       this.socket.emit("god_toggle_mafia_chat", { roomCode: this.roomCode, active });

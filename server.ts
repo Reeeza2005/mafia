@@ -421,9 +421,13 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // 2. Identify Player & Role
-      const sender = room.players[data.playerId] || Object.values(room.players).find(p => p.socketId === socket.id);
-      if (!sender || !sender.isAlive || !isMafiaRole(sender.roleId)) {
+      // 2. Identify Player & Role (Allow God or alive Mafia)
+      const isGod = socket.id === room.godSocketId || data.playerId === "god";
+      const sender = isGod 
+        ? { id: "god", name: "گرداننده (گاد)", roleId: "god", isAlive: true }
+        : (room.players[data.playerId] || Object.values(room.players).find(p => p.socketId === socket.id));
+
+      if (!isGod && (!sender || !sender.isAlive || !isMafiaRole(sender.roleId))) {
         socket.emit('buzz', { type: 'danger', message: 'شما دسترسی به چت گروه مافیا را ندارید!' });
         return;
       }
@@ -732,7 +736,25 @@ io.on('connection', (socket) => {
   });
 
   // Night Actions Desk
-  socket.on('update_night_actions', ({ roomCode, nightActions }) => {
+  socket.on('god_set_night_step', (data: { roomCode?: string; role: string | null }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room) return;
+
+      io.to(room.code).emit('night_step_state', { role: data.role });
+    });
+
+    socket.on('toggle_night_phase', (data: { roomCode?: string; active: boolean }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room) return;
+
+      io.to(room.code).emit('night_phase_state', { active: !!data.active });
+    });
+
+    socket.on('update_night_actions', ({ roomCode, nightActions }) => {
     const room = getOrCreateRoom(roomCode);
     room.nightActions = { ...(room.nightActions || {}), ...nightActions };
     io.to(room.code).emit('night_actions_updated', room.nightActions);
