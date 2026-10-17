@@ -57,6 +57,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [mafiaChatActive, setMafiaChatActive] = useState(false);
   const [mafiaChatMessages, setMafiaChatMessages] = useState<MafiaChatMessage[]>([]);
   const [selectedNightTargetId, setSelectedNightTargetId] = useState<string>("");
+  const [selectedWarTargetId, setSelectedWarTargetId] = useState("");
+  const [selectedBlankTargetId, setSelectedBlankTargetId] = useState("");
   const [gunType, setGunType] = useState<"bullet" | "blank">("bullet");
   const [currentNightRole, setCurrentNightRole] = useState<string | null>(null);
   const [nightActionDone, setNightActionDone] = useState(false);
@@ -69,10 +71,36 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
     const unPlayers = network.on("players_updated", (data: any) => {
       if (Array.isArray(data?.players)) setLivePlayers(data.players);
     });
+
+    const unNotif = network.on("player_notification", (data: any) => {
+      console.log("[PlayerView] player_notification received:", data);
+      if (data && (!data.targetPlayerId || data.targetPlayerId === player.id)) {
+        setNightResultMessage({
+          message: data.message,
+          resultType: data.resultType,
+          time: data.time || new Date().toLocaleTimeString("fa-IR")
+        });
+      }
+    });
+
+    const unNightRes = network.on("night_result_received", (data: any) => {
+      console.log("[PlayerView] night_result_received received:", data);
+      if (data) {
+        setNightResultMessage({
+          message: data.message,
+          resultType: data.resultType,
+          time: data.time || new Date().toLocaleTimeString("fa-IR")
+        });
+      }
+    });
+
     return () => {
       unPlayers();
+      unNotif();
+      unNightRes();
     };
-  }, []);
+  }, [player?.id]);
+
   const [hasVoted, setHasVoted] = useState(false);
   const [buzzAlert, setBuzzAlert] = useState<{ message: string; type: string } | null>(null);
   const [isChallengeRequested, setIsChallengeRequested] = useState(false);
@@ -164,6 +192,12 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       if (typeof data?.active === "boolean") setNightPhaseActive(data.active);
     });
 
+    const unPlayerNotif = network.on("player_notification", (data: any) => {
+      if (player && data?.targetPlayerId === player.id) {
+        setNightResultMessage(data);
+        audio.playFlip();
+      }
+    });
     const unNightResult = network.on("night_result_received", (data: any) => {
       if (data?.message) {
         setNightResultMessage(data);
@@ -288,6 +322,41 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
   return (
     <div className="max-w-md mx-auto space-y-4 pb-8 dir-rtl text-right select-none">
+      {/* Modal شناور استعلام کارآگاه و اعلان‌های شب */}
+      {nightResultMessage && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+          <div className="bg-neutral-900 border-2 border-amber-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
+            <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-3xl shadow-inner">
+              {nightResultMessage.resultType === "positive" ? "🟢" : nightResultMessage.resultType === "negative" ? "⚪" : "📩"}
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-amber-300">
+                نتیجه رسمی از سوی گرداننده
+              </h3>
+              <span className="text-[10px] text-neutral-400 block font-mono">
+                {nightResultMessage.time}
+              </span>
+            </div>
+
+            <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-4">
+              <p className="text-sm font-bold text-white leading-relaxed">
+                {nightResultMessage.message}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setNightResultMessage(null)}
+              className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-sm transition-all shadow-lg active:scale-95 cursor-pointer"
+            >
+              متوجه شدم ✓
+            </button>
+          </div>
+        </div>
+      )}
+
+      
       {/* Real-time Buzz / Alarm Notification Banner */}
       {buzzAlert && (
         <div className="bg-rose-600 text-white p-4 rounded-2xl border-2 border-white shadow-2xl flex items-center justify-between gap-3 animate-bounce">
@@ -347,90 +416,115 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
       {/* Night Action Selector & In-game Feedback for Player */}
       {player.isAlive && !nightActionDone && Boolean(player.roleId) && (
-        (currentNightRole === "mafia" && isMafia(player.roleId) && player.roleId !== "simple_mafia") ||
-        (currentNightRole && currentNightRole === player.roleId)
-      ) && (
-        <div className="rounded-2xl border border-purple-900/60 bg-purple-950/30 p-3.5 space-y-3 shadow-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
-              🌙 انتخاب هدف شبانه (ارسال مستقیم به گرداننده)
-            </span>
-            {nightActionSent && (
-              <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                ✓ ارسال شد
+          (currentNightRole === "mafia" && isMafia(player.roleId)) ||
+          ((currentNightRole === "doctor_lecter" || currentNightRole === "dr_lecter") && (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")) ||
+          (currentNightRole && currentNightRole === player.roleId)
+        ) && (
+          <div className="rounded-2xl border border-purple-900/60 bg-purple-950/30 p-3.5 space-y-3 shadow-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
+                {(player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
+                  ? "🩺 نجات شبانه یار مافیا (دکتر لکتر)"
+                  : player.roleId === "godfather"
+                  ? "💥 انتخاب هدف شلیک مافیا (پدرخوانده)"
+                  : player.roleId === "detective"
+                  ? "🔍 استعلام شبانه هویت (کارآگاه)"
+                  : player.roleId === "sniper"
+                  ? "🎯 شلیک شبانه تک‌تیرانداز"
+                  : "🌙 انتخاب هدف شبانه (ارسال مستقیم به گرداننده)"}
               </span>
-            )}
-          </div>
+              {nightActionSent && (
+                <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                  ✓ در انتظار تایید گاد
+                </span>
+              )}
+            </div>
 
-          {player.roleId === "gunsmith" && (
-              <div className="flex items-center gap-2 pb-1">
-                <span className="text-[11px] text-neutral-300 font-bold">نوع تیر:</span>
-                <button
-                  type="button"
-                  onClick={() => setGunType("bullet")}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                    gunType === "bullet" ? "bg-red-700 text-white ring-1 ring-red-400" : "bg-neutral-800 text-neutral-400"
-                  }`}
-                >
-                  جنگی 💥
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGunType("blank")}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                    gunType === "blank" ? "bg-amber-600 text-white ring-1 ring-amber-300" : "bg-neutral-800 text-neutral-400"
-                  }`}
-                >
-                  مشقی ⚪
-                </button>
+            {/* انتخاب‌های اختصاصی تفنگدار: دو کادر همزمان جنگی و مشقی */}
+            {player.roleId === "gunsmith" && (
+              <div className="space-y-3 pb-2 border-b border-purple-900/40 mb-3">
+                <span className="text-[11px] text-purple-300 font-bold block">
+                  توزیع همزمان اسلحه‌ها (جنگی و مشقی):
+                </span>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-rose-400 font-bold flex items-center gap-1">
+                    💥 دریافت‌کننده تیر جنگی:
+                  </label>
+                  <select
+                    value={selectedWarTargetId}
+                    onChange={(e) => setSelectedWarTargetId(e.target.value)}
+                    className="w-full bg-neutral-900 border border-neutral-700 text-white text-xs rounded-xl p-2 outline-none focus:border-rose-500"
+                  >
+                    <option value="">-- عدم اهدا یا انتخاب بازیکن --</option>
+                    {players?.filter(p => p.isAlive && p.id !== player.id).map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-sky-400 font-bold flex items-center gap-1">
+                    💨 دریافت‌کننده تیر مشقی:
+                  </label>
+                  <select
+                    value={selectedBlankTargetId}
+                    onChange={(e) => setSelectedBlankTargetId(e.target.value)}
+                    className="w-full bg-neutral-900 border border-neutral-700 text-white text-xs rounded-xl p-2 outline-none focus:border-sky-500"
+                  >
+                    <option value="">-- عدم اهدا یا انتخاب بازیکن --</option>
+                    {players?.filter(p => p.isAlive && p.id !== player.id && p.id !== selectedWarTargetId).map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-            <select
-              value={selectedNightTargetId}
-              onChange={(e) => {
-                setSelectedNightTargetId(e.target.value);
-                setNightActionSent(false);
-              }}
-              className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-purple-600"
-            >
-              <option value="">-- انتخاب بازیکن هدف --</option>
-              {livePlayers.filter(p => p.id !== player.id && p.isAlive).map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            {/* انتخاب هدف برای سایر نقش‌ها (کارآگاه، پزشک، مافیا و ...) */}
+            {player.roleId !== "gunsmith" && (
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedNightTargetId}
+                  onChange={(e) => {
+                    setSelectedNightTargetId(e.target.value);
+                    setNightActionSent(false);
+                  }}
+                  className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-purple-600"
+                >
+                  <option value="">-- انتخاب بازیکن هدف --</option>
+                  {(player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
+                      ? livePlayers.filter(p => p.isAlive && (isMafia(p.roleId) || p.id === player.id)).map(p => (
+                          <option key={p.id} value={p.id}>🛡️ {p.name} ({p.id === player.id ? "خودم" : "یار مافیا"})</option>
+                        ))
+                      : livePlayers.filter(p => p.id !== player.id && p.isAlive).map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                </select>
+              </div>
+            )}
+
+            {/* دکمه ارسال اکشن شب */}
             <button
               type="button"
-              disabled={!selectedNightTargetId}
+              disabled={nightActionSent || (player.roleId === "gunsmith" ? (!selectedWarTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
               onClick={() => {
-                if (!selectedNightTargetId) return;
-                network.sendNightTarget(player.id, player.roleId || "", selectedNightTargetId, player.roleId === "gunsmith" ? gunType : undefined);
+                if (player.roleId === "gunsmith") {
+                  network.sendGunsmithTargets(player.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
+                } else {
+                  if (!selectedNightTargetId) return;
+                  network.sendNightTarget(player.id, (player.roleId === "dr_lecter" ? "doctor_lecter" : (player.roleId || "")), selectedNightTargetId);
+                }
                 setNightActionSent(true);
                 audio.playFlip();
               }}
-              className="px-3 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black transition-all cursor-pointer shadow-md active:scale-95"
+              className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer w-full"
             >
-              ارسال به گاد
+              {nightActionSent ? "درخواست ارسال شد (منتظر تایید گاد...) ⏳" : "ثبت و ارسال به گرداننده ✉️"}
             </button>
           </div>
+        )}
 
-          {/* کادر نتیجه و استعلام دریافتی از گاد */}
-          {nightResultMessage && (
-            <div className="bg-neutral-900/90 border border-amber-600/60 rounded-xl p-3 space-y-1 animate-in fade-in">
-              <div className="flex items-center justify-between text-[11px] text-amber-400 font-bold">
-                <span>📩 پیام محرمانه گرداننده:</span>
-                <span className="text-[10px] text-neutral-500">{nightResultMessage.time}</span>
-              </div>
-              <p className="text-xs text-neutral-200 font-medium leading-relaxed">
-                {nightResultMessage.message}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Gunsmith Action Box for Player Card in Day Phase */}
+        {/* Gunsmith Action Box for Player Card in Day Phase */}
       {player.isAlive && player.gunGiven && (
         <div className="rounded-2xl border-2 border-rose-600/70 bg-rose-950/40 p-3.5 shadow-xl space-y-2.5 animate-in fade-in">
           <div className="flex items-center justify-between">

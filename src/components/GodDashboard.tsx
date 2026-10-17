@@ -86,6 +86,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   // --- Night / Day Unified Engine States ---
   const [isNightDeskOpen, setIsNightDeskOpen] = useState(false);
   const [currentActiveNightStep, setCurrentActiveNightStep] = useState<string | null>(null);
+  const [incomingDayShotRequests, setIncomingDayShotRequests] = useState<{ playerId: string; playerName: string }[]>([]);
+  const [incomingDayShotTargets, setIncomingDayShotTargets] = useState<{ shooterId: string; shooterName: string; targetId: string; targetName: string }[]>([]);
   const [incomingNightTargets, setIncomingNightTargets] = useState<{
     playerId: string;
     playerName: string;
@@ -191,7 +193,15 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
   // دریافت تارگت‌ها و درخواست‌های ارسالی بازیکنان در شب
   useEffect(() => {
-    const unNightTarget = network.on("night_target_received", (data: any) => {
+    const unNightTarget = network.on("day_shot_requested", (data: { playerId: string; playerName: string }) => {
+      setIncomingDayShotRequests(prev => [...prev.filter(r => r.playerId !== data.playerId), data]);
+    });
+
+    network.on("day_shot_target_received", (data: { shooterId: string; shooterName: string; targetId: string; targetName: string }) => {
+      setIncomingDayShotRequests(prev => prev.filter(r => r.playerId !== data.shooterId));
+      setIncomingDayShotTargets(prev => [...prev.filter(t => t.shooterId !== data.shooterId), data]);
+    });
+    network.on("night_target_received", (data: any) => {
       if (data && data.playerId) {
         setIncomingNightTargets((prev) => [
           ...prev.filter((t) => t.playerId !== data.playerId),
@@ -1088,6 +1098,102 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             {/* 4. UNIFIED NIGHT / DAY PHASE CONTROLLER */}
       {cardsDistributed && (
         <div className="space-y-3">
+          {/* صف درخواست و اجرای شلیک تفنگ در فاز روز */}
+          {(incomingDayShotRequests.length > 0 || incomingDayShotTargets.length > 0) && (
+            <div className="bg-rose-950/40 border border-rose-800 rounded-3xl p-4 shadow-xl space-y-3">
+              <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">
+                🔫 درخواست‌های فعال شلیک روزانه:
+              </span>
+
+              {/* ۱. درخواست‌های اولیه برای کشیدن تفنگ */}
+              {incomingDayShotRequests.map((req, i) => (
+                <div key={i} className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-3 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-white block">{req.playerName}</span>
+                    <span className="text-[11px] text-amber-400">درخواست کشیدن اسلحه و شلیک دارد</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        network.approveDayShot(req.playerId);
+                        setIncomingDayShotRequests(prev => prev.filter(r => r.playerId !== req.playerId));
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-md"
+                    >
+                      اجازه هدف‌گیری 🎯
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        network.cancelDayShot(req.playerId);
+                        setIncomingDayShotRequests(prev => prev.filter(r => r.playerId !== req.playerId));
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs cursor-pointer"
+                    >
+                      رد درخواست ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* ۲. اهداف نهایی ثبت شده برای تایید گاد */}
+              {incomingDayShotTargets.map((shot, i) => {
+                const shooter = players.find(p => p.id === shot.shooterId);
+                const target = players.find(p => p.id === shot.targetId);
+                const gunType = shooter?.gunGiven || "war";
+                const isWar = gunType === "war";
+
+                return (
+                  <div key={i} className="bg-neutral-900 border border-rose-700 rounded-2xl p-3 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-white block">
+                        شلیک‌کننده: {shot.shooterName} ──▶ هدف: <strong className="text-rose-400">{shot.targetName}</strong>
+                      </span>
+                      <span className="text-[11px] text-neutral-300 font-mono">
+                        نوع گلوله: <strong className={isWar ? "text-rose-400" : "text-sky-300"}>{isWar ? "جنگی 💥" : "مشقی ⚪"}</strong>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isWar && target) {
+                            const isArmored = target.roleId === "armored";
+                            const hasArmor = target.hasArmor !== false;
+
+                            if (isArmored && hasArmor) {
+                              // زره‌پوش با زره سالم: فقط زره می‌افتد
+                              onUpdatePlayer(target.id, { hasArmor: false });
+                              network.updatePlayerStatus(target.id, { hasArmor: false });
+                              alert(`🛡️ تیر جنگی به ${target.name} اصابت کرد، اما چون زره‌پوش بود فقط زره او افتاد و در بازی ماند!`);
+                            } else {
+                              // سایر بازیکنان یا زره‌پوش بدون زره: مرگ و خروج
+                              onUpdatePlayer(target.id, { isAlive: false, eliminationReason: "gun_shot" });
+                              network.updatePlayerStatus(target.id, { isAlive: false, eliminationReason: "gun_shot" });
+                            }
+                          } else {
+                            alert("⚪ تیر مشقی بود و هیچ بازیکنی آسیب ندید.");
+                          }
+
+                          // سلب اسلحه از شلیک‌کننده
+                          onUpdatePlayer(shot.shooterId, { gunGiven: undefined });
+                          network.updatePlayerStatus(shot.shooterId, { gunGiven: undefined });
+                          setDayGuns(prev => prev.filter(g => g.targetId !== shot.shooterId));
+                          setIncomingDayShotTargets(prev => prev.filter(t => t.shooterId !== shot.shooterId));
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer shadow-lg"
+                      >
+                        تایید و شلیک نهایی 💥
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* پنل وضعیت تفنگ‌های اهدا شده در فاز روز */}
           {dayGuns.length > 0 && (
             <div className="bg-amber-950/30 border border-amber-800/60 rounded-3xl p-4 shadow-xl space-y-2">
@@ -1204,6 +1310,25 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   </button>
             )}
 
+            {alivePlayers.some(p => p.roleId === "doctor_lecter" || p.roleId === "dr_lecter") && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = (currentActiveNightStep === "doctor_lecter" || currentActiveNightStep === "dr_lecter") ? null : "doctor_lecter";
+                  setCurrentActiveNightStep(next);
+                  network.setNightStep(next, roomCode);
+                  if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  (currentActiveNightStep === "doctor_lecter" || currentActiveNightStep === "dr_lecter")
+                    ? "bg-emerald-700 text-white shadow-lg ring-2 ring-emerald-500"
+                    : "bg-emerald-950/50 text-emerald-300 border border-emerald-900/60 hover:bg-emerald-900/70"
+                }`}
+              >
+                🩺 بیدارباش دکتر لکتر (سیو مافیا)
+              </button>
+            )}
+
             {alivePlayers.some(p => p.roleId === "detective") && (
                   <button
                     type="button"
@@ -1300,32 +1425,59 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                           <span className="text-purple-300 text-[11px]">هدف: {item.targetName}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {item.roleId === "detective" ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  network.sendNightResultToPlayer(item.playerId, "استعلام شما: مثبت 🟢 (مافیا)", "positive");
-                                  network.setNightStep(null, roomCode);
-                                  setCurrentActiveNightStep(null);
-                                }}
-                                className="px-2 py-1 rounded-lg bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-bold hover:bg-rose-900 cursor-pointer"
-                              >
-                                مثبت 🟢
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  network.sendNightResultToPlayer(item.playerId, "استعلام شما: منفی ⚪ (شهروند)", "negative");
-                                  network.setNightStep(null, roomCode);
-                                  setCurrentActiveNightStep(null);
-                                }}
-                                className="px-2 py-1 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-300 text-[10px] font-bold hover:bg-emerald-900 cursor-pointer"
-                              >
-                                منفی ⚪
-                              </button>
-                            </>
-                          ) : item.roleId === "gunsmith" ? (
+                          {item.roleId === "detective" ? (() => {
+                            const targetPlayer = players.find(p => p.id === item.targetId);
+                            const tRole = targetPlayer?.roleId || "";
+                            // گادفادر منفی، سایر مافیاها مثبت، شهروندان منفی
+                            const isPositive = (tRole !== "godfather" && (ROLE_MAP[tRole]?.team === "mafia" || isMafiaRoleId(tRole)));
+                            const calculatedResult = isPositive ? "positive" : "negative";
+                            const calculatedText = isPositive ? "مثبت 🟢 (مافیا)" : "منفی ⚪ (شهروند)";
+
+                            return (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] text-neutral-400 font-bold ml-1">
+                                  سیستم: <strong className={isPositive ? "text-emerald-400" : "text-neutral-200"}>{calculatedText}</strong>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    network.sendNightResultToPlayer(item.playerId, `استعلام شما: ${calculatedText}`, calculatedResult);
+                                    setNightActions(prev => ({
+                                      ...prev,
+                                      detectiveInquiryId: item.targetId,
+                                      detectiveResult: calculatedResult,
+                                    }));
+                                    setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                    network.setNightStep(null, roomCode);
+                                    setCurrentActiveNightStep(null);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black cursor-pointer shadow-lg"
+                                >
+                                  تایید و ارسال استعلام ✓
+                                </button>
+                                <button
+                                  type="button"
+                                  title="تغییر دستی استعلام به حالت برعکس"
+                                  onClick={() => {
+                                    const altResult = isPositive ? "negative" : "positive";
+                                    const altText = isPositive ? "منفی ⚪ (شهروند)" : "مثبت 🟢 (مافیا)";
+                                    network.sendNightResultToPlayer(item.playerId, `استعلام شما: ${altText}`, altResult);
+                                    setNightActions(prev => ({
+                                      ...prev,
+                                      detectiveInquiryId: item.targetId,
+                                      detectiveResult: altResult,
+                                    }));
+                                    setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                    network.setNightStep(null, roomCode);
+                                    setCurrentActiveNightStep(null);
+                                  }}
+                                  className="px-1.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 text-[9px] cursor-pointer"
+                                >
+                                  معکوس ⇄
+                                </button>
+                              </div>
+                            );
+                          })() : item.roleId === "gunsmith" ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -1344,6 +1496,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                     used: false,
                                   }
                                 ]);
+                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                onUpdatePlayer(item.targetId, { gunGiven: isReal ? "war" : "blank" });
+                                network.updatePlayerStatus(item.targetId, { gunGiven: isReal ? "war" : "blank" });
                                 network.sendNightResultToPlayer(
                                   item.playerId,
                                   `اسلحه (${isReal ? "جنگی 💥" : "مشقی ⚪"}) با موفقیت به «${item.targetName}» تحویل داده شد ✓`
@@ -1355,11 +1510,12 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             >
                               تایید اهدا اسلحه 🔫
                             </button>
-                          ) : item.roleId === "godfather" ? (
+                          ) : (item.roleId === "godfather" || item.roleId === "mafia") ? (
                             <button
                               type="button"
                               onClick={() => {
                                 setNightActions(prev => ({ ...prev, mafiaShotId: item.targetId }));
+                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
                                 network.sendNightResultToPlayer(item.playerId, `شلیک مافیا روی «${item.targetName}» تایید و ثبت شد 💥`);
                                 network.toggleMafiaChat(false);
                                 network.setNightStep(null, roomCode);
@@ -1367,13 +1523,14 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                               }}
                               className="px-2.5 py-1 rounded-lg bg-red-950 border border-red-700 text-red-200 text-[10px] font-bold hover:bg-red-900 cursor-pointer"
                             >
-                              تایید و ثبت شات مافیا 💥
+                              تایید شات مافیا 💥
                             </button>
                           ) : item.roleId === "doctor" ? (
                             <button
                               type="button"
                               onClick={() => {
                                 setNightActions(prev => ({ ...prev, doctorSaveId: item.targetId }));
+                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
                                 network.sendNightResultToPlayer(item.playerId, `انتخاب نجات «${item.targetName}» تایید شد 💉`);
                                 network.setNightStep(null, roomCode);
                                 setCurrentActiveNightStep(null);
@@ -1382,16 +1539,88 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             >
                               تایید نجات 💉
                             </button>
+                          ) : (item.roleId === "doctor_lecter" || item.roleId === "lecter") ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNightActions(prev => ({ ...prev, doctorLecterSaveId: item.targetId }));
+                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                network.sendNightResultToPlayer(item.playerId, `سیو لکتر روی «${item.targetName}» ثبت شد 🩺`);
+                                network.setNightStep(null, roomCode);
+                                setCurrentActiveNightStep(null);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-rose-950 border border-rose-700 text-rose-200 text-[10px] font-bold hover:bg-rose-900 cursor-pointer"
+                            >
+                              تایید سیو لکتر 🩺
+                            </button>
+                          ) : item.roleId === "sniper" ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                  const targetPlayer = players.find(p => p.id === item.targetId);
+                                  const isTargetMafia = targetPlayer && (ROLE_MAP[targetPlayer.roleId]?.team === "mafia" || isMafiaRoleId(targetPlayer.roleId));
+                                  const isTargetGodfather = targetPlayer?.roleId === "godfather";
+
+                                  if (isTargetGodfather) {
+                                    alert("🎯 تیر تک‌تیرانداز به پدرخوانده اصابت کرد! طبق قانون، پدرخوانده در شب با تیر اسنایپر کشته نمی‌شود و اسنایپر نیز از بازی خارج نخواهد شد (شلیک خنثی).");
+                                    network.sendNightResultToPlayer(item.playerId, "شلیک شما به هدف اصابت کرد اما زره محافظ داشت و دفع شد!");
+                                  } else if (isTargetMafia) {
+                                    setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                    network.sendNightResultToPlayer(item.playerId, `شلیک موفق! هدف شما (${item.targetName}) مورد اصابت قرار گرفت.`);
+                                  } else {
+                                    alert(`⚠️ تک‌تیرانداز به یک شهروند (${item.targetName}) شلیک کرد! طبق قانون، خود تک‌تیرانداز در پایان شب از بازی حذف می‌شود.`);
+                                    setNightActions(prev => ({ ...prev, sniperSuicide: true }));
+                                    network.sendNightResultToPlayer(item.playerId, "تیر شما خطا رفت و به شهروند اصابت کرد! شما از بازی حذف می‌شوید.");
+                                  }
+
+                                  setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                }}
+                              className="px-2.5 py-1 rounded-lg bg-indigo-950 border border-indigo-700 text-indigo-200 text-[10px] font-bold hover:bg-indigo-900 cursor-pointer"
+                            >
+                              تایید شات اسنایپر 🎯
+                            </button>
+                          ) : item.roleId === "silencer" ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNightActions(prev => ({ ...prev, silencerTargetId: item.targetId }));
+                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                network.sendNightResultToPlayer(item.playerId, `سکوت روی «${item.targetName}» اعمال شد 🤫`);
+                                network.setNightStep(null, roomCode);
+                                setCurrentActiveNightStep(null);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-cyan-950 border border-cyan-700 text-cyan-200 text-[10px] font-bold hover:bg-cyan-900 cursor-pointer"
+                            >
+                              تایید سایلنت 🤫
+                            </button>
+                          ) : (item.roleId === "hostage_taker" || item.roleId === "hostage") ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNightActions(prev => ({ ...prev, hostageTargetId: item.targetId }));
+                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                network.sendNightResultToPlayer(item.playerId, `گروگان‌گیری «${item.targetName}» تایید شد ⛓️`);
+                                network.setNightStep(null, roomCode);
+                                setCurrentActiveNightStep(null);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-orange-950 border border-orange-700 text-orange-200 text-[10px] font-bold hover:bg-orange-900 cursor-pointer"
+                            >
+                              تایید گروگان ⛓️
+                            </button>
                           ) : (
                             <button
                               type="button"
-                              onClick={() => network.sendNightResultToPlayer(item.playerId, `اقدام شما روی «${item.targetName}» ثبت شد ✓`)}
+                              onClick={() => {
+                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                network.sendNightResultToPlayer(item.playerId, `اقدام شما روی «${item.targetName}» ثبت شد ✓`);
+                                network.setNightStep(null, roomCode);
+                                setCurrentActiveNightStep(null);
+                              }}
                               className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[10px] font-bold cursor-pointer"
                             >
                               تایید به بازیکن ✓
                             </button>
-                          )}
-                        </div>
+                          )}</div>
                       </div>
                     ))}
                   </div>

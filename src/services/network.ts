@@ -62,7 +62,35 @@ class NetworkService {
       forceNew: false,
     });
 
-    this.socket.on('connect_error', (err: any) => {
+    
+        this.socket.on("night_target_received", (data: any) => {
+      this.emitLocal("night_target_received", data);
+    });
+
+    this.socket.on("night_action_confirmed", (data: any) => {
+      this.emitLocal("night_action_confirmed", data);
+    });
+
+    this.socket.on("night_result_received", (data: any) => {
+      this.emitLocal("night_result_received", data);
+    });
+
+    this.socket.on("player_notification", (data: any) => {
+      this.emitLocal("player_notification", data);
+    });
+
+    this.socket.on("night_result", (data: any) => {
+      this.emitLocal("night_result", data);
+    });
+
+this.socket.on("night_step_state", (data: any) => {
+      this.emitLocal("night_step_state", data);
+    });
+
+    this.socket.on("night_phase_state", (data: any) => {
+      this.emitLocal("night_phase_state", data);
+    });
+this.socket.on('connect_error', (err: any) => {
       // اگر خطای نشست سوخته رخ داد، سشن را نوسازی کن
       if (err?.message?.includes("Session ID unknown") || err?.description === 400) {
         console.warn("[SOCKET] Stale session detected, recovering...");
@@ -440,6 +468,31 @@ sendMafiaMessage(playerId: string, text: string) {
       this.socket.emit("god_clear_mafia_chat", { roomCode: this.roomCode });
     }
   }
+
+  requestDayShot(playerId: string, playerName: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("request_day_shot", { roomCode: this.roomCode, playerId, playerName });
+    }
+  }
+
+  approveDayShot(playerId: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("approve_day_shot", { roomCode: this.roomCode, playerId });
+    }
+  }
+
+  submitDayShotTarget(shooterId: string, shooterName: string, targetId: string, targetName: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("submit_day_shot_target", { roomCode: this.roomCode, shooterId, shooterName, targetId, targetName });
+    }
+  }
+
+  cancelDayShot(playerId: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("cancel_day_shot", { roomCode: this.roomCode, playerId });
+    }
+  }
 }
 
 export const network = new NetworkService();
+if (typeof window !== "undefined") { (window as any).network = network; }

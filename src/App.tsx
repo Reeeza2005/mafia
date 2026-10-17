@@ -134,6 +134,7 @@ export default function App() {
       setIsJoining(false);
       setClientType('player');
       if (data.player) setMyPlayer(data.player);
+        if (typeof window !== "undefined") { (window as any).myPlayer = data.player; }
       if (data.cardsDistributed !== undefined) setCardsDistributed(data.cardsDistributed);
       if (data.gameStarted !== undefined) setGameStarted(data.gameStarted);
       if (data.timer) setTimer(data.timer);

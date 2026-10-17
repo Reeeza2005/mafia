@@ -385,6 +385,39 @@ io.on('connection', (socket) => {
     });
 
     // رویداد ارسال هدف شب از طرف بازیکن به گرداننده (گاد)
+    socket.on("gunsmith_targets_submit", (data: { roomCode?: string; playerId: string; warTargetId?: string; blankTargetId?: string }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room || !room.godSocketId) return;
+
+      const player = room.players[data.playerId];
+      const warTarget = data.warTargetId ? room.players[data.warTargetId] : null;
+      const blankTarget = data.blankTargetId ? room.players[data.blankTargetId] : null;
+
+      if (warTarget && data.warTargetId) {
+        io.to(room.godSocketId).emit("night_target_received", {
+          playerId: data.playerId,
+          playerName: player?.name || "اسلحه‌ساز",
+          roleId: "gunsmith",
+          targetId: data.warTargetId,
+          targetName: warTarget.name,
+          extraType: "war",
+        });
+      }
+
+      if (blankTarget && data.blankTargetId) {
+        io.to(room.godSocketId).emit("night_target_received", {
+          playerId: data.playerId,
+          playerName: player?.name || "اسلحه‌ساز",
+          roleId: "gunsmith",
+          targetId: data.blankTargetId,
+          targetName: blankTarget.name,
+          extraType: "blank",
+        });
+      }
+    });
+
     socket.on('night_target_submit', (data: { roomCode?: string; playerId: string; roleId: string; targetId: string; extraType?: string }) => {
       const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
       if (!rCode) return;
@@ -406,27 +439,29 @@ io.on('connection', (socket) => {
     });
 
     // رویداد ارسال پاسخ/نتیجه شب از طرف گرداننده به بازیکن خاص
-    socket.on('god_send_night_result', (data: { roomCode?: string; targetPlayerId: string; message: string; resultType?: string }) => {
+    socket.on("god_send_night_result", (data: { roomCode?: string; targetPlayerId: string; message: string; resultType?: string }) => {
       const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
       if (!rCode) return;
       const room = rooms[rCode.toString().toUpperCase()];
       if (!room) return;
 
       const player = room.players[data.targetPlayerId];
-      if (player) {
-        if (player.socketId) {
-          io.to(player.socketId).emit('night_result_received', {
-            message: data.message,
-            resultType: data.resultType,
-            time: new Date().toLocaleTimeString('fa-IR')
-          });
-        }
-        io.to(player.id).emit('night_result_received', {
-          message: data.message,
-          resultType: data.resultType,
-          time: new Date().toLocaleTimeString('fa-IR')
-        });
+      const payload = {
+        message: data.message,
+        resultType: data.resultType,
+        time: new Date().toLocaleTimeString("fa-IR")
+      };
+
+      // ارسال به تمام اتصالات فعال این بازیکن
+      io.to(data.targetPlayerId).emit("night_result_received", payload);
+      if (player?.socketId) {
+        io.to(player.socketId).emit("night_result_received", payload);
       }
+      // ارسال در سطح کل روم با فیلتر شناسه بازیکن جهت اطمینان صددرصدی
+      io.to(rCode.toString().toUpperCase()).emit("player_notification", {
+        targetPlayerId: data.targetPlayerId,
+        ...payload
+      });
     });
 
     socket.on('mafia_send_message', (data: { roomCode?: string; text: string; playerId: string }) => {
@@ -483,6 +518,10 @@ io.on('connection', (socket) => {
     const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
     const room = getOrCreateRoom(targetCode);
     socket.join(room.code);
+    if (existingPlayerId) {
+      socket.join(existingPlayerId);
+    }
+
 
     if (clientType === 'god') {
       room.godSocketId = socket.id;
@@ -1044,7 +1083,33 @@ io.on('connection', (socket) => {
   
   // Challenge Management
     // Challenge Management
-  socket.on("request_challenge", (data) => {
+  
+    // --- مدیریت شلیک اسلحه در روز ---
+    socket.on("request_day_shot", ({ roomCode, playerId, playerName }) => {
+      const room = getOrCreateRoom(roomCode);
+      if (!room) return;
+      io.to(roomCode).emit("day_shot_requested", { playerId, playerName });
+    });
+
+    socket.on("approve_day_shot", ({ roomCode, playerId }) => {
+      const room = getOrCreateRoom(roomCode);
+      if (!room) return;
+      io.to(roomCode).emit("day_shot_approved", { playerId });
+    });
+
+    socket.on("submit_day_shot_target", ({ roomCode, shooterId, shooterName, targetId, targetName }) => {
+      const room = getOrCreateRoom(roomCode);
+      if (!room) return;
+      io.to(roomCode).emit("day_shot_target_received", { shooterId, shooterName, targetId, targetName });
+    });
+
+    socket.on("cancel_day_shot", ({ roomCode, playerId }) => {
+      const room = getOrCreateRoom(roomCode);
+      if (!room) return;
+      io.to(roomCode).emit("day_shot_cancelled", { playerId });
+    });
+    
+    socket.on("request_challenge", (data) => {
     const pId = typeof data === "object" ? data.playerId : data;
     const rCode = (typeof data === "object" && data.roomCode) || Array.from(socket.rooms).find(r => r !== socket.id);
     const room = getOrCreateRoom(rCode);
