@@ -132,6 +132,7 @@ export default function App() {
 
     const unPlayerState = network.on('player_state', (data: any) => {
       setIsJoining(false);
+      setClientType('player');
       if (data.player) setMyPlayer(data.player);
       if (data.cardsDistributed !== undefined) setCardsDistributed(data.cardsDistributed);
       if (data.gameStarted !== undefined) setGameStarted(data.gameStarted);
@@ -312,7 +313,8 @@ export default function App() {
     setIsJoining(true);
     hasJoinedRef.current = true;
     setErrorMessage(null);
-        setRoomCode(cleanCode);
+    setRoomCode(cleanCode);
+    setClientType('player');
     try {
       localStorage.setItem('mafia_room', cleanCode);
       localStorage.setItem('mafia_player_name', cleanName);

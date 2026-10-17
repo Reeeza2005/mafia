@@ -282,6 +282,7 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
                 <span>تولید کد جدید</span>
               </button>
             )}
+
             <button
               type="button"
               onClick={handleCopyLink}
@@ -333,23 +334,7 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
                     <span className="w-2 h-2 rounded-full bg-neutral-600" />
                   )}
                   {/* Debug Role Quick Assign */}
-                  <select
-                    defaultValue=""
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        network.debugAssignRole(p.id, e.target.value);
-                        audio.playFlip();
-                      }
-                    }}
-                    className="bg-neutral-900 border border-neutral-700 text-[11px] rounded px-1.5 py-0.5 text-amber-400 font-bold focus:outline-none cursor-pointer"
-                  >
-                    <option value="" disabled>🧪 تست نقش...</option>
-                    {ALL_ROLES.map((r) => (
-                      <option key={r.id} value={r.id} className="bg-neutral-900 text-white">
-                        {r.name} ({r.team === 'mafia' ? 'مافیا' : 'شهروند'})
-                      </option>
-                    ))}
-                  </select>
+                  
 
                   {onKickPlayer && (
                     <button
@@ -440,23 +425,8 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
               )}
             </div>
 
-            {players.length > 0 && !isCountMatching && (
-              <button
-                type="button"
-                onClick={() => {
-                  const firstPlayer = players.find(p => p.connected) || players[0];
-                  if (firstPlayer) {
-                    const sampleRole = Object.keys(selectedRoleCounts).find(k => selectedRoleCounts[k] > 0) || 'godfather';
-                    network.debugAssignRole(firstPlayer.id, sampleRole);
-                    audio.playGavel();
-                  }
-                }}
-                className="px-3.5 py-2.5 rounded-xl font-bold text-xs bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/50 flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
-              >
-                <span>🧪 شروع حالت تست ({players.length} بازیکن)</span>
-              </button>
-            )}
-
+            {/* Always-visible Solo Test Button */}
+            
             <button
               onClick={() => {
                 if (isCountMatching) {
