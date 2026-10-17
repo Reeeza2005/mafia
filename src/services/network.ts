@@ -54,13 +54,22 @@ class NetworkService {
     const url = serverUrl || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
     
     this.socket = io(url, {
-      reconnectionAttempts: 20,
+      reconnectionAttempts: 30,
       reconnectionDelay: 1000,
-      transports: ['polling', 'websocket'],
+      reconnectionDelayMax: 3000,
+      transports: ['websocket', 'polling'],
+      upgrade: true,
+      forceNew: false,
     });
 
-    this.socket.on('connect_error', () => {
-      // Graceful fallback for local Wi-Fi fluctuations
+    this.socket.on('connect_error', (err: any) => {
+      // اگر خطای نشست سوخته رخ داد، سشن را نوسازی کن
+      if (err?.message?.includes("Session ID unknown") || err?.description === 400) {
+        console.warn("[SOCKET] Stale session detected, recovering...");
+        if (this.socket) {
+          this.socket.io.opts.transports = ['websocket', 'polling'];
+        }
+      }
     });
 
     this.socket.on('connect', () => {
