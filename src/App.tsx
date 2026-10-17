@@ -656,6 +656,7 @@ export default function App() {
 
               <PlayerView
                 player={myPlayer}
+                players={players}
                 cardsDistributed={cardsDistributed}
                 gameStarted={gameStarted}
                 timer={timer}

@@ -406,9 +406,11 @@ sendMafiaMessage(playerId: string, text: string) {
     }
   }
 
-  setNightStep(role: string | null) {
+  setNightStep(role: string | null, overrideRoomCode?: string) {
+    const targetRoom = (overrideRoomCode || this.roomCode || "").trim().toUpperCase();
+    if (targetRoom) this.roomCode = targetRoom;
     if (this.socket && this.socket.connected) {
-      this.socket.emit("god_set_night_step", { roomCode: this.roomCode, role });
+      this.socket.emit("god_set_night_step", { roomCode: targetRoom, role });
     }
   }
 

@@ -1173,7 +1173,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     onClick={() => {
                       const next = currentActiveNightStep === "mafia" ? null : "mafia";
                       setCurrentActiveNightStep(next);
-                      network.setNightStep(next);
+                      network.setNightStep(next, roomCode);
                       network.toggleMafiaChat(next === "mafia");
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
@@ -1191,7 +1191,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     onClick={() => {
                       const next = currentActiveNightStep === "doctor" ? null : "doctor";
                       setCurrentActiveNightStep(next);
-                      network.setNightStep(next);
+                      network.setNightStep(next, roomCode);
                       if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
@@ -1210,7 +1210,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     onClick={() => {
                       const next = currentActiveNightStep === "detective" ? null : "detective";
                       setCurrentActiveNightStep(next);
-                      network.setNightStep(next);
+                      network.setNightStep(next, roomCode);
                       if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
@@ -1229,7 +1229,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       onClick={() => {
                         const next = currentActiveNightStep === "sniper" ? null : "sniper";
                         setCurrentActiveNightStep(next);
-                        network.setNightStep(next);
+                        network.setNightStep(next, roomCode);
                       }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                         currentActiveNightStep === "sniper"
@@ -1247,13 +1247,19 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       onClick={() => {
                         const next = currentActiveNightStep === "gunsmith" ? null : "gunsmith";
                         setCurrentActiveNightStep(next);
-                        network.setNightStep(next);
+                        network.setNightStep(next, roomCode);
                       }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                         currentActiveNightStep === "gunsmith"
                           ? "bg-amber-600 text-white shadow-lg ring-2 ring-amber-400"
                           : "bg-amber-950/50 text-amber-300 border border-amber-900/60 hover:bg-amber-900/70"
                       }`}
+                    onClick={() => {
+                      const next = currentActiveNightStep === "gunsmith" ? null : "gunsmith";
+                      setCurrentActiveNightStep(next);
+                      network.setNightStep(next, roomCode);
+                      if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                    }}
                     >
                       🔫 بیدارباش تفنگدار
                     </button>
@@ -1263,7 +1269,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     type="button"
                     onClick={() => {
                       setCurrentActiveNightStep(null);
-                      network.setNightStep(null);
+                      network.setNightStep(null, roomCode);
                       network.toggleMafiaChat(false);
                     }}
                     className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 text-xs font-bold border border-neutral-800 cursor-pointer"
@@ -1300,7 +1306,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                 type="button"
                                 onClick={() => {
                                   network.sendNightResultToPlayer(item.playerId, "استعلام شما: مثبت 🟢 (مافیا)", "positive");
-                                  network.setNightStep(null);
+                                  network.setNightStep(null, roomCode);
                                   setCurrentActiveNightStep(null);
                                 }}
                                 className="px-2 py-1 rounded-lg bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-bold hover:bg-rose-900 cursor-pointer"
@@ -1311,7 +1317,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                 type="button"
                                 onClick={() => {
                                   network.sendNightResultToPlayer(item.playerId, "استعلام شما: منفی ⚪ (شهروند)", "negative");
-                                  network.setNightStep(null);
+                                  network.setNightStep(null, roomCode);
                                   setCurrentActiveNightStep(null);
                                 }}
                                 className="px-2 py-1 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-300 text-[10px] font-bold hover:bg-emerald-900 cursor-pointer"
@@ -1342,7 +1348,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                   item.playerId,
                                   `اسلحه (${isReal ? "جنگی 💥" : "مشقی ⚪"}) با موفقیت به «${item.targetName}» تحویل داده شد ✓`
                                 );
-                                network.setNightStep(null);
+                                network.setNightStep(null, roomCode);
                                 setCurrentActiveNightStep(null);
                               }}
                               className="px-2.5 py-1 rounded-lg bg-amber-950 border border-amber-700 text-amber-200 text-[10px] font-bold hover:bg-amber-900 cursor-pointer"
@@ -1356,7 +1362,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                 setNightActions(prev => ({ ...prev, mafiaShotId: item.targetId }));
                                 network.sendNightResultToPlayer(item.playerId, `شلیک مافیا روی «${item.targetName}» تایید و ثبت شد 💥`);
                                 network.toggleMafiaChat(false);
-                                network.setNightStep(null);
+                                network.setNightStep(null, roomCode);
                                 setCurrentActiveNightStep(null);
                               }}
                               className="px-2.5 py-1 rounded-lg bg-red-950 border border-red-700 text-red-200 text-[10px] font-bold hover:bg-red-900 cursor-pointer"
@@ -1369,7 +1375,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                               onClick={() => {
                                 setNightActions(prev => ({ ...prev, doctorSaveId: item.targetId }));
                                 network.sendNightResultToPlayer(item.playerId, `انتخاب نجات «${item.targetName}» تایید شد 💉`);
-                                network.setNightStep(null);
+                                network.setNightStep(null, roomCode);
                                 setCurrentActiveNightStep(null);
                               }}
                               className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-200 text-[10px] font-bold hover:bg-emerald-900 cursor-pointer"
