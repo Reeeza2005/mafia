@@ -346,7 +346,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       </div>
 
       {/* Night Action Selector & In-game Feedback for Player */}
-      {cardsDistributed && isFlipped && player.isAlive && !nightActionDone && (
+      {cardsDistributed && player.isAlive && !nightActionDone && (
         (currentNightRole === "mafia" && isMafia(player.roleId) && player.roleId !== "simple_mafia") ||
         (currentNightRole && currentNightRole === player.roleId)
       ) && (
