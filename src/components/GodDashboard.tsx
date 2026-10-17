@@ -1526,20 +1526,25 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                               تایید شات مافیا 💥
                             </button>
                           ) : item.roleId === "doctor" ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNightActions(prev => ({ ...prev, doctorSaveId: item.targetId }));
-                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
-                                network.sendNightResultToPlayer(item.playerId, `انتخاب نجات «${item.targetName}» تایید شد 💉`);
-                                network.setNightStep(null, roomCode);
-                                setCurrentActiveNightStep(null);
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-200 text-[10px] font-bold hover:bg-emerald-900 cursor-pointer"
-                            >
-                              تایید نجات 💉
-                            </button>
-                          ) : (item.roleId === "doctor_lecter" || item.roleId === "lecter") ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] text-sky-400 font-bold ml-1">
+                                  {item.targetId === item.playerId ? "🛡️ نجات خود پزشک (کسر سهمیه)" : `نجات: ${item.targetName}`}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setNightActions(prev => ({ ...prev, doctorSaveId: item.targetId }));
+                                    setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                    network.sendNightResultToPlayer(item.playerId, `انتخاب نجات «${item.targetName}» تایید شد 💉`);
+                                    network.setNightStep(null, roomCode);
+                                    setCurrentActiveNightStep(null);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-200 text-[10px] font-bold hover:bg-emerald-900 cursor-pointer"
+                                >
+                                  تایید نجات 💉
+                                </button>
+                              </div>
+                            ) : (item.roleId === "doctor_lecter" || item.roleId === "lecter") ? (
                             <button
                               type="button"
                               onClick={() => {

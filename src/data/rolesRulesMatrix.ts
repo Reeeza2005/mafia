@@ -562,3 +562,9 @@ export function getOutPlayersStatus(players: Player[]): {
     aliveMafiaCount,
   };
 }
+
+export function getDoctorMaxSelfSaves(totalPlayersCount: number): number {
+  if (totalPlayersCount >= 16) return 3;
+  if (totalPlayersCount >= 11) return 2;
+  return 1;
+}

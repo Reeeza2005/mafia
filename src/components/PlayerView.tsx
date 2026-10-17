@@ -66,6 +66,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [nightPhaseActive, setNightPhaseActive] = useState(false);
   const [nightResultMessage, setNightResultMessage] = useState<{ message: string; resultType?: string; time: string } | null>(null);
   const [livePlayers, setLivePlayers] = useState<Player[]>([]);
+  const [doctorSelfSavesUsed, setDoctorSelfSavesUsed] = useState<number>(0);
 
   useEffect(() => {
     const unPlayers = network.on("players_updated", (data: any) => {
@@ -496,9 +497,19 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       ? livePlayers.filter(p => p.isAlive && (isMafia(p.roleId) || p.id === player.id)).map(p => (
                           <option key={p.id} value={p.id}>🛡️ {p.name} ({p.id === player.id ? "خودم" : "یار مافیا"})</option>
                         ))
-                      : livePlayers.filter(p => p.id !== player.id && p.isAlive).map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
+                      : (() => {
+                        const totalCount = livePlayers.length || players?.length || 10;
+                        const maxSelf = (typeof getDoctorMaxSelfSaves === "function") ? getDoctorMaxSelfSaves(totalCount) : (totalCount >= 16 ? 3 : totalCount >= 11 ? 2 : 1);
+                        const canSelfSave = player.roleId === "doctor" && doctorSelfSavesUsed < maxSelf;
+
+                        return livePlayers
+                          .filter(p => p.isAlive && (p.id !== player.id || canSelfSave))
+                          .map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.id === player.id ? `🛡️ ${p.name} (خودم - باقی‌مانده: ${maxSelf - doctorSelfSavesUsed})` : p.name}
+                            </option>
+                          ));
+                      })()}
                 </select>
               </div>
             )}
