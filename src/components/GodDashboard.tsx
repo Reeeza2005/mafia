@@ -85,6 +85,14 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   // Night Actions State
   // --- Night / Day Unified Engine States ---
   const [isNightDeskOpen, setIsNightDeskOpen] = useState(false);
+  const [incomingNightTargets, setIncomingNightTargets] = useState<{
+    playerId: string;
+    playerName: string;
+    roleId: string;
+    targetId: string;
+    targetName: string;
+    time: string;
+  }[]>([]);
   const [showMorningReportModal, setShowMorningReportModal] = useState(false);
   const [showCityInquiry, setShowCityInquiry] = useState(false);
   const [morningReportText, setMorningReportText] = useState<string[]>([]);
@@ -1124,6 +1132,59 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           {/* میز شبانه باز شونده هوشمند بر اساس کارت‌های زنده */}
           {isNightDeskOpen && (
             <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+              {/* تارگت‌های ارسال شده توسط بازیکنان در فاز شب */}
+              {incomingNightTargets.length > 0 && (
+                <div className="bg-purple-950/40 border border-purple-800/80 rounded-2xl p-3.5 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-purple-300 font-bold">
+                    <span>📥 انتخاب‌های ارسال‌شده توسط بازیکنان در شب:</span>
+                    <button 
+                      type="button"
+                      onClick={() => setIncomingNightTargets([])}
+                      className="text-[10px] text-neutral-400 hover:text-white underline cursor-pointer"
+                    >
+                      پاک‌سازی لیست
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {incomingNightTargets.map((item, idx) => (
+                      <div key={idx} className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-bold text-white block">{item.playerName} ({item.roleId})</span>
+                          <span className="text-purple-300 text-[11px]">هدف: {item.targetName}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {item.roleId === "detective" ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => network.sendNightResultToPlayer(item.playerId, "استعلام شما: مثبت 🟢 (مافیا)", "positive")}
+                                className="px-2 py-1 rounded-lg bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-bold hover:bg-rose-900 cursor-pointer"
+                              >
+                                پاسخ مثبت
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => network.sendNightResultToPlayer(item.playerId, "استعلام شما: منفی ⚪ (شهروند)", "negative")}
+                                className="px-2 py-1 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-300 text-[10px] font-bold hover:bg-emerald-900 cursor-pointer"
+                              >
+                                پاسخ منفی
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => network.sendNightResultToPlayer(item.playerId, "اقدام شما در شب با موفقیت ثبت شد ✓")}
+                              className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[10px] font-bold cursor-pointer"
+                            >
+                              تایید به بازیکن
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
                 <div className="flex items-center gap-2">
                   <Moon className="w-5 h-5 text-purple-400" />

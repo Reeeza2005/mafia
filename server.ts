@@ -331,10 +331,14 @@ io.on('connection', (socket) => {
       if (!room) return;
 
       room.mafiaChatActive = !!data.active;
+      // اگر چت بسته شد، تاریخچه پیام‌ها خودکار پاک شود
+      if (!room.mafiaChatActive) {
+        room.mafiaChatMessages = [];
+      }
       room.logs.push({
         id: Math.random().toString(36).substring(2, 9),
         time: new Date().toLocaleTimeString('fa-IR'),
-        text: room.mafiaChatActive ? '💬 چت شبانه مافیا توسط گرداننده باز شد.' : '🔒 چت شبانه مافیا توسط گرداننده بسته شد.',
+        text: room.mafiaChatActive ? '💬 چت شبانه مافیا توسط گرداننده باز شد.' : '🔒 چت شبانه مافیا توسط گرداننده بسته و تاریخچه پاک شد.',
         type: 'action',
       });
 
@@ -357,6 +361,51 @@ io.on('connection', (socket) => {
       });
 
       broadcastMafiaChatUpdate(io, room);
+    });
+
+    // رویداد ارسال هدف شب از طرف بازیکن به گرداننده (گاد)
+    socket.on('night_target_submit', (data: { roomCode?: string; playerId: string; roleId: string; targetId: string; extraType?: string }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room || !room.godSocketId) return;
+
+      const player = room.players[data.playerId];
+      const target = room.players[data.targetId];
+
+      io.to(room.godSocketId).emit('night_target_received', {
+        playerId: data.playerId,
+        playerName: player?.name || "بازیکن",
+        roleId: data.roleId,
+        targetId: data.targetId,
+        targetName: target?.name || "نامشخص",
+        extraType: data.extraType,
+        time: new Date().toLocaleTimeString('fa-IR')
+      });
+    });
+
+    // رویداد ارسال پاسخ/نتیجه شب از طرف گرداننده به بازیکن خاص
+    socket.on('god_send_night_result', (data: { roomCode?: string; targetPlayerId: string; message: string; resultType?: string }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room) return;
+
+      const player = room.players[data.targetPlayerId];
+      if (player) {
+        if (player.socketId) {
+          io.to(player.socketId).emit('night_result_received', {
+            message: data.message,
+            resultType: data.resultType,
+            time: new Date().toLocaleTimeString('fa-IR')
+          });
+        }
+        io.to(player.id).emit('night_result_received', {
+          message: data.message,
+          resultType: data.resultType,
+          time: new Date().toLocaleTimeString('fa-IR')
+        });
+      }
     });
 
     socket.on('mafia_send_message', (data: { roomCode?: string; text: string; playerId: string }) => {

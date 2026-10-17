@@ -370,7 +370,30 @@ class NetworkService {
 
 sendMafiaMessage(playerId: string, text: string) {
     if (this.socket && this.socket.connected) {
-      this.socket.emit("mafia_send_message", { playerId, text });
+      this.socket.emit("mafia_send_message", { roomCode: this.roomCode, playerId, text });
+    }
+  }
+
+  sendNightTarget(playerId: string, roleId: string, targetId: string, extraType?: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("night_target_submit", {
+        roomCode: this.roomCode,
+        playerId,
+        roleId,
+        targetId,
+        extraType,
+      });
+    }
+  }
+
+  sendNightResultToPlayer(targetPlayerId: string, message: string, resultType?: string) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("god_send_night_result", {
+        roomCode: this.roomCode,
+        targetPlayerId,
+        message,
+        resultType,
+      });
     }
   }
 
