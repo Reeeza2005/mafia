@@ -188,6 +188,27 @@ interface GameRoom {
 
 const rooms: Record<string, GameRoom> = {};
 
+function resolveRoom(socket: any, givenCode?: string): GameRoom | null {
+  if (givenCode && rooms[givenCode.toUpperCase()]) {
+    return rooms[givenCode.toUpperCase()];
+  }
+  for (const r of socket.rooms) {
+    if (typeof r === "string" && rooms[r.toUpperCase()]) {
+      return rooms[r.toUpperCase()];
+    }
+  }
+  for (const r of Object.values(rooms)) {
+    if (r.players[socket.id] || r.godSocketId === socket.id) {
+      return r;
+    }
+  }
+  const allCodes = Object.keys(rooms);
+  if (allCodes.length === 1) {
+    return rooms[allCodes[0]];
+  }
+  return null;
+}
+
 function stopRoomTimer(room: GameRoom) {
   if (room.timerInterval) {
     clearInterval(room.timerInterval);
@@ -737,11 +758,14 @@ io.on('connection', (socket) => {
 
   // Night Actions Desk
   socket.on('god_set_night_step', (data: { roomCode?: string; role: string | null }) => {
-      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
-      if (!rCode) return;
-      const room = rooms[rCode.toString().toUpperCase()];
-      if (!room) return;
-
+      const room = resolveRoom(socket, data?.roomCode);
+      if (!room) {
+        console.warn("[NIGHT STEP] Room not found for socket:", socket.id);
+        return;
+      }
+      // اطمینان از ثبت شناسه سوکت گاد
+      room.godSocketId = socket.id;
+      console.log(`[🌙 بیدارباش شب] نقش فعال: ${data.role || "پایان نوبت"} | اتاق: ${room.code}`);
       io.to(room.code).emit('night_step_state', { role: data.role });
     });
 
