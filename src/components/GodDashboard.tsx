@@ -1185,6 +1185,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     🕶️ بیدارباش مافیا (چت + شات)
                   </button>
 
+            {alivePlayers.some(p => p.roleId === "doctor") && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1201,7 +1202,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   >
                     💉 بیدارباش پزشک
                   </button>
+            )}
 
+            {alivePlayers.some(p => p.roleId === "detective") && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1218,6 +1221,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   >
                     🔍 بیدارباش کارآگاه
                   </button>
+            )}
 
                   {alivePlayers.some(p => p.roleId === "sniper") && (
                     <button
