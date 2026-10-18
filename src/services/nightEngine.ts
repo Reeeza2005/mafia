@@ -32,6 +32,8 @@ export function resolveNight(
   const logs: string[] = [];
   const deaths = new Set<string>();
   const healed = new Set<string>();
+  const doctorSaved = new Set<string>();
+  const lecterSaved = new Set<string>();
   const updatedArmors = { ...armorStates };
 
   const playerMap = new Map<string, Player>(players.map((p) => [p.id, { ...p }]));
@@ -85,22 +87,47 @@ export function resolveNight(
         logs.push(`⚠️ تلاش پزشک برای نجات خود ناموفق بود (سهمیه نجات خود به پایان رسیده است: ${usedSelf}/${maxSelfSaves}).`);
       } else {
         healed.add(actions.doctorSaveId);
+        doctorSaved.add(actions.doctorSaveId);
         updatedQuotas[docId].selfUses = usedSelf + 1;
         updatedQuotas[docId].totalUses = (updatedQuotas[docId].totalUses || 0) + 1;
         logs.push(`پزشک از خودش محافظت کرد 💉 (سهمیه مصرفی نجات خود: ${usedSelf + 1}/${maxSelfSaves}).`);
       }
     } else {
       healed.add(actions.doctorSaveId);
+      doctorSaved.add(actions.doctorSaveId);
       updatedQuotas[docId].totalUses = (updatedQuotas[docId].totalUses || 0) + 1;
       logs.push(`پزشک از ${target ? target.name : actions.doctorSaveId} محافظت کرد.`);
     }
   }
 
-  const lecterPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'dr_lecter');
+  const lecterPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'dr_lecter' || p.roleId === 'doctor_lecter');
   if (actions.doctorLecterSaveId && (!lecterPlayer || !blockedIds.has(lecterPlayer.id))) {
-    healed.add(actions.doctorLecterSaveId);
     const target = playerMap.get(actions.doctorLecterSaveId);
-    logs.push(`دکتر لکتور از ${target ? target.name : actions.doctorLecterSaveId} محافظت کرد.`);
+    const lecterId = lecterPlayer?.id || 'dr_lecter_unknown';
+    const isSelfSave = lecterPlayer && actions.doctorLecterSaveId === lecterPlayer.id;
+
+    if (!updatedQuotas[lecterId]) {
+      updatedQuotas[lecterId] = { totalUses: 0, selfUses: 0 };
+    }
+
+    if (isSelfSave) {
+      const maxLecterSelfSaves = 1;
+      const usedSelf = updatedQuotas[lecterId].selfUses || 0;
+      if (usedSelf >= maxLecterSelfSaves) {
+        logs.push(`⚠️ تلاش دکتر لکتر برای نجات خود ناموفق بود (سهمیه نجات خود قبلاً مصرف شده است: ${usedSelf}/${maxLecterSelfSaves}).`);
+      } else {
+        lecterSaved.add(actions.doctorLecterSaveId);
+        healed.add(actions.doctorLecterSaveId);
+        updatedQuotas[lecterId].selfUses = usedSelf + 1;
+        updatedQuotas[lecterId].totalUses = (updatedQuotas[lecterId].totalUses || 0) + 1;
+        logs.push(`دکتر لکتر از خودش محافظت کرد 🩺 (سهمیه مصرفی نجات خود: ${usedSelf + 1}/${maxLecterSelfSaves}).`);
+      }
+    } else {
+      lecterSaved.add(actions.doctorLecterSaveId);
+      healed.add(actions.doctorLecterSaveId);
+      updatedQuotas[lecterId].totalUses = (updatedQuotas[lecterId].totalUses || 0) + 1;
+      logs.push(`دکتر لکتر از ${target ? target.name : actions.doctorLecterSaveId} محافظت کرد.`);
+    }
   }
 
   // ----------------------------------------------------
@@ -109,8 +136,8 @@ export function resolveNight(
   if (actions.mafiaShotId) {
     const target = playerMap.get(actions.mafiaShotId);
     if (target) {
-      if (healed.has(target.id)) {
-        logs.push(`شلیک مافیا به ${target.name} با مداوای پزشک بی‌اثر شد.`);
+      if (doctorSaved.has(target.id) || lecterSaved.has(target.id)) {
+        logs.push(`شلیک مافیا به ${target.name} با مداوا بی‌اثر شد.`);
       } else if (target.roleId === 'armored' && updatedArmors[target.id] !== false) {
         updatedArmors[target.id] = false;
         logs.push(`شلیک مافیا به زره‌پوش (${target.name}) اصابت کرد اما زره او مانع مرگ شد.`);
@@ -129,7 +156,7 @@ export function resolveNight(
       const targetRole = target.roleId ? ROLE_MAP[target.roleId] : null;
 
       if (targetRole && targetRole.team === 'mafia') {
-        if (healed.has(target.id)) {
+        if (lecterSaved.has(target.id)) {
           logs.push(`شلیک اسنایپر به مافیا (${target.name}) توسط دکتر لکتور نجات یافت.`);
         } else if (target.roleId === 'godfather' && updatedArmors[target.id] !== false) {
           updatedArmors[target.id] = false;
