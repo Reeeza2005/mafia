@@ -1,3 +1,4 @@
+import { getSniperBulletQuota } from "../utils/sniperQuota";
 import { MafiaChat, MafiaChatMessage } from "./MafiaChat";
 import React, { useState, useEffect } from 'react';
 import { Player, GameTimer, SecretVoteState } from '../types/mafia';
@@ -81,6 +82,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   }, [activePlayer?.gunGiven]);
   const [gunShotAnnouncement, setGunShotAnnouncement] = useState<{ message: string; isReal: boolean } | null>(null);
   const [doctorSelfSavesUsed, setDoctorSelfSavesUsed] = useState<number>(0);
+  const [sniperBulletsUsed, setSniperBulletsUsed] = useState<number>(0);
 
   useEffect(() => {
     const unPlayers = network.on("players_updated", (data: any) => {
@@ -474,6 +476,18 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   ? "🎯 شلیک شبانه تک‌تیرانداز"
                   : "🌙 انتخاب هدف شبانه (ارسال مستقیم به گرداننده)"}
               </span>
+              {player.roleId === "sniper" && (
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-900 border border-amber-500/40 text-[11px] font-bold text-amber-300">
+                  <span>سهمیه فشنگ:</span>
+                  <span className="tracking-widest">
+                    {(() => {
+                      const total = getSniperBulletQuota(livePlayers.length ? livePlayers : (players || []));
+                      const rem = Math.max(0, total - sniperBulletsUsed);
+                      return "🟡".repeat(rem) + "⚪".repeat(Math.max(0, total - rem));
+                    })()}
+                  </span>
+                </div>
+              )}
               {nightActionSent && (
                 <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
                   ✓ در انتظار تایید گاد
@@ -533,6 +547,9 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-purple-600"
                 >
                   <option value="">-- انتخاب بازیکن هدف --</option>
+                    {player.roleId === "sniper" && (
+                      <option value="PASS_ACTION" className="text-amber-400 font-bold">⚪ امشب شلیک نمی‌کنم (انصراف و حفظ تیر)</option>
+                    )}
                   {(player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
                       ? livePlayers.filter(p => p.isAlive && (isMafia(p.roleId) || p.id === player.id)).map(p => (
                           <option key={p.id} value={p.id}>🛡️ {p.name} ({p.id === player.id ? "خودم" : "یار مافیا"})</option>
