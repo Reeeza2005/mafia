@@ -730,7 +730,7 @@ io.on('connection', (socket) => {
       player.isSilenced = false;
       player.eliminationReason = undefined;
       // If armored citizen, initial armor is true
-      if (player.roleId === 'armored') {
+      if (player.roleId === 'armored' || player.roleId === 'godfather') {
         player.hasArmor = true;
       }
     });

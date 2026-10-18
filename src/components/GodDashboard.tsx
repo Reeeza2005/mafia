@@ -2219,7 +2219,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     </button>
 
                     {/* Armor button */}
-                    {player.roleId === 'armored' && (
+                    {(player.roleId === 'armored' || player.roleId === 'godfather') && (
                       <button
                         onClick={() => {
                           onUpdatePlayer(player.id, { hasArmor: !player.hasArmor });
