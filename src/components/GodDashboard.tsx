@@ -456,7 +456,10 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       currentArmors[p.id] = p.hasArmor;
     });
 
-    const { updatedPlayers, report, updatedArmors } = resolveNight(players, nightActions, currentArmors);
+    const { updatedPlayers, report, updatedArmors, updatedQuotas } = resolveNight(players, nightActions, currentArmors, quotas);
+    if (updatedQuotas) {
+      setQuotas(updatedQuotas);
+    }
 
     updatedPlayers.forEach((up) => {
       const orig = players.find((p) => p.id === up.id);

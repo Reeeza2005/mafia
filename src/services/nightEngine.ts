@@ -1,5 +1,6 @@
 import { Player, NightActions, NightResolutionReport } from '../types/mafia';
 import { ALL_ROLES, ROLE_MAP } from '../data/roles';
+import { QuotaTracker, getDoctorMaxSelfSaves } from '../data/rolesRulesMatrix';
 
 /**
  * تعیین کارت‌های مجاز برای میز شب:
@@ -25,8 +26,9 @@ export function getActiveNightRoles(players: Player[]): typeof ALL_ROLES {
 export function resolveNight(
   players: Player[],
   actions: NightActions,
-  armorStates: Record<string, boolean> = {}
-): { updatedPlayers: Player[]; report: NightResolutionReport; updatedArmors: Record<string, boolean> } {
+  armorStates: Record<string, boolean> = {},
+  quotas: QuotaTracker = {}
+): { updatedPlayers: Player[]; report: NightResolutionReport; updatedArmors: Record<string, boolean>; updatedQuotas: QuotaTracker } {
   const logs: string[] = [];
   const deaths = new Set<string>();
   const healed = new Set<string>();
@@ -68,9 +70,30 @@ export function resolveNight(
   // ----------------------------------------------------
   const doctorPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'doctor');
   if (actions.doctorSaveId && (!doctorPlayer || !blockedIds.has(doctorPlayer.id))) {
-    healed.add(actions.doctorSaveId);
     const target = playerMap.get(actions.doctorSaveId);
-    logs.push(`پزشک از ${target ? target.name : actions.doctorSaveId} محافظت کرد.`);
+    const docId = doctorPlayer?.id || 'doctor_unknown';
+    const isSelfSave = doctorPlayer && actions.doctorSaveId === doctorPlayer.id;
+
+    if (!updatedQuotas[docId]) {
+      updatedQuotas[docId] = { totalUses: 0, selfUses: 0 };
+    }
+
+    if (isSelfSave) {
+      const maxSelfSaves = getDoctorMaxSelfSaves(players.length);
+      const usedSelf = updatedQuotas[docId].selfUses || 0;
+      if (usedSelf >= maxSelfSaves) {
+        logs.push(`⚠️ تلاش پزشک برای نجات خود ناموفق بود (سهمیه نجات خود به پایان رسیده است: ${usedSelf}/${maxSelfSaves}).`);
+      } else {
+        healed.add(actions.doctorSaveId);
+        updatedQuotas[docId].selfUses = usedSelf + 1;
+        updatedQuotas[docId].totalUses = (updatedQuotas[docId].totalUses || 0) + 1;
+        logs.push(`پزشک از خودش محافظت کرد 💉 (سهمیه مصرفی نجات خود: ${usedSelf + 1}/${maxSelfSaves}).`);
+      }
+    } else {
+      healed.add(actions.doctorSaveId);
+      updatedQuotas[docId].totalUses = (updatedQuotas[docId].totalUses || 0) + 1;
+      logs.push(`پزشک از ${target ? target.name : actions.doctorSaveId} محافظت کرد.`);
+    }
   }
 
   const lecterPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'dr_lecter');
