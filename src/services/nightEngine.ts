@@ -132,7 +132,7 @@ export function resolveNight(
       const target = playerMap.get(actions.detectiveInquiryId);
       if (target && target.roleId) {
         const targetRole = ROLE_MAP[target.roleId];
-        let isPositive = targetRole.team === 'mafia' && target.roleId !== 'godfather';
+        let isPositive = targetRole.team === 'mafia' && target.roleId !== 'godfather' && target.roleId !== 'infiltrator';
 
         if (actions.jokerTargetId === target.id) {
           isPositive = !isPositive;

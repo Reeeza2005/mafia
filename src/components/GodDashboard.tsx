@@ -1518,7 +1518,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             const targetPlayer = players.find(p => p.id === item.targetId);
                             const tRole = targetPlayer?.roleId || "";
                             // گادفادر منفی، سایر مافیاها مثبت، شهروندان منفی
-                            const isPositive = (tRole !== "godfather" && (ROLE_MAP[tRole]?.team === "mafia" || isMafiaRoleId(tRole)));
+                            const isPositive = (tRole !== "godfather" && tRole !== "infiltrator" && (ROLE_MAP[tRole]?.team === "mafia" || isMafiaRoleId(tRole)));
                             const calculatedResult = isPositive ? "positive" : "negative";
                             const calculatedText = isPositive ? "مثبت 🟢 (مافیا)" : "منفی ⚪ (شهروند)";
 
