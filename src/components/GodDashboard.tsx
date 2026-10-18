@@ -462,6 +462,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   const handleTransitionToDay = () => {
     try {
       console.log("[GodDashboard] شروع انتقال به فاز روز...");
+      console.log("[GodDashboard DEBUG] مقادیر nightActions در لحظه پردازش:", JSON.stringify(nightActions));
+      console.log("[GodDashboard DEBUG] مقادیر incomingNightTargets موجود:", JSON.stringify(incomingNightTargets));
       const currentArmors: Record<string, boolean> = {};
       (players || []).forEach((p) => {
         currentArmors[p.id] = !!p.hasArmor;
@@ -471,6 +473,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       let nightResult: any = null;
       try {
         nightResult = resolveNight(players, nightActions, currentArmors, quotas);
+        console.log("[GodDashboard DEBUG] خروجی resolveNight:", JSON.stringify(nightResult?.report));
       } catch (err: any) {
         console.error("[GodDashboard] خطا در resolveNight:", err);
       }
@@ -501,6 +504,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               updates.hasArmor = updatedArmors[up.id];
             }
             if (Object.keys(updates).length > 0 && typeof onUpdatePlayer === 'function') {
+              console.log("[GodDashboard] فراخوانی onUpdatePlayer برای:", up.name, up.id, updates);
               onUpdatePlayer(up.id, updates);
             }
           }
@@ -1744,7 +1748,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                       setIncomingNightTargets(prev => prev.filter((_, i) => i !== idx && prev[i]?.playerId !== item.playerId));
 
                                       const targetPlayer = players.find(p => p.id === item.targetId);
-                                      const isTargetMafia = targetPlayer && (ROLE_MAP[targetPlayer.roleId]?.team === "mafia" || isMafiaRoleId(targetPlayer.roleId));
+                                      const isTargetMafia = targetPlayer && (ROLE_MAP[targetPlayer.roleId]?.team === "mafia" || isMafiaRoleId(targetPlayer.roleId) || targetPlayer.roleId === "dr_lecter" || targetPlayer.roleId === "doctor_lecter");
                                       const isTargetGodfather = targetPlayer?.roleId === "godfather";
                                       const isSavedByLecter = nightActions.doctorLecterSaveId === item.targetId;
 
@@ -1759,22 +1763,22 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                         if (sniperP) {
                                           const currentUsed = (sniperP as any).sniperBulletsUsed || 0;
                                           network.updatePlayerStatus(item.playerId, { sniperBulletsUsed: currentUsed + 1 } as any);
-                                          setPlayers(prev => prev.map(p => p.id === item.playerId ? { ...p, sniperBulletsUsed: currentUsed + 1 } as any : p));
+                                           if (typeof onUpdatePlayer === 'function') onUpdatePlayer(item.playerId, { sniperBulletsUsed: currentUsed + 1 } as any);
                                         }
 
                                         // ثبت نتیجه در موتور شب و اطلاع به گاد
                                         if (isTargetGodfather) {
                                           alert("🎯 تیر اسنایپر به پدرخوانده اصابت کرد! جلیقه شکست و زنده می‌ماند. (۱ فشنگ مصرف شد)");
-                                          setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                          setNightActions(prev => ({ ...prev, sniperShotId: item.targetId }));
                                         } else if (isSavedByLecter) {
                                           alert(`🛡️ مافیای هدف (${item.targetName}) توسط دکتر لکتر نجات پیدا کرد! (۱ فشنگ مصرف شد)`);
-                                          setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                          setNightActions(prev => ({ ...prev, sniperShotId: item.targetId }));
                                         } else if (isTargetMafia) {
                                           alert(`💥 شلیک اسنایپر به مافیا (${item.targetName}) تایید شد! (۱ فشنگ مصرف شد)`);
-                                          setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                          setNightActions(prev => ({ ...prev, sniperShotId: item.targetId }));
                                         } else {
                                           alert(`⚠️ اسنایپر به شهروند (${item.targetName}) شلیک کرد! اسنایپر در پایان شب حذف می‌شود.`);
-                                          setNightActions(prev => ({ ...prev, sniperSuicide: true, sniperShotTargetId: item.targetId }));
+                                          setNightActions(prev => ({ ...prev, sniperSuicide: true, sniperShotId: item.targetId }));
                                         }
                                       }
 
@@ -1882,7 +1886,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 )}
 
                 {/* ۲. سیو پزشک */}
-                {activeNightRoleIds.has("doctor") && (
+                {alivePlayers.some(p => p.roleId === "doctor") && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-sky-950 space-y-2">
                     <span className="font-bold text-sky-400 flex items-center gap-1">
                       💉 هدف سیو پزشک:
@@ -1901,7 +1905,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 )}
 
                 {/* ۳. سیو دکتر لکتور */}
-                {activeNightRoleIds.has("dr_lecter") && (
+                {alivePlayers.some(p => p.roleId === "dr_lecter" || p.roleId === "doctor_lecter") && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-rose-950 space-y-2">
                     <span className="font-bold text-rose-300 flex items-center gap-1">
                       🩸 سیو دکتر لکتور (مافیا):

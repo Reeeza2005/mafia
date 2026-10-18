@@ -788,6 +788,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('update_player_status', ({ roomCode, playerId, updates }) => {
+    console.log(`[SERVER update_player_status] roomCode: "${roomCode}", playerId: "${playerId}", isAlive: ${updates?.isAlive}`);
     const room = getOrCreateRoom(roomCode);
     const player = room.players[playerId];
     if (player) {

@@ -83,6 +83,13 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   }, [activePlayer?.gunGiven]);
   const [gunShotAnnouncement, setGunShotAnnouncement] = useState<{ message: string; isReal: boolean } | null>(null);
   const [doctorSelfSavesUsed, setDoctorSelfSavesUsed] = useState<number>(0);
+  const [lecterSelfSavesUsed, setLecterSelfSavesUsed] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem(`mafia_lecter_self_${player?.id}`) || "0", 10) || 0;
+    } catch {
+      return 0;
+    }
+  });
   const [sniperBulletsUsed, setSniperBulletsUsed] = useState<number>(0);
 
   useEffect(() => {
@@ -505,7 +512,9 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           <div className="rounded-2xl border border-purple-900/60 bg-purple-950/30 p-3.5 space-y-3 shadow-xl">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
-                {(player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
+                {currentNightRole === "mafia"
+                  ? "💥 انتخاب هدف شلیک شبانه مافیا"
+                  : (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
                   ? "🩺 نجات شبانه یار مافیا (دکتر لکتر)"
                   : player.roleId === "godfather"
                   ? "💥 انتخاب هدف شلیک مافیا (پدرخوانده)"
@@ -525,6 +534,15 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                       const rem = Math.max(0, total - used);
                       return "🟡".repeat(rem) + "⚪".repeat(Math.max(0, total - rem));
                     })()}
+                  </span>
+                </div>
+              )}
+
+              {(player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && (
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-900 border border-rose-500/40 text-[11px] font-bold text-rose-300">
+                  <span>سهمیه نجات خود:</span>
+                  <span className="tracking-wider">
+                    {((activePlayer as any)?.lecterSelfSavesUsed ?? lecterSelfSavesUsed) >= 1 ? "⚪ (مصرف شد)" : "🟢 ۱/۱"}
                   </span>
                 </div>
               )}
@@ -602,10 +620,22 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     {player.roleId === "sniper" && (
                       <option value="PASS_ACTION" className="text-amber-400 font-bold">⚪ امشب شلیک نمی‌کنم (انصراف و حفظ تیر)</option>
                     )}
-                  {(player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
-                      ? livePlayers.filter(p => p.isAlive && (isMafia(p.roleId) || p.id === player.id)).map(p => (
-                          <option key={p.id} value={p.id}>🛡️ {p.name} ({p.id === player.id ? "خودم" : "یار مافیا"})</option>
+                  {currentNightRole === "mafia"
+                      ? livePlayers.filter(p => p.isAlive && !isMafia(p.roleId)).map(p => (
+                          <option key={p.id} value={p.id}>🎯 {p.name} (هدف شلیک مافیا)</option>
                         ))
+                      : (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
+                      ? (() => {
+                          const usedLecterSelf = (activePlayer as any)?.lecterSelfSavesUsed ?? lecterSelfSavesUsed;
+                          const canSelfSave = usedLecterSelf < 1;
+                          return livePlayers
+                            .filter(p => p.isAlive && ((isMafia(p.roleId) && p.id !== player.id) || (p.id === player.id && canSelfSave)))
+                            .map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.id === player.id ? `🛡️ ${p.name} (خودم - باقی‌مانده: ${1 - usedLecterSelf})` : `🛡️ ${p.name} (یار مافیا)`}
+                              </option>
+                            ));
+                        })()
                       : (() => {
                         const totalCount = livePlayers.length || players?.length || 10;
                         const maxSelf = (typeof getDoctorMaxSelfSaves === "function") ? getDoctorMaxSelfSaves(totalCount) : (totalCount >= 16 ? 3 : totalCount >= 11 ? 2 : 1);
@@ -632,7 +662,28 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   network.sendGunsmithTargets(player.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
                 } else {
                   if (!selectedNightTargetId) return;
-                  network.sendNightTarget(player.id, (player.roleId === "dr_lecter" ? "doctor_lecter" : (player.roleId || "")), selectedNightTargetId);
+                  const actionRoleToSend = currentNightRole === "mafia" ? "mafia" : (player.roleId === "dr_lecter" ? "doctor_lecter" : (player.roleId || ""));
+                  if ((player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player.id) {
+                      setLecterSelfSavesUsed(prev => {
+                        const nextVal = prev + 1;
+                        try { localStorage.setItem(`mafia_lecter_self_${player?.id}`, String(nextVal)); } catch {}
+                        return nextVal;
+                      });
+                    }
+                    if (player.roleId === "doctor" && selectedNightTargetId === player.id) {
+                      setDoctorSelfSavesUsed(prev => prev + 1);
+                    }
+                    if ((player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player.id) {
+                      setLecterSelfSavesUsed(prev => {
+                        const nextVal = prev + 1;
+                        try { localStorage.setItem(`mafia_lecter_self_${player?.id}`, String(nextVal)); } catch {}
+                        return nextVal;
+                      });
+                    }
+                    if (player.roleId === "doctor" && selectedNightTargetId === player.id) {
+                      setDoctorSelfSavesUsed(prev => prev + 1);
+                    }
+                    network.sendNightTarget(player.id, actionRoleToSend, selectedNightTargetId);
                 }
                 setNightActionSent(true);
                 audio.playFlip();

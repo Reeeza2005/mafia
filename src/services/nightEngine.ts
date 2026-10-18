@@ -155,7 +155,13 @@ export function resolveNight(
     if (sniperPlayer && !blockedIds.has(sniperPlayer.id) && target) {
       const targetRole = target.roleId ? ROLE_MAP[target.roleId] : null;
 
-      if (targetRole && targetRole.team === 'mafia') {
+      const isTargetMafia = (targetRole && targetRole.team === 'mafia') ||
+                            target.roleId === 'dr_lecter' ||
+                            target.roleId === 'doctor_lecter' ||
+                            target.roleId === 'godfather' ||
+                            target.roleId === 'simple_mafia';
+
+      if (isTargetMafia) {
         if (lecterSaved.has(target.id)) {
           logs.push(`شلیک اسنایپر به مافیا (${target.name}) توسط دکتر لکتور نجات یافت.`);
         } else if (target.roleId === 'godfather' && updatedArmors[target.id] !== false) {
