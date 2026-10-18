@@ -135,15 +135,22 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   const [challengeRequests, setChallengeRequests] = useState<{ playerId: string; playerName: string; time: string }[]>([]);
 
   // Sync timer state
+  // همگام‌سازی ثانیه‌های محلی با تایمر
+  useEffect(() => {
+    setLocalSeconds(timer.seconds);
+    if (timer.speakerId) setSpeakerId(timer.speakerId);
+  }, [timer.seconds, timer.speakerId]);
+
+  // لیسنر چت مافیا با cleanup کامل
   useEffect(() => {
     const unGodMafiaChat = network.on("mafia_chat_sync", (data: any) => {
       if (typeof data?.active === "boolean") setMafiaChatActive(data.active);
       if (Array.isArray(data?.messages)) setMafiaChatMessages(data.messages);
     });
-
-    setLocalSeconds(timer.seconds);
-    if (timer.speakerId) setSpeakerId(timer.speakerId);
-  }, [timer.seconds, timer.speakerId]);
+    return () => {
+      if (typeof unGodMafiaChat === "function") unGodMafiaChat();
+    };
+  }, []);
 
   // Play audio tick/warning based on server-synced seconds
   useEffect(() => {
@@ -203,25 +210,27 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
   // دریافت تارگت‌ها و درخواست‌های ارسالی بازیکنان در شب
   useEffect(() => {
-    const unNightTarget = network.on("day_shot_requested", (data: { playerId: string; playerName: string }) => {
+    const unReq = network.on("day_shot_requested", (data: { playerId: string; playerName: string }) => {
       setIncomingDayShotRequests(prev => [...prev.filter(r => r.playerId !== data.playerId), data]);
     });
 
-    network.on("day_shot_target_received", (data: { shooterId: string; shooterName: string; targetId: string; targetName: string }) => {
+    const unTargetRec = network.on("day_shot_target_received", (data: { shooterId: string; shooterName: string; targetId: string; targetName: string }) => {
       setIncomingDayShotRequests(prev => prev.filter(r => r.playerId !== data.shooterId));
       setIncomingDayShotTargets(prev => [...prev.filter(t => t.shooterId !== data.shooterId), data]);
     });
-    network.on("night_target_received", (data: any) => {
+
+    const unNightTarget = network.on("night_target_received", (data: any) => {
       if (data && data.playerId) {
         setIncomingNightTargets((prev) => [
           ...prev.filter((t) => !(t.playerId === data.playerId && (t.roleId !== "gunsmith" || t.extraType === data.extraType))),
           data,
         ]);
-        audio.playFlip();
       }
     });
 
     return () => {
+      if (typeof unReq === "function") unReq();
+      if (typeof unTargetRec === "function") unTargetRec();
       if (typeof unNightTarget === "function") unNightTarget();
     };
   }, []);
