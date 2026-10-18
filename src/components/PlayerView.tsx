@@ -479,6 +479,23 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
+        {/* پیام راهنما برای اعضای مافیا که تیرانداز امشب نیستند */}
+        {player.isAlive && currentNightRole === "mafia" && isMafia(player.roleId) && getMafiaShooter(players)?.id !== player.id && (
+          <div className="rounded-2xl border border-rose-950 bg-gradient-to-r from-rose-950/40 to-neutral-900/60 p-3.5 space-y-1.5 shadow-lg mb-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">
+                🔫 تیرانداز امشب تیم: <span className="text-amber-300 underline font-extrabold">{getMafiaShooter(players)?.name || "تعیین‌نشده"}</span>
+              </span>
+              <span className="text-[10px] bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-full font-bold">
+                همفکری در چت
+              </span>
+            </div>
+            <p className="text-[11px] text-neutral-400 leading-relaxed">
+              شلیک نهایی توسط سرتیم انجام می‌شود. هدف پیشنهادی خود را در چت تیمی زیر مطرح کنید.
+            </p>
+          </div>
+        )}
+
         {/* Night Action Selector & In-game Feedback for Player */}
       {player.isAlive && !nightActionDone && Boolean(player.roleId) && (
           (currentNightRole === "mafia" && isMafia(player.roleId) && getMafiaShooter(players)?.id === player.id) ||
@@ -534,7 +551,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     className="w-full bg-neutral-900 border border-neutral-700 text-white text-xs rounded-xl p-2 outline-none focus:border-rose-500"
                   >
                     <option value="">-- عدم اهدا یا انتخاب بازیکن --</option>
-                    {players?.filter(p => p.isAlive && p.id !== player.id).map(p => (
+                    {players?.filter(p => p.isAlive && p.id !== player.id && (currentNightRole === "mafia" ? !isMafia(p.roleId) : true)).map(p => (
                       <option key={p.id} value={p.id}>{p.name}{p.id === player.id ? " (خودم)" : ""}</option>
                     ))}
                   </select>
