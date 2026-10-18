@@ -1688,6 +1688,10 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                        }
                                      }
                                      setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                       network.setNightStep(null, roomCode);
+                                       setCurrentActiveNightStep(null);
+                                       network.setNightStep(null, roomCode);
+                                       setCurrentActiveNightStep(null);
                                 }}
                               className="px-2.5 py-1 rounded-lg bg-indigo-950 border border-indigo-700 text-indigo-200 text-[10px] font-bold hover:bg-indigo-900 cursor-pointer"
                             >
