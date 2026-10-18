@@ -451,104 +451,159 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
   // اعمال خودکار نتایج شب و انتقال به فاز روز
   const handleTransitionToDay = () => {
-    const currentArmors: Record<string, boolean> = {};
-    players.forEach((p) => {
-      currentArmors[p.id] = p.hasArmor;
-    });
+    try {
+      console.log("[GodDashboard] شروع انتقال به فاز روز...");
+      const currentArmors: Record<string, boolean> = {};
+      (players || []).forEach((p) => {
+        currentArmors[p.id] = !!p.hasArmor;
+      });
 
-    const { updatedPlayers, report, updatedArmors, updatedQuotas } = resolveNight(players, nightActions, currentArmors, quotas);
-    if (updatedQuotas) {
-      setQuotas(updatedQuotas);
-    }
-
-    updatedPlayers.forEach((up) => {
-      const orig = players.find((p) => p.id === up.id);
-      if (orig) {
-        const updates: Partial<Player> = {};
-        if (orig.isAlive !== up.isAlive) {
-          updates.isAlive = up.isAlive;
-          if (!up.isAlive) updates.eliminationReason = 'mafia_shot';
-        }
-        if (orig.isSilenced !== up.isSilenced) {
-          updates.isSilenced = up.isSilenced;
-        }
-        if (orig.hasArmor !== updatedArmors[up.id]) {
-          updates.hasArmor = updatedArmors[up.id];
-        }
-        if (Object.keys(updates).length > 0) {
-          onUpdatePlayer(up.id, updates);
-        }
+      // ۱. حل محاسبات شب در موتور بازی
+      let nightResult: any = null;
+      try {
+        nightResult = resolveNight(players, nightActions, currentArmors, quotas);
+      } catch (err: any) {
+        console.error("[GodDashboard] خطا در resolveNight:", err);
       }
-    });
 
-    // ثبت تفنگ اعطایی تفنگدار برای فاز روز و اعلان همگام به بازیکنان
-    if (nightActions.gunsmithTargetId && nightActions.gunsmithGunType) {
-      const targetP = players.find((p) => p.id === nightActions.gunsmithTargetId);
-      if (targetP) {
-        const newGun = {
-          targetId: targetP.id,
-          targetName: targetP.name,
-          type: nightActions.gunsmithGunType as "war" | "blank",
-          used: false,
-        };
-        setDayGuns((prev) => {
-          const updated = [...prev.filter((g) => g.targetId !== targetP.id), newGun];
-          network.syncDayGuns(updated, roomCode);
-          return updated;
-        });
-        // ثبت رسمی تفنگ اهدا شده روی شیء پلیر جهت نمایش در کارت بازیکن
-        onUpdatePlayer(targetP.id, { 
-            gunGiven: (newGun?.type || nightActions.gunsmithGunType) as "war" | "blank",
+      const updatedPlayers = nightResult?.updatedPlayers || players;
+      const report = nightResult?.report || { deaths: [], healed: [], logs: [] };
+      const updatedArmors = nightResult?.updatedArmors || currentArmors;
+      const updatedQuotas = nightResult?.updatedQuotas;
+
+      if (updatedQuotas) {
+        setQuotas(updatedQuotas);
+      }
+
+      // ۲. اعمال وضعیت مرگ و سکوت بازیکنان
+      if (Array.isArray(updatedPlayers)) {
+        updatedPlayers.forEach((up) => {
+          const orig = players.find((p) => p.id === up.id);
+          if (orig) {
+            const updates: Partial<Player> = {};
+            if (orig.isAlive !== up.isAlive) {
+              updates.isAlive = up.isAlive;
+              if (!up.isAlive) updates.eliminationReason = 'mafia_shot';
+            }
+            if (orig.isSilenced !== up.isSilenced) {
+              updates.isSilenced = up.isSilenced;
+            }
+            if (orig.hasArmor !== updatedArmors[up.id]) {
+              updates.hasArmor = updatedArmors[up.id];
+            }
+            if (Object.keys(updates).length > 0 && typeof onUpdatePlayer === 'function') {
+              onUpdatePlayer(up.id, updates);
+            }
+          }
         });
       }
-    }
 
-    // آماده‌سازی گزارش صبحگاهی شهر
-    const reportAnnouncement = (report as any).publicAnnouncement || [];
-    if (reportAnnouncement.length === 0) {
-      if (report.deaths.length === 0 && !report.silencedId) {
-        reportAnnouncement.push("☀️ شهروندان محترم! دیشب شب آرامی بود و هیچ بازیکنی حذف یا سایلنت نشد.");
+      // ۳. مدیریت تفنگ‌های اهدا شده تفنگدار
+      if (nightActions.gunsmithTargetId && nightActions.gunsmithGunType) {
+        const targetP = players.find((p) => p.id === nightActions.gunsmithTargetId);
+        if (targetP) {
+          const newGun = {
+            targetId: targetP.id,
+            targetName: targetP.name,
+            type: nightActions.gunsmithGunType as "war" | "blank",
+            used: false,
+          };
+          setDayGuns((prev) => {
+            const updated = [...prev.filter((g) => g.targetId !== targetP.id), newGun];
+            if (network && typeof (network as any).syncDayGuns === 'function') {
+              (network as any).syncDayGuns(updated, roomCode);
+            }
+            return updated;
+          });
+          if (typeof onUpdatePlayer === 'function') {
+            onUpdatePlayer(targetP.id, { 
+              gunGiven: nightActions.gunsmithGunType as "war" | "blank",
+            });
+          }
+        }
+      }
+
+      // ۴. آماده‌سازی متن شکیل، رسمی و ادبی گزارش صبحگاهی
+      const reportAnnouncement: string[] = [];
+      const deadList: string[] = Array.isArray(report?.deaths) ? report.deaths : [];
+
+      reportAnnouncement.push("☀️ شهروندان محترم، شب به پایان رسید و شهر چشمان خود را گشود...");
+
+      if (deadList.length === 0 && !report.silencedId) {
+        reportAnnouncement.push("🕊️ صبح آرام: دیشب هیچ تیری کارساز نشد و هیچ شهروندی کشته یا سایلنت نگردید.");
       } else {
-        report.deaths.forEach((dId) => {
-          const dp = players.find((p) => p.id === dId);
-          if (dp) reportAnnouncement.push(`❌ بازیکن «${dp.name}» در فاز شب از بازی خارج شد.`);
-        });
+        if (deadList.length > 0) {
+          deadList.forEach((dId) => {
+            const dp = players.find((p) => p.id === dId);
+            if (dp) {
+              reportAnnouncement.push(`🥀 حادثه خونین در شب: متأسفانه «${dp.name}» مورد اصابت قرار گرفت و از بازی خارج شد.`);
+            }
+          });
+        }
         if (report.silencedId) {
           const sp = players.find((p) => p.id === report.silencedId);
-          if (sp) reportAnnouncement.push(`🤫 بازیکن «${sp.name}» برای امروز سایلنت است.`);
+          if (sp) {
+            reportAnnouncement.push(`🤫 سکوت اجباری: بازیکن «${sp.name}» برای امروز سایلنت است و حق تکلم ندارد.`);
+          }
         }
       }
+
+      // ۵. ثبت قطعی استیت‌ها و نمایش پاپ‌آپ گزارش در صفحه اصلی
+      setMorningReportText(reportAnnouncement);
+      setShowMorningReportModal(true);
+      setShowCityInquiry(false);
+      setIsNightDeskOpen(false);
+
+      // ۶. پخش ملایم صوت مرتبط
+      try {
+        if (deadList.length > 0) {
+          audio.playShot();
+        } else {
+          audio.playFlip();
+        }
+      } catch (audioErr) {
+        console.warn("[GodDashboard] Audio play error (safely ignored):", audioErr);
+      }
+
+      // ۷. تغییر فاز شبکه به روز
+      try {
+        if (network && typeof (network as any).toggleNightPhase === 'function') {
+          (network as any).toggleNightPhase(false);
+        }
+        if (network && typeof (network as any).setNightStep === 'function') {
+          (network as any).setNightStep(null, roomCode);
+        }
+      } catch (netErr) {
+        console.warn("[GodDashboard] Network toggle phase error (safely ignored):", netErr);
+      }
+
+      // ۸. ریست اکشن‌های شب
+      setNightActions({
+        mafiaShotId: undefined,
+        doctorSaveId: undefined,
+        doctorLecterSaveId: undefined,
+        detectiveInquiryId: undefined,
+        detectiveResult: null,
+        sniperShotId: undefined,
+        gunsmithTargetId: undefined,
+        gunsmithGunType: undefined,
+        silencerTargetId: undefined,
+        hostageTargetId: undefined,
+        bomberTargetId: undefined,
+        jokerTargetId: undefined,
+        priestTargetId: undefined,
+        watcherTargetId: undefined,
+      });
+
+      console.log("[GodDashboard] انتقال به فاز روز با موفقیت انجام شد.");
+    } catch (globalErr: any) {
+      console.error("[GodDashboard] خطای سراسری در دکمه فاز روز:", globalErr);
+      alert("خطا در انتقال به روز: " + (globalErr?.message || globalErr));
+      // حتی در صورت خطای پیش‌بینی نشده، پنجره گزارش باز و پنل شب بسته شود
+      setShowMorningReportModal(true);
+      setIsNightDeskOpen(false);
     }
-
-    setMorningReportText(reportAnnouncement);
-    setShowMorningReportModal(true);
-    setShowCityInquiry(false);
-    setIsNightDeskOpen(false);
-
-    if (report.deaths.length > 0) {
-      audio.playShot();
-    } else {
-      audio.playFlip();
-    }
-
-    setNightActions({
-      mafiaShotId: undefined,
-      doctorSaveId: undefined,
-      doctorLecterSaveId: undefined,
-      detectiveInquiryId: undefined,
-      detectiveResult: null,
-      sniperShotId: undefined,
-      gunsmithTargetId: undefined,
-      gunsmithGunType: undefined,
-      silencerTargetId: undefined,
-      hostageTargetId: undefined,
-      bomberTargetId: undefined,
-      jokerTargetId: undefined,
-      priestTargetId: undefined,
-      watcherTargetId: undefined,
-    });
   };
-
   const handleApplyNightActions = handleTransitionToDay;
 
   return (

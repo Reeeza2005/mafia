@@ -57,7 +57,7 @@ class NetworkService {
       reconnectionAttempts: 30,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 3000,
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       upgrade: true,
       forceNew: false,
     });
