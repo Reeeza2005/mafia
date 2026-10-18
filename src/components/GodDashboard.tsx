@@ -1335,15 +1335,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 <p className="text-[11px] text-neutral-400">استعلام خودکار کارت‌های زنده و اجرای گام‌به‌گام سناریو</p>
               </div>
             </div>
-            <button
-                type="button"
-                onClick={() => setShowMorningReportModal(true)}
-                className="px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1.5 bg-neutral-800 border border-neutral-700 hover:bg-neutral-750 text-amber-300 shadow-md transition-all cursor-pointer active:scale-95 ml-2"
-                title="باز کردن پنجره متن گزارش رسمی شب برای قرائت در شهر"
-              >
-                <span>📢</span>
-                <span>گزارش صبحگاهی</span>
-              </button>
+            
               <button
               onClick={() => {
                 const nextState = !isNightDeskOpen;
