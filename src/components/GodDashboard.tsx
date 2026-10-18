@@ -1654,20 +1654,27 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                   const targetPlayer = players.find(p => p.id === item.targetId);
                                   const isTargetMafia = targetPlayer && (ROLE_MAP[targetPlayer.roleId]?.team === "mafia" || isMafiaRoleId(targetPlayer.roleId));
                                   const isTargetGodfather = targetPlayer?.roleId === "godfather";
+                                    const isSavedByLecter = nightActions.doctorLecterSaveId === item.targetId;
 
-                                  if (isTargetGodfather) {
-                                    alert("🎯 تیر تک‌تیرانداز به پدرخوانده اصابت کرد! طبق قانون، پدرخوانده در شب با تیر اسنایپر کشته نمی‌شود و اسنایپر نیز از بازی خارج نخواهد شد (شلیک خنثی).");
-                                    network.sendNightResultToPlayer(item.playerId, "شلیک شما به هدف اصابت کرد اما زره محافظ داشت و دفع شد!");
-                                  } else if (isTargetMafia) {
-                                    setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
-                                    network.sendNightResultToPlayer(item.playerId, `شلیک موفق! هدف شما (${item.targetName}) مورد اصابت قرار گرفت.`);
-                                  } else {
-                                    alert(`⚠️ تک‌تیرانداز به یک شهروند (${item.targetName}) شلیک کرد! طبق قانون، خود تک‌تیرانداز در پایان شب از بازی حذف می‌شود.`);
-                                    setNightActions(prev => ({ ...prev, sniperSuicide: true }));
-                                    network.sendNightResultToPlayer(item.playerId, "تیر شما خطا رفت و به شهروند اصابت کرد! شما از بازی حذف می‌شوید.");
-                                  }
-
-                                  setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                    if (item.targetId === "PASS_ACTION") {
+                                      network.sendNightResultToPlayer(item.playerId, "انصراف شما از شلیک تایید شد. فشنگ شما برای شب‌های بعد محفوظ ماند ⚪");
+                                      network.setNightStep(null, roomCode);
+                                      setCurrentActiveNightStep(null);
+                                    } else if (isTargetGodfather) {
+                                      alert("🎯 تیر تک‌تیرانداز به پدرخوانده اصابت کرد! پدرخوانده جلیقه ضدگلوله دارد و زنده می‌ماند. اسنایپر نیز حذف نمی‌شود.");
+                                      network.sendNightResultToPlayer(item.playerId, "شلیک شما به هدف اصابت کرد اما هدف زره محافظ داشت و دفع شد!");
+                                    } else if (isSavedByLecter) {
+                                      alert(`🛡️ هدف (${item.targetName}) توسط دکتر لکتر نجات داده شد! هیچ‌کس از بازی خارج نمی‌شود.`);
+                                      network.sendNightResultToPlayer(item.playerId, "شلیک شما انجام شد اما هدف توسط تیم مافیا مداوا و نجات پیدا کرد!");
+                                    } else if (isTargetMafia) {
+                                      setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                      network.sendNightResultToPlayer(item.playerId, `شلیک موفق! هدف شما (${item.targetName}) مورد اصابت قرار گرفت.`);
+                                    } else {
+                                      alert(`⚠️ تک‌تیرانداز به یک شهروند (${item.targetName}) شلیک کرد! طبق قانون، خود تک‌تیرانداز در پایان شب از بازی حذف می‌شود.`);
+                                      setNightActions(prev => ({ ...prev, sniperSuicide: true }));
+                                      network.sendNightResultToPlayer(item.playerId, "تیر شما خطا رفت و به شهروند اصابت کرد! شما از بازی حذف می‌شوید.");
+                                    }
+                                    setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
                                 }}
                               className="px-2.5 py-1 rounded-lg bg-indigo-950 border border-indigo-700 text-indigo-200 text-[10px] font-bold hover:bg-indigo-900 cursor-pointer"
                             >

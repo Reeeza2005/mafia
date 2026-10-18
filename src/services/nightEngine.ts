@@ -98,7 +98,7 @@ export function resolveNight(
     }
   }
 
-  if (actions.sniperShotId) {
+  if (actions.sniperShotId && actions.sniperShotId !== 'PASS_ACTION') {
     const sniperPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'sniper');
     const target = playerMap.get(actions.sniperShotId);
 
