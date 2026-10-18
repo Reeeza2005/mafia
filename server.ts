@@ -385,6 +385,34 @@ io.on('connection', (socket) => {
     });
 
     // رویداد ارسال هدف شب از طرف بازیکن به گرداننده (گاد)
+    
+    // --- رویدادهای روزانه تفنگدار ---
+    socket.on("day_guns_sync", (data: { roomCode?: string; guns: any[] }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room) return;
+      // ارسال به تمام اعضای اتاق (نوع تیر به بازیکن لو داده نمی‌شود)
+      io.to(room.code).emit("day_guns_updated", { guns: data.guns });
+    });
+
+    socket.on("day_gun_shot_request", (data: { roomCode?: string; shooterId: string; shooterName: string; targetId: string; targetName: string; gunType: string }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room || !room.godSocketId) return;
+      // ارسال مستقیم به داشبورد گاد
+      io.to(room.godSocketId).emit("day_gun_shot_alert", data);
+    });
+
+    socket.on("day_gun_shot_broadcast", (data: { roomCode?: string; shooterName: string; targetName: string; isReal: boolean; targetId: string }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()];
+      if (!room) return;
+      io.to(room.code).emit("day_gun_shot_result", data);
+    });
+
     socket.on("gunsmith_targets_submit", (data: { roomCode?: string; playerId: string; warTargetId?: string; blankTargetId?: string }) => {
       const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
       if (!rCode) return;
@@ -714,21 +742,19 @@ io.on('connection', (socket) => {
       type: 'action',
     });
 
-    // Notify each player individually of their card
+    // ۱. ارسال کارت محرمانه به هر بازیکن فقط به سوکت خود او
     activePlayers.forEach((player) => {
-      io.to(player.id).emit('role_assigned', {
+      const targetSocket = player.socketId || player.id;
+      io.to(targetSocket).emit('role_assigned', {
         roleId: player.roleId,
         player,
       });
-      io.to(room.code).emit('players_updated', {
-        players: Object.values(room.players),
-        logs: room.logs,
-      });
-      io.to(room.code).emit('game_started', {
-        rolesInGame: room.rolesInGame,
-        logs: room.logs,
-        players: Object.values(room.players),
-      });
+    });
+
+    // ۲. ارسال وضعیت نهایی و شروع بازی به صورت یکپارچه فقط یک بار به کل اتاق
+    io.to(room.code).emit('players_updated', {
+      players: Object.values(room.players),
+      logs: room.logs,
     });
 
     // Inform God panel with full master list
@@ -765,6 +791,10 @@ io.on('connection', (socket) => {
     const room = getOrCreateRoom(roomCode);
     const player = room.players[playerId];
     if (player) {
+      if (updates.gunGiven === null || updates.gunGiven === undefined) {
+        delete player.gunGiven;
+        delete (updates as any).gunGiven;
+      }
       Object.assign(player, updates);
       if (updates.name && player.socketId) {
         io.to(player.socketId).emit("player_name_changed", { newName: updates.name });
@@ -1097,10 +1127,21 @@ io.on('connection', (socket) => {
       io.to(roomCode).emit("day_shot_approved", { playerId });
     });
 
-    socket.on("submit_day_shot_target", ({ roomCode, shooterId, shooterName, targetId, targetName }) => {
-      const room = getOrCreateRoom(roomCode);
-      if (!room) return;
-      io.to(roomCode).emit("day_shot_target_received", { shooterId, shooterName, targetId, targetName });
+    socket.on("submit_day_shot_target", (data: { roomCode?: string; shooterId: string; shooterName: string; targetId: string; targetName: string }) => {
+      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (!rCode) return;
+      const room = rooms[rCode.toString().toUpperCase()] || getOrCreateRoom(rCode.toString().toUpperCase());
+      const payload = {
+        shooterId: data.shooterId,
+        shooterName: data.shooterName,
+        targetId: data.targetId,
+        targetName: data.targetName,
+      };
+      // ارسال مستقیم به گرداننده و کل روم بازی
+      if (room?.godSocketId) {
+        io.to(room.godSocketId).emit("day_shot_target_received", payload);
+      }
+      io.to(rCode.toString().toUpperCase()).emit("day_shot_target_received", payload);
     });
 
     socket.on("cancel_day_shot", ({ roomCode, playerId }) => {

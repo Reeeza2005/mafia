@@ -66,6 +66,20 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [nightPhaseActive, setNightPhaseActive] = useState(false);
   const [nightResultMessage, setNightResultMessage] = useState<{ message: string; resultType?: string; time: string } | null>(null);
   const [livePlayers, setLivePlayers] = useState<Player[]>([]);
+    const [myDayGun, setMyDayGun] = useState<{ type: string; used: boolean } | null>(null);
+  const [showGunReceivedModal, setShowGunReceivedModal] = useState<boolean>(false);
+  const [showShootModal, setShowShootModal] = useState<boolean>(false);
+  const [selectedShootTargetId, setSelectedShootTargetId] = useState<string>("");
+  const [gunShotPending, setGunShotPending] = useState<boolean>(false);
+  const activePlayer = (livePlayers && player) ? (livePlayers.find(p => p.id === player.id) || player) : player;
+
+  useEffect(() => {
+    if (!activePlayer?.gunGiven) {
+      setGunShotPending(false);
+      setSelectedShootTargetId("");
+    }
+  }, [activePlayer?.gunGiven]);
+  const [gunShotAnnouncement, setGunShotAnnouncement] = useState<{ message: string; isReal: boolean } | null>(null);
   const [doctorSelfSavesUsed, setDoctorSelfSavesUsed] = useState<number>(0);
 
   useEffect(() => {
@@ -95,7 +109,33 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       }
     });
 
+    
+    const unDayGuns = network.on("day_guns_updated", (data: any) => {
+      if (Array.isArray(data?.guns)) {
+        const found = data.guns.find((g: any) => g.targetId === player.id && !g.used);
+        if (found) {
+          setMyDayGun(found);
+          setShowGunReceivedModal(true);
+        } else {
+          setMyDayGun(null);
+        }
+      }
+    });
+
+    const unShotResult = network.on("day_gun_shot_result", (data: any) => {
+      audio.playShot();
+      setGunShotAnnouncement({
+        message: data.isReal 
+          ? `💥 «${data.shooterName}» به «${data.targetName}» شلیک کرد و گلوله جنگی بود!`
+          : `💨 «${data.shooterName}» به «${data.targetName}» شلیک کرد اما تیر مشقی بود!`,
+        isReal: data.isReal
+      });
+      setTimeout(() => setGunShotAnnouncement(null), 7000);
+    });
+
     return () => {
+      unDayGuns();
+      unShotResult();
       unPlayers();
       unNotif();
       unNightRes();
@@ -400,7 +440,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               جلیقه‌دار 🛡️
             </span>
           )}
-          {player.gunGiven && (
+          {activePlayer?.gunGiven && (
             <span className="px-2 py-0.5 rounded-md bg-rose-950 border border-rose-800 text-[10px] text-rose-300 font-bold animate-pulse">
               مسلح 🔫
             </span>
@@ -458,7 +498,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   >
                     <option value="">-- عدم اهدا یا انتخاب بازیکن --</option>
                     {players?.filter(p => p.isAlive && p.id !== player.id).map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id}>{p.name}{p.id === player.id ? " (خودم)" : ""}</option>
                     ))}
                   </select>
                 </div>
@@ -473,7 +513,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     className="w-full bg-neutral-900 border border-neutral-700 text-white text-xs rounded-xl p-2 outline-none focus:border-sky-500"
                   >
                     <option value="">-- عدم اهدا یا انتخاب بازیکن --</option>
-                    {players?.filter(p => p.isAlive && p.id !== player.id && p.id !== selectedWarTargetId).map(p => (
+                    {players?.filter(p => p.isAlive && p.id !== selectedWarTargetId).map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
@@ -536,7 +576,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         )}
 
         {/* Gunsmith Action Box for Player Card in Day Phase */}
-      {player.isAlive && player.gunGiven && (
+      {activePlayer?.isAlive && activePlayer?.gunGiven && (
         <div className="rounded-2xl border-2 border-rose-600/70 bg-rose-950/40 p-3.5 shadow-xl space-y-2.5 animate-in fade-in">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">
@@ -547,18 +587,53 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           <p className="text-[11px] text-neutral-300 leading-relaxed">
             شما یک اسلحه در اختیار دارید. می‌توانید در فاز روز شلیک خود را از طریق اعلام به گرداننده یا کلیک روی دکمه شلیک انجام دهید.
           </p>
-          <div className="pt-1 flex items-center justify-between border-t border-rose-900/60">
-            <span className="text-[10px] text-neutral-400">وضعیت اسلحه: آماده شلیک</span>
-            <button
-              onClick={() => {
-                if (confirm("آیا از شلیک تفنگ خود اطمینان دارید؟")) {
-                  network.updatePlayerStatus(player.id, { gunGiven: undefined });
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-all shadow-md active:scale-95 cursor-pointer"
-            >
-              ثبت شلیک تفنگ 💥
-            </button>
+          <div className="pt-2 border-t border-rose-900/60 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-rose-300 font-bold">🎯 هدف شلیک را انتخاب کنید:</span>
+              <span className="text-[10px] text-neutral-400">
+                {gunShotPending ? "در حال انتظار برای تایید گاد..." : "وضعیت: آماده مسلح"}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <select
+                disabled={gunShotPending}
+                value={selectedShootTargetId}
+                onChange={(e) => setSelectedShootTargetId(e.target.value)}
+                className="flex-1 bg-neutral-900 border border-rose-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500 disabled:opacity-50"
+              >
+                <option value="">-- انتخاب بازیکن هدف --</option>
+                {(livePlayers?.length ? livePlayers : players)
+                  .filter((p) => p.isAlive && p.id !== player.id)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+
+              <button
+                type="button"
+                disabled={!selectedShootTargetId || gunShotPending}
+                onClick={() => {
+                  const targetP = (livePlayers?.length ? livePlayers : players).find((p) => p.id === selectedShootTargetId);
+                  if (!targetP) return;
+                  if (confirm(`آیا از نشانه رفتن و شلیک به سمت «${targetP.name}» اطمینان دارید؟`)) {
+                    network.submitDayShotTarget(player.id, player.name, targetP.id, targetP.name);
+                    setGunShotPending(true);
+                    audio.playShot();
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+              >
+                {gunShotPending ? "ارسال شد ⏳" : "شلیک به هدف 💥"}
+              </button>
+            </div>
+            {gunShotPending && (
+              <p className="text-[10px] text-amber-300 animate-pulse text-center">
+                درخواست شلیک شما به گرداننده ارسال شد و روی صفحه او نمایش داده شده است.
+              </p>
+            )}
           </div>
         </div>
       )}

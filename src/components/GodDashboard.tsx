@@ -86,6 +86,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   // --- Night / Day Unified Engine States ---
   const [isNightDeskOpen, setIsNightDeskOpen] = useState(false);
   const [currentActiveNightStep, setCurrentActiveNightStep] = useState<string | null>(null);
+  const [godAnnouncementText, setGodAnnouncementText] = useState<string | null>(null);
   const [incomingDayShotRequests, setIncomingDayShotRequests] = useState<{ playerId: string; playerName: string }[]>([]);
   const [incomingDayShotTargets, setIncomingDayShotTargets] = useState<{ shooterId: string; shooterName: string; targetId: string; targetName: string }[]>([]);
   const [incomingNightTargets, setIncomingNightTargets] = useState<{
@@ -102,6 +103,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   const [morningReportText, setMorningReportText] = useState<string[]>([]);
   const [quotas, setQuotas] = useState<QuotaTracker>({});
   const [dayGuns, setDayGuns] = useState<{ targetId: string; targetName: string; type: "war" | "blank"; used: boolean }[]>([]);
+  const [pendingDayShot, setPendingDayShot] = useState<{ shooterId: string; shooterName: string; targetId: string; targetName: string; gunType: string } | null>(null);
 
   const [nightActions, setNightActions] = useState<NightActions>({
     mafiaShotId: undefined,
@@ -160,7 +162,14 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
         setChallengeRequests(data);
       }
     });
+    
+    const unGunAlert = network.on("day_gun_shot_alert", (data: any) => {
+      audio.playFlip();
+      setPendingDayShot(data);
+    });
+
     return () => {
+      unGunAlert();
       if (typeof unSub === 'function') unSub();
     };
   }, []);
@@ -204,7 +213,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     network.on("night_target_received", (data: any) => {
       if (data && data.playerId) {
         setIncomingNightTargets((prev) => [
-          ...prev.filter((t) => t.playerId !== data.playerId),
+          ...prev.filter((t) => !(t.playerId === data.playerId && (t.roleId !== "gunsmith" || t.extraType === data.extraType))),
           data,
         ]);
         audio.playFlip();
@@ -468,22 +477,24 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       }
     });
 
-    // ثبت تفنگ اعطایی تفنگدار برای فاز روز
+    // ثبت تفنگ اعطایی تفنگدار برای فاز روز و اعلان همگام به بازیکنان
     if (nightActions.gunsmithTargetId && nightActions.gunsmithGunType) {
       const targetP = players.find((p) => p.id === nightActions.gunsmithTargetId);
       if (targetP) {
-        setDayGuns((prev) => [
-          ...prev.filter((g) => g.targetId !== targetP.id),
-          {
-            targetId: targetP.id,
-            targetName: targetP.name,
-            type: nightActions.gunsmithGunType as "war" | "blank",
-            used: false,
-          },
-        ]);
+        const newGun = {
+          targetId: targetP.id,
+          targetName: targetP.name,
+          type: nightActions.gunsmithGunType as "war" | "blank",
+          used: false,
+        };
+        setDayGuns((prev) => {
+          const updated = [...prev.filter((g) => g.targetId !== targetP.id), newGun];
+          network.syncDayGuns(updated, roomCode);
+          return updated;
+        });
         // ثبت رسمی تفنگ اهدا شده روی شیء پلیر جهت نمایش در کارت بازیکن
         onUpdatePlayer(targetP.id, { 
-          gunGiven: nightActions.gunsmithGunType as "war" | "blank"
+            gunGiven: (newGun?.type || nightActions.gunsmithGunType) as "war" | "blank",
         });
       }
     }
@@ -1099,102 +1110,143 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       {cardsDistributed && (
         <div className="space-y-3">
           {/* صف درخواست و اجرای شلیک تفنگ در فاز روز */}
-          {(incomingDayShotRequests.length > 0 || incomingDayShotTargets.length > 0) && (
-            <div className="bg-rose-950/40 border border-rose-800 rounded-3xl p-4 shadow-xl space-y-3">
-              <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">
-                🔫 درخواست‌های فعال شلیک روزانه:
-              </span>
+            {(incomingDayShotRequests.length > 0 || incomingDayShotTargets.length > 0) && (
+              <div className="bg-rose-950/40 border border-rose-800 rounded-3xl p-4 shadow-xl space-y-3">
+                <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">
+                  🔫 درخواست‌های فعال شلیک روزانه:
+                </span>
 
-              {/* ۱. درخواست‌های اولیه برای کشیدن تفنگ */}
-              {incomingDayShotRequests.map((req, i) => (
-                <div key={i} className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-3 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-white block">{req.playerName}</span>
-                    <span className="text-[11px] text-amber-400">درخواست کشیدن اسلحه و شلیک دارد</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        network.approveDayShot(req.playerId);
-                        setIncomingDayShotRequests(prev => prev.filter(r => r.playerId !== req.playerId));
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-md"
-                    >
-                      اجازه هدف‌گیری 🎯
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        network.cancelDayShot(req.playerId);
-                        setIncomingDayShotRequests(prev => prev.filter(r => r.playerId !== req.playerId));
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs cursor-pointer"
-                    >
-                      رد درخواست ✕
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {/* ۲. اهداف نهایی ثبت شده برای تایید گاد */}
-              {incomingDayShotTargets.map((shot, i) => {
-                const shooter = players.find(p => p.id === shot.shooterId);
-                const target = players.find(p => p.id === shot.targetId);
-                const gunType = shooter?.gunGiven || "war";
-                const isWar = gunType === "war";
-
-                return (
-                  <div key={i} className="bg-neutral-900 border border-rose-700 rounded-2xl p-3 flex items-center justify-between text-xs">
+                {/* ۱. درخواست‌های اولیه برای کشیدن تفنگ */}
+                {incomingDayShotRequests.map((req, i) => (
+                  <div key={i} className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-3 flex items-center justify-between text-xs">
                     <div>
-                      <span className="font-bold text-white block">
-                        شلیک‌کننده: {shot.shooterName} ──▶ هدف: <strong className="text-rose-400">{shot.targetName}</strong>
-                      </span>
-                      <span className="text-[11px] text-neutral-300 font-mono">
-                        نوع گلوله: <strong className={isWar ? "text-rose-400" : "text-sky-300"}>{isWar ? "جنگی 💥" : "مشقی ⚪"}</strong>
-                      </span>
+                      <span className="font-bold text-white block">{req.playerName}</span>
+                      <span className="text-[11px] text-amber-400">درخواست کشیدن اسلحه و شلیک دارد</span>
                     </div>
-
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => {
-                          if (isWar && target) {
-                            const isArmored = target.roleId === "armored";
-                            const hasArmor = target.hasArmor !== false;
-
-                            if (isArmored && hasArmor) {
-                              // زره‌پوش با زره سالم: فقط زره می‌افتد
-                              onUpdatePlayer(target.id, { hasArmor: false });
-                              network.updatePlayerStatus(target.id, { hasArmor: false });
-                              alert(`🛡️ تیر جنگی به ${target.name} اصابت کرد، اما چون زره‌پوش بود فقط زره او افتاد و در بازی ماند!`);
-                            } else {
-                              // سایر بازیکنان یا زره‌پوش بدون زره: مرگ و خروج
-                              onUpdatePlayer(target.id, { isAlive: false, eliminationReason: "gun_shot" });
-                              network.updatePlayerStatus(target.id, { isAlive: false, eliminationReason: "gun_shot" });
-                            }
-                          } else {
-                            alert("⚪ تیر مشقی بود و هیچ بازیکنی آسیب ندید.");
-                          }
-
-                          // سلب اسلحه از شلیک‌کننده
-                          onUpdatePlayer(shot.shooterId, { gunGiven: undefined });
-                          network.updatePlayerStatus(shot.shooterId, { gunGiven: undefined });
-                          setDayGuns(prev => prev.filter(g => g.targetId !== shot.shooterId));
-                          setIncomingDayShotTargets(prev => prev.filter(t => t.shooterId !== shot.shooterId));
+                          network.approveDayShot(req.playerId);
+                          setIncomingDayShotRequests(prev => prev.filter(r => r.playerId !== req.playerId));
                         }}
-                        className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer shadow-lg"
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-md"
                       >
-                        تایید و شلیک نهایی 💥
+                        اجازه هدف‌گیری 🎯
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          network.cancelDayShot(req.playerId);
+                          setIncomingDayShotRequests(prev => prev.filter(r => r.playerId !== req.playerId));
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs cursor-pointer"
+                      >
+                        رد درخواست ✕
                       </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))}
 
-          {/* پنل وضعیت تفنگ‌های اهدا شده در فاز روز */}
+                {/* ۲. اهداف نهایی ثبت شده برای تایید گاد */}
+                {incomingDayShotTargets.map((shot, i) => {
+                  const shooter = players.find(p => p.id === shot.shooterId);
+                  const target = players.find(p => p.id === shot.targetId);
+                  const registeredGun = dayGuns.find(g => g.targetId === shot.shooterId);
+                    const gunType = registeredGun?.type || shooter?.gunGiven || "war";
+                  const isWar = gunType === "war";
+                  const isArmored = target?.roleId === "armored";
+                  const hasArmor = target?.hasArmor !== false;
+                  const targetSide = (target?.team === "mafia" || target?.roleId?.includes("mafia") || target?.roleId === "godfather") ? "مافیا 🔴" : "شهروند 🟢";
+
+                  return (
+                    <div key={i} className="bg-neutral-900 border-2 border-rose-600 rounded-2xl p-4 shadow-2xl flex flex-col gap-3 text-xs">
+                      <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                        <span className="font-black text-white text-sm">
+                          💥 شلیک روزانه: <span className="text-amber-400">{shot.shooterName}</span> ──▶ هدف: <span className="text-rose-400 font-bold">{shot.targetName}</span>
+                        </span>
+                        <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${isWar ? "bg-rose-950 text-rose-300 border border-rose-700" : "bg-sky-950 text-sky-300 border border-sky-700"}`}>
+                          {isWar ? "گلوله جنگی 💥" : "گلوله مشقی ⚪"}
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] text-neutral-300 bg-neutral-950/70 p-2.5 rounded-xl border border-neutral-800 flex justify-between items-center">
+                        <span>هویت هدف (ویژه گاد): <strong className="text-white font-mono">{targetSide}</strong></span>
+                        <span className="text-neutral-400">وضعیت هدف: {target?.isAlive ? "زنده" : "مرده"}</span>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIncomingDayShotTargets(prev => prev.filter(t => t.shooterId !== shot.shooterId));
+                            network.cancelDayShot(shot.shooterId);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold cursor-pointer"
+                        >
+                          رد شلیک ✕
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // ۱. باطل کردن اسلحه شلیک‌کننده
+                            onUpdatePlayer(shot.shooterId, { gunGiven: null });
+                            network.updatePlayerStatus(shot.shooterId, { gunGiven: null });
+
+                            if (isWar) {
+                              // الف) تیر جنگی
+                              if (isArmored && hasArmor && target) {
+                                // زره‌پوش با زره سالم
+                                onUpdatePlayer(target.id, { hasArmor: false });
+                                network.updatePlayerStatus(target.id, { hasArmor: false });
+                                const msg = `🛡️ «${shot.shooterName}» به «${shot.targetName}» شلیک کرد و تیر جنگی بود! اما چون زره‌پوش بود، فقط زره او افتاد و در بازی ماند.`;
+                                  network.broadcastDayGunResult(shot.shooterName, shot.targetName, true, shot.targetId, roomCode);
+                                setGodAnnouncementText(msg);
+                              } else {
+                                // مرگ و خروج از بازی
+                                onUpdatePlayer(target.id, { isAlive: false, eliminationReason: "gun_shot" });
+                                network.updatePlayerStatus(target.id, { isAlive: false, eliminationReason: "gun_shot" });
+
+                                // باطل شدن تیر مشقی باقیمانده در دست دیگران
+                                players.forEach(p => {
+                                  if (p.id !== shot.shooterId && p.gunGiven) {
+                                    onUpdatePlayer(p.id, { gunGiven: null });
+                                    network.updatePlayerStatus(p.id, { gunGiven: null });
+                                  }
+                                });
+                                setDayGuns([]);
+                                network.syncDayGuns([], roomCode);
+
+                                const msg = `💥 «${shot.shooterName}» به «${shot.targetName}» شلیک کرد و تیر جنگی بود! «${shot.targetName}» با ساید [${targetSide}] از بازی خارج شد. (تیر مشقی باقیمانده نیز باطل شد 🔥)`;
+                                  network.broadcastDayGunResult(shot.shooterName, shot.targetName, true, shot.targetId, roomCode);
+                                setGodAnnouncementText(msg);
+                              }
+                            } else {
+                              // ب) تیر مشقی: کسی حذف نمی‌شود و تیر جنگی بازیکن دیگر دست‌نخورده می‌ماند
+                                const remainingGuns = dayGuns.filter(g => g.targetId !== shot.shooterId);
+                                setDayGuns(remainingGuns);
+                                network.syncDayGuns(remainingGuns, roomCode);
+                              const msg = `⚪ «${shot.shooterName}» به «${shot.targetName}» شلیک کرد، اما تیر مشقی بود! هیچ بازیکنی حذف نشد و بازی ادامه دارد.`;
+                                network.broadcastDayGunResult(shot.shooterName, shot.targetName, false, shot.targetId, roomCode);
+                              setGodAnnouncementText(msg);
+                            }
+
+                            // حذف ردیف شلیک از صف
+                            setIncomingDayShotTargets(prev => prev.filter(t => t.shooterId !== shot.shooterId));
+                          }}
+                          className={`px-4 py-1.5 rounded-xl text-white font-black text-xs shadow-lg transition-all cursor-pointer ${isWar ? "bg-rose-600 hover:bg-rose-500" : "bg-sky-600 hover:bg-sky-500"}`}
+                        >
+                          {isWar ? "تایید شلیک جنگی و اخراج بازیکن 💥" : "تایید شلیک مشقی و ادامه بازی ⚪"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* پنل وضعیت تفنگ‌های اهدا شده در فاز روز */}
           {dayGuns.length > 0 && (
             <div className="bg-amber-950/30 border border-amber-800/60 rounded-3xl p-4 shadow-xl space-y-2">
               <div className="flex items-center justify-between">
@@ -1203,6 +1255,49 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 </span>
                 <span className="text-[10px] text-amber-400/80">برای اعمال شلیک، نوع اسلحه را بررسی کنید</span>
               </div>
+              {/* هشدار شلیک هدف‌دار بازیکن */}
+              {pendingDayShot && (
+                <div className="bg-rose-950/70 border-2 border-rose-500 rounded-2xl p-3 animate-pulse space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-black text-rose-200 flex items-center gap-1.5">
+                      ⚠️ «{pendingDayShot.shooterName}» به سمت «{pendingDayShot.targetName}» نشانه رفت!
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${pendingDayShot.gunType === "war" ? "bg-rose-700 text-white" : "bg-sky-700 text-white"}`}>
+                      {pendingDayShot.gunType === "war" ? "💥 تیر جنگی (کشنده)" : "💨 تیر مشقی (بی‌اثر)"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isReal = pendingDayShot.gunType === "war";
+                        audio.playShot();
+                        if (isReal) {
+                          network.updatePlayerStatus(pendingDayShot.targetId, { isAlive: false, eliminationReason: "mafia_shot" });
+                        }
+                        network.broadcastDayGunResult(pendingDayShot.shooterName, pendingDayShot.targetName, isReal, pendingDayShot.targetId, roomCode);
+                        setDayGuns(prev => {
+                          const updated = prev.map(g => g.targetId === pendingDayShot.shooterId ? { ...g, used: true } : g);
+                          network.syncDayGuns(updated, roomCode);
+                          return updated;
+                        });
+                        setPendingDayShot(null);
+                      }}
+                      className="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-1.5 rounded-xl transition-all cursor-pointer shadow-lg"
+                    >
+                      تایید شلیک نهایی 💥
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingDayShot(null)}
+                      className="px-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs py-1.5 rounded-xl transition-all cursor-pointer"
+                    >
+                      رد شلیک ❌
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 {dayGuns.map((gun, idx) => (
                   <div key={idx} className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-2.5 flex items-center justify-between text-xs">
@@ -1212,21 +1307,15 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                         نوع سلاح: {gun.type === "war" ? "تیر جنگی 💥" : "تیر مشقی 💨"}
                       </span>
                     </div>
-                    {!gun.used ? (
-                      <button
-                        onClick={() => {
-                          if (gun.type === "war") {
-                            network.updatePlayerStatus(gun.targetId, { isAlive: false, eliminationReason: "court_vote" });
-                          }
-                          setDayGuns(prev => prev.map((g, i) => i === idx ? { ...g, used: true } : g));
-                        }}
-                        className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition-all"
-                      >
-                        ثبت شلیک
-                      </button>
-                    ) : (
-                      <span className="text-[10px] text-neutral-500 font-bold">شلیک شد ✓</span>
-                    )}
+                    <div>
+                      {gun.used ? (
+                        <span className="text-[10px] text-neutral-500 font-bold">شلیک شد ✓</span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-800">
+                          مسلح در بازی 🔫
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1447,7 +1536,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                       detectiveInquiryId: item.targetId,
                                       detectiveResult: calculatedResult,
                                     }));
-                                    setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                    setIncomingNightTargets(prev => prev.filter(t => !(t.playerId === item.playerId && (t.extraType || "war") === (item.extraType || "war"))));
                                     network.setNightStep(null, roomCode);
                                     setCurrentActiveNightStep(null);
                                   }}
@@ -1496,7 +1585,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                     used: false,
                                   }
                                 ]);
-                                setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                setIncomingNightTargets(prev => prev.filter(t => !(t.playerId === item.playerId && t.targetId === item.targetId)));
                                 onUpdatePlayer(item.targetId, { gunGiven: isReal ? "war" : "blank" });
                                 network.updatePlayerStatus(item.targetId, { gunGiven: isReal ? "war" : "blank" });
                                 network.sendNightResultToPlayer(
@@ -2191,6 +2280,36 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           </button>
         )}
       </div>
-    </div>
+    
+      {/* مودال رسمی اعلامیه بلند گرداننده (شلیک و استعلام) */}
+      {godAnnouncementText && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="bg-neutral-900 border-2 border-amber-500 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 text-right">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+              <span className="text-base font-black text-amber-400 flex items-center gap-2">
+                📢 متن اعلام گرداننده به اتاق (بلند بخوانید)
+              </span>
+              <span className="px-2 py-0.5 rounded-lg bg-amber-950 border border-amber-700 text-amber-300 text-[10px] font-bold">
+                ویژه گاد
+              </span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-800/50 text-neutral-100 text-sm leading-relaxed font-bold">
+              {godAnnouncementText}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setGodAnnouncementText(null)}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs transition-all shadow-lg active:scale-95 cursor-pointer"
+              >
+                قرائت شد و ادامه بازی ✓
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+</div>
   );
 };

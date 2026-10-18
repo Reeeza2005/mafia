@@ -63,7 +63,23 @@ class NetworkService {
     });
 
     
-        this.socket.on("night_target_received", (data: any) => {
+        this.socket.on("day_shot_target_received", (data: any) => {
+      this.emitLocal("day_shot_target_received", data);
+    });
+
+    this.socket.on("day_shot_requested", (data: any) => {
+      this.emitLocal("day_shot_requested", data);
+    });
+
+    this.socket.on("day_shot_cancelled", (data: any) => {
+      this.emitLocal("day_shot_cancelled", data);
+    });
+
+    this.socket.on("day_shot_approved", (data: any) => {
+      this.emitLocal("day_shot_approved", data);
+    });
+
+    this.socket.on("night_target_received", (data: any) => {
       this.emitLocal("night_target_received", data);
     });
 
@@ -139,6 +155,10 @@ this.socket.on('connect_error', (err: any) => {
     this.socket.on('secret_vote_ended', (data) => this.emitLocal('secret_vote_ended', data));
     this.socket.on('vote_recorded', (data) => this.emitLocal('vote_recorded', data));
     this.socket.on('night_actions_updated', (data) => this.emitLocal('night_actions_updated', data));
+    
+    this.socket.on("day_guns_updated", (data) => this.emitLocal("day_guns_updated", data));
+    this.socket.on("day_gun_shot_alert", (data) => this.emitLocal("day_gun_shot_alert", data));
+    this.socket.on("day_gun_shot_result", (data) => this.emitLocal("day_gun_shot_result", data));
     this.socket.on('mafia_chat_sync', (data) => this.emitLocal('mafia_chat_sync', data));
     this.socket.on('kicked', () => this.emitLocal('kicked', {}));
     this.socket.on('error_message', (msg) => this.emitLocal('error_message', msg));
@@ -483,7 +503,8 @@ sendMafiaMessage(playerId: string, text: string) {
 
   submitDayShotTarget(shooterId: string, shooterName: string, targetId: string, targetName: string) {
     if (this.socket && this.socket.connected) {
-      this.socket.emit("submit_day_shot_target", { roomCode: this.roomCode, shooterId, shooterName, targetId, targetName });
+      const rCode = (this as any).currentRoomCode || (this as any).roomCode;
+      this.socket.emit("submit_day_shot_target", { roomCode: rCode, shooterId, shooterName, targetId, targetName });
     }
   }
 
@@ -492,7 +513,38 @@ sendMafiaMessage(playerId: string, text: string) {
       this.socket.emit("cancel_day_shot", { roomCode: this.roomCode, playerId });
     }
   }
+
+  
+  sendGunsmithTargets(playerId: string, warTargetId?: string, blankTargetId?: string) {
+    if (this.socket) {
+      const rCode = (this as any).currentRoomCode || (this as any).roomCode;
+      this.socket.emit("gunsmith_targets_submit", { roomCode: rCode, playerId, warTargetId, blankTargetId });
+    }
+  }
+
+  syncDayGuns(guns: any[], roomCode?: string) {
+    if (this.socket) {
+      const rCode = roomCode || (this as any).currentRoomCode || (this as any).roomCode;
+      this.socket.emit("day_guns_sync", { roomCode: rCode, guns });
+    }
+  }
+
+  requestDayGunShot(shooterId: string, shooterName: string, targetId: string, targetName: string, gunType: string, roomCode?: string) {
+    if (this.socket) {
+      const rCode = roomCode || (this as any).currentRoomCode || (this as any).roomCode;
+      this.socket.emit("day_gun_shot_request", { roomCode: rCode, shooterId, shooterName, targetId, targetName, gunType });
+    }
+  }
+
+  broadcastDayGunResult(shooterName: string, targetName: string, isReal: boolean, targetId: string, roomCode?: string) {
+    if (this.socket) {
+      const rCode = roomCode || (this as any).currentRoomCode || (this as any).roomCode;
+      this.socket.emit("day_gun_shot_broadcast", { roomCode: rCode, shooterName, targetName, isReal, targetId });
+    }
+  }
 }
 
 export const network = new NetworkService();
-if (typeof window !== "undefined") { (window as any).network = network; }
+if (typeof window !== "undefined") {
+  (window as any).network = network;
+}
