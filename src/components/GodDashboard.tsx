@@ -1437,23 +1437,42 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   </button>
             )}
 
-                  {alivePlayers.some(p => p.roleId === "sniper") && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = currentActiveNightStep === "sniper" ? null : "sniper";
-                        setCurrentActiveNightStep(next);
-                        network.setNightStep(next, roomCode);
-                      }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                        currentActiveNightStep === "sniper"
-                          ? "bg-purple-700 text-white shadow-lg ring-2 ring-purple-500"
-                          : "bg-purple-950/50 text-purple-300 border border-purple-900/60 hover:bg-purple-900/70"
-                      }`}
-                    >
-                      🔫 بیدارباش اسنایپر
-                    </button>
-                  )}
+                                     {(() => {
+                     const sniperAlive = alivePlayers.find(p => p.roleId === "sniper");
+                     if (!sniperAlive) return null;
+
+                     const totalQuota = (typeof getSniperBulletQuota === "function") 
+                       ? getSniperBulletQuota(alivePlayers.length ? alivePlayers : players) 
+                       : 2;
+                     const usedBullets = (sniperAlive as any).sniperBulletsUsed || 0;
+                     const remainingBullets = Math.max(0, totalQuota - usedBullets);
+                     const isOutOfBullets = remainingBullets <= 0;
+
+                     return (
+                       <button
+                         type="button"
+                         disabled={isOutOfBullets}
+                         onClick={() => {
+                           if (isOutOfBullets) return;
+                           const next = currentActiveNightStep === "sniper" ? null : "sniper";
+                           setCurrentActiveNightStep(next);
+                           network.setNightStep(next, roomCode);
+                         }}
+                         title={isOutOfBullets ? "سهمیه فشنگ اسنایپر به پایان رسیده است" : `فشنگ باقی‌مانده: ${remainingBullets}`}
+                         className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                           isOutOfBullets
+                             ? "bg-neutral-900/60 border border-neutral-800 text-neutral-600 cursor-not-allowed opacity-60 line-through"
+                             : currentActiveNightStep === "sniper"
+                             ? "bg-purple-700 text-white shadow-lg ring-2 ring-purple-500 cursor-pointer"
+                             : "bg-purple-950/50 text-purple-300 border border-purple-900/60 hover:bg-purple-900/70 cursor-pointer"
+                         }`}
+                       >
+                         {isOutOfBullets 
+                           ? "🚫 اسنایپر (۰ فشنگ)" 
+                           : `🔫 بیدارباش اسنایپر (${remainingBullets} تیر)`}
+                       </button>
+                     );
+                   })()}
 
                   {alivePlayers.some(p => p.roleId === "gunsmith") && (
                     <button
