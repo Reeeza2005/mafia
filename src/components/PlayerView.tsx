@@ -481,7 +481,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   <span>سهمیه فشنگ:</span>
                   <span className="tracking-widest">
                     {(() => {
-                      const total = getSniperBulletQuota(livePlayers.length ? livePlayers : (players || []));
+                      const total = getSniperBulletQuota(players && players.length ? players : livePlayers);
                       const used = (activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0;
                       const rem = Math.max(0, total - used);
                       return "🟡".repeat(rem) + "⚪".repeat(Math.max(0, total - rem));
@@ -538,7 +538,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
             {/* وضعیت اتمام فشنگ اسنایپر */}
             {player.roleId === "sniper" && (() => {
-              const totalB = getSniperBulletQuota(livePlayers.length ? livePlayers : (players || []));
+              const totalB = getSniperBulletQuota(players && players.length ? players : livePlayers);
               const usedB = (activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0;
               return totalB - usedB <= 0;
             })() ? (
@@ -587,7 +587,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
             {/* دکمه ارسال اکشن شب */}
             <button
               type="button"
-              disabled={nightActionSent || (player.roleId === "sniper" && (getSniperBulletQuota(livePlayers.length ? livePlayers : (players || [])) - ((activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0) <= 0)) || (player.roleId === "gunsmith" ? (!selectedWarTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
+              disabled={nightActionSent || (player.roleId === "sniper" && (getSniperBulletQuota(players && players.length ? players : livePlayers) - ((activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0) <= 0)) || (player.roleId === "gunsmith" ? (!selectedWarTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
               onClick={() => {
                 if (player.roleId === "gunsmith") {
                   network.sendGunsmithTargets(player.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);

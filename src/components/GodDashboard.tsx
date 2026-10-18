@@ -1,3 +1,4 @@
+import { getSniperBulletQuota } from "../utils/sniperQuota";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Player, GameTimer, GameLog, EliminationReason, SecretVoteState, NightActions } from '../types/mafia';
 import { ROLE_MAP, ALL_ROLES } from '../data/roles';
@@ -1442,7 +1443,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                      if (!sniperAlive) return null;
 
                      const totalQuota = (typeof getSniperBulletQuota === "function") 
-                       ? getSniperBulletQuota(alivePlayers.length ? alivePlayers : players) 
+                       ? getSniperBulletQuota(players) 
                        : 2;
                      const usedBullets = (sniperAlive as any).sniperBulletsUsed || 0;
                      const remainingBullets = Math.max(0, totalQuota - usedBullets);
