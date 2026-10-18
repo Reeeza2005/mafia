@@ -482,7 +482,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   <span className="tracking-widest">
                     {(() => {
                       const total = getSniperBulletQuota(livePlayers.length ? livePlayers : (players || []));
-                      const rem = Math.max(0, total - sniperBulletsUsed);
+                      const used = (activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0;
+                      const rem = Math.max(0, total - used);
                       return "🟡".repeat(rem) + "⚪".repeat(Math.max(0, total - rem));
                     })()}
                   </span>

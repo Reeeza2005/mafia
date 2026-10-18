@@ -1657,24 +1657,36 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                     const isSavedByLecter = nightActions.doctorLecterSaveId === item.targetId;
 
                                     if (item.targetId === "PASS_ACTION") {
-                                      network.sendNightResultToPlayer(item.playerId, "انصراف شما از شلیک تایید شد. فشنگ شما برای شب‌های بعد محفوظ ماند ⚪");
-                                      network.setNightStep(null, roomCode);
-                                      setCurrentActiveNightStep(null);
-                                    } else if (isTargetGodfather) {
-                                      alert("🎯 تیر تک‌تیرانداز به پدرخوانده اصابت کرد! پدرخوانده جلیقه ضدگلوله دارد و زنده می‌ماند. اسنایپر نیز حذف نمی‌شود.");
-                                      network.sendNightResultToPlayer(item.playerId, "شلیک شما به هدف اصابت کرد اما هدف زره محافظ داشت و دفع شد!");
-                                    } else if (isSavedByLecter) {
-                                      alert(`🛡️ هدف (${item.targetName}) توسط دکتر لکتر نجات داده شد! هیچ‌کس از بازی خارج نمی‌شود.`);
-                                      network.sendNightResultToPlayer(item.playerId, "شلیک شما انجام شد اما هدف توسط تیم مافیا مداوا و نجات پیدا کرد!");
-                                    } else if (isTargetMafia) {
-                                      setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
-                                      network.sendNightResultToPlayer(item.playerId, `شلیک موفق! هدف شما (${item.targetName}) مورد اصابت قرار گرفت.`);
-                                    } else {
-                                      alert(`⚠️ تک‌تیرانداز به یک شهروند (${item.targetName}) شلیک کرد! طبق قانون، خود تک‌تیرانداز در پایان شب از بازی حذف می‌شود.`);
-                                      setNightActions(prev => ({ ...prev, sniperSuicide: true }));
-                                      network.sendNightResultToPlayer(item.playerId, "تیر شما خطا رفت و به شهروند اصابت کرد! شما از بازی حذف می‌شوید.");
-                                    }
-                                    setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                       network.sendNightResultToPlayer(item.playerId, "انصراف شما از شلیک ثبت شد ⚪");
+                                       network.setNightStep(null, roomCode);
+                                       setCurrentActiveNightStep(null);
+                                     } else {
+                                       // ۱. پیام استاندارد و محرمانه برای اسنایپر (بدون لو رفتن زره، لکتر یا شهروند بودن)
+                                       network.sendNightResultToPlayer(item.playerId, "شلیک شما با موفقیت ثبت شد 🎯");
+
+                                       // ۲. کسر قطعی ۱ فشنگ از سهمیه اسنایپر در وضعیت بازی
+                                       const sniperP = players.find(p => p.id === item.playerId);
+                                       if (sniperP) {
+                                         const currentUsed = (sniperP as any).sniperBulletsUsed || 0;
+                                         network.updatePlayer(item.playerId, { sniperBulletsUsed: currentUsed + 1 } as any);
+                                       }
+
+                                       // ۳. بررسی سناریوها صرفاً جهت اطلاع گاد و اعمال در موتور بازی
+                                       if (isTargetGodfather) {
+                                         alert("🎯 تیر اسنایپر به پدرخوانده اصابت کرد! جلیقه او شکست و زنده می‌ماند. (اسنایپر حذف نمی‌شود، ۱ فشنگ مصرف شد)");
+                                         setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                       } else if (isSavedByLecter) {
+                                         alert(`🛡️ مافیای هدف (${item.targetName}) توسط دکتر لکتر نجات پیدا کرد! هیچ‌کس کشته نمی‌شود. (۱ فشنگ مصرف شد)`);
+                                         setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                       } else if (isTargetMafia) {
+                                         alert(`💥 شلیک اسنایپر به مافیا (${item.targetName}) موفقیت‌آمیز بود! (۱ فشنگ مصرف شد)`);
+                                         setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                       } else {
+                                         alert(`⚠️ اسنایپر به شهروند (${item.targetName}) شلیک کرد! اسنایپر در پایان شب حذف می‌شود.`);
+                                         setNightActions(prev => ({ ...prev, sniperSuicide: true, sniperShotTargetId: item.targetId }));
+                                       }
+                                     }
+                                     setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
                                 }}
                               className="px-2.5 py-1 rounded-lg bg-indigo-950 border border-indigo-700 text-indigo-200 text-[10px] font-bold hover:bg-indigo-900 cursor-pointer"
                             >
