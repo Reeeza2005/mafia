@@ -1668,7 +1668,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                        const sniperP = players.find(p => p.id === item.playerId);
                                        if (sniperP) {
                                          const currentUsed = (sniperP as any).sniperBulletsUsed || 0;
-                                         network.updatePlayer(item.playerId, { sniperBulletsUsed: currentUsed + 1 } as any);
+                                         network.updatePlayerStatus(item.playerId, { sniperBulletsUsed: currentUsed + 1 } as any);
+                                         setPlayers(prev => prev.map(p => p.id === item.playerId ? { ...p, sniperBulletsUsed: currentUsed + 1 } as any : p));
                                        }
 
                                        // ۳. بررسی سناریوها صرفاً جهت اطلاع گاد و اعمال در موتور بازی

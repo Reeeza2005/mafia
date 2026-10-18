@@ -536,6 +536,18 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               </div>
             )}
 
+            {/* وضعیت اتمام فشنگ اسنایپر */}
+            {player.roleId === "sniper" && (() => {
+              const totalB = getSniperBulletQuota(livePlayers.length ? livePlayers : (players || []));
+              const usedB = (activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0;
+              return totalB - usedB <= 0;
+            })() ? (
+              <div className="p-3 rounded-xl bg-neutral-900/80 border border-amber-600/30 text-center">
+                <span className="text-xs text-amber-300 font-bold block">⚪ تمامی فشنگ‌های شما مصرف شده است.</span>
+                <span className="text-[10px] text-neutral-400 mt-1 block">امکان شلیک در شب‌های بعدی وجود ندارد.</span>
+              </div>
+            ) : null}
+
             {/* انتخاب هدف برای سایر نقش‌ها (کارآگاه، پزشک، مافیا و ...) */}
             {player.roleId !== "gunsmith" && (
               <div className="flex items-center gap-2">
@@ -575,7 +587,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
             {/* دکمه ارسال اکشن شب */}
             <button
               type="button"
-              disabled={nightActionSent || (player.roleId === "gunsmith" ? (!selectedWarTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
+              disabled={nightActionSent || (player.roleId === "sniper" && (getSniperBulletQuota(livePlayers.length ? livePlayers : (players || [])) - ((activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0) <= 0)) || (player.roleId === "gunsmith" ? (!selectedWarTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
               onClick={() => {
                 if (player.roleId === "gunsmith") {
                   network.sendGunsmithTargets(player.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
