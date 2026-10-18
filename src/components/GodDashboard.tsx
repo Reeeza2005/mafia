@@ -1647,56 +1647,71 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             >
                               تایید سیو لکتر 🩺
                             </button>
-                          ) : item.roleId === "sniper" ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                  const targetPlayer = players.find(p => p.id === item.targetId);
-                                  const isTargetMafia = targetPlayer && (ROLE_MAP[targetPlayer.roleId]?.team === "mafia" || isMafiaRoleId(targetPlayer.roleId));
-                                  const isTargetGodfather = targetPlayer?.roleId === "godfather";
-                                    const isSavedByLecter = nightActions.doctorLecterSaveId === item.targetId;
+           ) : item.roleId === "sniper" ? (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      // ۱. حذف فوری کارت از پنل گاد
+                                      setIncomingNightTargets(prev => prev.filter((_, i) => i !== idx && prev[i]?.playerId !== item.playerId));
 
-                                    if (item.targetId === "PASS_ACTION") {
-                                       network.sendNightResultToPlayer(item.playerId, "انصراف شما از شلیک ثبت شد ⚪");
-                                       network.setNightStep(null, roomCode);
-                                       setCurrentActiveNightStep(null);
-                                     } else {
-                                       // ۱. پیام استاندارد و محرمانه برای اسنایپر (بدون لو رفتن زره، لکتر یا شهروند بودن)
-                                       network.sendNightResultToPlayer(item.playerId, "شلیک شما با موفقیت ثبت شد 🎯");
+                                      const targetPlayer = players.find(p => p.id === item.targetId);
+                                      const isTargetMafia = targetPlayer && (ROLE_MAP[targetPlayer.roleId]?.team === "mafia" || isMafiaRoleId(targetPlayer.roleId));
+                                      const isTargetGodfather = targetPlayer?.roleId === "godfather";
+                                      const isSavedByLecter = nightActions.doctorLecterSaveId === item.targetId;
 
-                                       // ۲. کسر قطعی ۱ فشنگ از سهمیه اسنایپر در وضعیت بازی
-                                       const sniperP = players.find(p => p.id === item.playerId);
-                                       if (sniperP) {
-                                         const currentUsed = (sniperP as any).sniperBulletsUsed || 0;
-                                         network.updatePlayerStatus(item.playerId, { sniperBulletsUsed: currentUsed + 1 } as any);
-                                         setPlayers(prev => prev.map(p => p.id === item.playerId ? { ...p, sniperBulletsUsed: currentUsed + 1 } as any : p));
-                                       }
+                                      if (item.targetId === "PASS_ACTION") {
+                                        network.sendNightResultToPlayer(item.playerId, "انصراف شما از شلیک ثبت شد ⚪");
+                                      } else {
+                                        // پیام خنثی برای بازیکن
+                                        network.sendNightResultToPlayer(item.playerId, "شلیک شما با موفقیت ثبت شد 🎯");
 
-                                       // ۳. بررسی سناریوها صرفاً جهت اطلاع گاد و اعمال در موتور بازی
-                                       if (isTargetGodfather) {
-                                         alert("🎯 تیر اسنایپر به پدرخوانده اصابت کرد! جلیقه او شکست و زنده می‌ماند. (اسنایپر حذف نمی‌شود، ۱ فشنگ مصرف شد)");
-                                         setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
-                                       } else if (isSavedByLecter) {
-                                         alert(`🛡️ مافیای هدف (${item.targetName}) توسط دکتر لکتر نجات پیدا کرد! هیچ‌کس کشته نمی‌شود. (۱ فشنگ مصرف شد)`);
-                                         setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
-                                       } else if (isTargetMafia) {
-                                         alert(`💥 شلیک اسنایپر به مافیا (${item.targetName}) موفقیت‌آمیز بود! (۱ فشنگ مصرف شد)`);
-                                         setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
-                                       } else {
-                                         alert(`⚠️ اسنایپر به شهروند (${item.targetName}) شلیک کرد! اسنایپر در پایان شب حذف می‌شود.`);
-                                         setNightActions(prev => ({ ...prev, sniperSuicide: true, sniperShotTargetId: item.targetId }));
-                                       }
-                                     }
-                                     setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
-                                       network.setNightStep(null, roomCode);
-                                       setCurrentActiveNightStep(null);
-                                       network.setNightStep(null, roomCode);
-                                       setCurrentActiveNightStep(null);
-                                }}
-                              className="px-2.5 py-1 rounded-lg bg-indigo-950 border border-indigo-700 text-indigo-200 text-[10px] font-bold hover:bg-indigo-900 cursor-pointer"
-                            >
-                              تایید شات اسنایپر 🎯
-                            </button>
+                                        // کسر قطعی ۱ فشنگ
+                                        const sniperP = players.find(p => p.id === item.playerId);
+                                        if (sniperP) {
+                                          const currentUsed = (sniperP as any).sniperBulletsUsed || 0;
+                                          network.updatePlayerStatus(item.playerId, { sniperBulletsUsed: currentUsed + 1 } as any);
+                                          setPlayers(prev => prev.map(p => p.id === item.playerId ? { ...p, sniperBulletsUsed: currentUsed + 1 } as any : p));
+                                        }
+
+                                        // ثبت نتیجه در موتور شب و اطلاع به گاد
+                                        if (isTargetGodfather) {
+                                          alert("🎯 تیر اسنایپر به پدرخوانده اصابت کرد! جلیقه شکست و زنده می‌ماند. (۱ فشنگ مصرف شد)");
+                                          setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                        } else if (isSavedByLecter) {
+                                          alert(`🛡️ مافیای هدف (${item.targetName}) توسط دکتر لکتر نجات پیدا کرد! (۱ فشنگ مصرف شد)`);
+                                          setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                        } else if (isTargetMafia) {
+                                          alert(`💥 شلیک اسنایپر به مافیا (${item.targetName}) تایید شد! (۱ فشنگ مصرف شد)`);
+                                          setNightActions(prev => ({ ...prev, sniperShotTargetId: item.targetId }));
+                                        } else {
+                                          alert(`⚠️ اسنایپر به شهروند (${item.targetName}) شلیک کرد! اسنایپر در پایان شب حذف می‌شود.`);
+                                          setNightActions(prev => ({ ...prev, sniperSuicide: true, sniperShotTargetId: item.targetId }));
+                                        }
+                                      }
+
+                                      network.setNightStep(null, roomCode);
+                                      setCurrentActiveNightStep(null);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-indigo-950 border border-indigo-700 text-indigo-200 text-[10px] font-bold hover:bg-indigo-900 cursor-pointer"
+                                  >
+                                    تایید شات 🎯
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      // رد/لغو درخواست بدون کسر فشنگ
+                                      setIncomingNightTargets(prev => prev.filter((_, i) => i !== idx && prev[i]?.playerId !== item.playerId));
+                                      network.sendNightResultToPlayer(item.playerId, "شلیک شما لغو شد و انجام نشد ⚪");
+                                      network.setNightStep(null, roomCode);
+                                      setCurrentActiveNightStep(null);
+                                    }}
+                                    className="px-2 py-1 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-400 hover:text-white text-[10px] font-bold cursor-pointer"
+                                  >
+                                    لغو ✕
+                                  </button>
+                                </div>
                           ) : item.roleId === "silencer" ? (
                             <button
                               type="button"
