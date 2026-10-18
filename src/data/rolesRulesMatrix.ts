@@ -475,16 +475,30 @@ export function getMafiaShooter(players: Player[]): Player | null {
   const aliveMafias = players.filter((p) => p.isAlive && isMafiaRoleId(p.roleId));
   if (aliveMafias.length === 0) return null;
 
-  const godfather = aliveMafias.find((p) => p.roleId === "godfather");
-  if (godfather) return godfather;
+  // زنجیره اولویت تیراندازی شبانه مافیا
+  const priorityOrder = [
+    ["godfather"],
+    ["dr_lecter", "doctor_lecter"],
+    ["hostage_taker", "matador"],
+    ["sweetheart", "mistress"],
+    ["natasha", "silencer"],
+    ["bomber"],
+    ["thief", "burglar"],
+    ["negotiator"],
+    ["joker"],
+    ["ghost_mafia", "ghost"],
+    ["informant_mafia", "informant"],
+    ["infiltrator"],
+    ["terrorist"],
+    ["simple_mafia", "mafia_simple", "mafia"]
+  ];
 
-  const lecter = aliveMafias.find((p) => p.roleId === "dr_lecter");
-  if (lecter) return lecter;
+  for (const roleGroup of priorityOrder) {
+    const found = aliveMafias.find((p) => roleGroup.includes((p.roleId || "").toLowerCase()));
+    if (found) return found;
+  }
 
-  const natasha = aliveMafias.find((p) => p.roleId === "natasha");
-  if (natasha) return natasha;
-
-  return aliveMafias[0];
+  return aliveMafias[0] || null;
 }
 
 /**

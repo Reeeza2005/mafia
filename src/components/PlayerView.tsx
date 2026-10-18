@@ -3,6 +3,7 @@ import { MafiaChat, MafiaChatMessage } from "./MafiaChat";
 import React, { useState, useEffect } from 'react';
 import { Player, GameTimer, SecretVoteState } from '../types/mafia';
 import { ROLE_MAP } from '../data/roles';
+import { getMafiaShooter } from '../data/rolesRulesMatrix';
 import { RoleIcon } from './RoleIcons';
 import { audio } from '../utils/audio';
 import { network } from '../services/network';
@@ -462,7 +463,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           player.roleId === "simple_citizen" || 
           player.roleId === "citizen" || 
           (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "sniper", "gunsmith", "silencer"].includes(player.roleId))
-        ) && !(currentNightRole && (currentNightRole === player.roleId || (currentNightRole === "mafia" && isMafia(player.roleId)))) && (
+        ) && !(currentNightRole && (currentNightRole === player.roleId || (currentNightRole === "mafia" && isMafia(player.roleId) && getMafiaShooter(players)?.id === player.id))) && (
           <div className="rounded-2xl border border-indigo-900/40 bg-gradient-to-b from-indigo-950/30 to-black/60 p-4 space-y-2 text-center shadow-lg">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 text-lg mb-1 animate-pulse">
               🌙
@@ -480,7 +481,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
         {/* Night Action Selector & In-game Feedback for Player */}
       {player.isAlive && !nightActionDone && Boolean(player.roleId) && (
-          (currentNightRole === "mafia" && isMafia(player.roleId)) ||
+          (currentNightRole === "mafia" && isMafia(player.roleId) && getMafiaShooter(players)?.id === player.id) ||
           ((currentNightRole === "doctor_lecter" || currentNightRole === "dr_lecter") && (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")) ||
           (currentNightRole && currentNightRole === player.roleId)
         ) && (
