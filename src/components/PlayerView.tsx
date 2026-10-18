@@ -457,7 +457,28 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         </div>
       </div>
 
-      {/* Night Action Selector & In-game Feedback for Player */}
+      {/* کارت وضعیت فاز شب برای شهروند ساده و نقش‌های فاقد اکشن شبانه */}
+        {player.isAlive && nightPhaseActive && (
+          player.roleId === "simple_citizen" || 
+          player.roleId === "citizen" || 
+          (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "sniper", "gunsmith", "silencer"].includes(player.roleId))
+        ) && !(currentNightRole && (currentNightRole === player.roleId || (currentNightRole === "mafia" && isMafia(player.roleId)))) && (
+          <div className="rounded-2xl border border-indigo-900/40 bg-gradient-to-b from-indigo-950/30 to-black/60 p-4 space-y-2 text-center shadow-lg">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 text-lg mb-1 animate-pulse">
+              🌙
+            </div>
+            <h4 className="text-xs font-black text-indigo-200">شهر در سکوت شب فرو رفته است</h4>
+            <p className="text-[11px] leading-relaxed text-neutral-400">
+              چشمان خود را ببندید و در آرامش بمانید. به عنوان <strong className="text-sky-300">شهروند ساده</strong>، سرنوشت شما در استدلال‌ها و تصمیمات روز رقم خواهد خورد.
+            </p>
+            <div className="pt-1 flex items-center justify-center gap-1.5 text-[10px] text-indigo-400/80 font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping" />
+              منتظر طلوع صبح و اعلام گرداننده باشید...
+            </div>
+          </div>
+        )}
+
+        {/* Night Action Selector & In-game Feedback for Player */}
       {player.isAlive && !nightActionDone && Boolean(player.roleId) && (
           (currentNightRole === "mafia" && isMafia(player.roleId)) ||
           ((currentNightRole === "doctor_lecter" || currentNightRole === "dr_lecter") && (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")) ||
