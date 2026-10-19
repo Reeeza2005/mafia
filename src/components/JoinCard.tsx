@@ -177,7 +177,7 @@ export const JoinCard: React.FC<JoinCardProps> = ({
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={4}
-              disabled={isBusy}
+              data-disabled={isBusy}
               value={code}
               onChange={handleCodeChange}
               placeholder="مثال: ۴۸۲۱"
@@ -190,7 +190,7 @@ export const JoinCard: React.FC<JoinCardProps> = ({
             <label className="block text-xs font-bold text-neutral-300 mb-1.5">نام شما در بازی</label>
             <input
               type="text"
-              disabled={isBusy}
+              data-disabled={isBusy}
               value={name}
               onChange={handleNameChange}
               placeholder="نام مستعار یا اسمتان..."
@@ -203,7 +203,7 @@ export const JoinCard: React.FC<JoinCardProps> = ({
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isBusy || !isFormValid}
+            data-disabled={isBusy || !isFormValid}
             className="w-full mt-2 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black py-3.5 rounded-2xl shadow-xl shadow-rose-950/50 transition-all text-sm cursor-pointer active:scale-95 flex items-center justify-center gap-2"
           >
             {isBusy ? (

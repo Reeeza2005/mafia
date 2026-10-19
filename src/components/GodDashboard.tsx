@@ -1688,6 +1688,21 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     </button>
                   )}
 
+                  {alivePlayers.some(p => p.roleId === "bomber") && (
+                    <button
+                      onClick={() => {
+                        network.getSocket()?.emit("god:wake_role", { roomCode, roleId: "bomber" });
+                      }}
+                      className={`w-full py-2.5 px-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all duration-300 ${
+                        currentActiveNightStep === "bomber"
+                          ? "bg-red-600/30 text-red-300 border border-red-500/50"
+                          : "bg-neutral-800/50 text-neutral-400 border border-neutral-700/50"
+                      }`}
+                    >
+                      💣 بیدارباش بمب‌گذار
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => {

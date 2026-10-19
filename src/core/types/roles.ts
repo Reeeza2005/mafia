@@ -29,3 +29,37 @@ export interface RoleContract {
   maxSelfUses?: number;
   maxTotalUses?: number;
 }
+
+// ==========================================
+// قرارداد داده: بمب‌گذار ۳ سیمه (3-Wire Bomber)
+// ==========================================
+export type BombWireColor = "red" | "blue" | "yellow";
+export type BombOutcomeType = "defuse" | "target_death" | "bomber_death";
+
+export interface ActiveBombState {
+  bomberId: string;
+  bomberName: string;
+  victimId: string;
+  victimName: string;
+  wires: Record<BombWireColor, BombOutcomeType>;
+  status: "planted" | "triggered" | "defused" | "exploded_target" | "exploded_bomber" | "timeout_exploded";
+  selectedWire?: BombWireColor;
+  plantedAtNight: number;
+  timerSecondsLeft?: number;
+}
+
+// ==========================================
+// قرارداد داده: تفنگ‌دار (Gunsmith)
+// ==========================================
+export type GunBulletType = "live" | "blank";
+
+export interface PlayerGunState {
+  recipientId: string;
+  recipientName: string;
+  bulletType: GunBulletType;
+  isUsed: boolean;
+  assignedNight: number;
+  shotDay?: number;
+  shotTargetId?: string;
+  shotTargetName?: string;
+}
