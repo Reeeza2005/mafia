@@ -1,58 +1,70 @@
 import { Player, NightActions, NightResolutionReport } from '../types/mafia';
-import { ALL_ROLES, ROLE_MAP } from '../data/roles';
-import { QuotaTracker, getDoctorMaxSelfSaves } from '../data/rolesRulesMatrix';
+import { ROLES_REGISTRY, getRoleDefinition } from '../core/roles/index';
+import { getDoctorMaxSelfSaves } from '../core/roles/doctor';
+import { QuotaTracker } from '../core/types/quota';
 
 /**
- * تعیین کارت‌های مجاز برای میز شب:
- * منحصراً نقش‌هایی که در سناریوی جاری حضور دارند، صاحب آن‌ها زنده است و اکشن شبانه دارند.
+ * تعیین نقش‌های فعال در شب سناریو بر اساس حضور بازیکنان زنده و اولویت شبانه
  */
-export function getActiveNightRoles(players: Player[]): typeof ALL_ROLES {
+export function getActiveNightRoles(players: Player[]) {
   const aliveRoleIds = new Set<string>();
 
   players.forEach((p) => {
     if (p.isAlive && p.roleId) {
-      aliveRoleIds.add(p.roleId);
+      aliveRoleIds.add(p.roleId.toLowerCase());
     }
   });
 
-  return ALL_ROLES
-    .filter((role) => aliveRoleIds.has(role.id) && role.nightOrder && role.nightOrder < 27)
-    .sort((a, b) => (a.nightOrder || 0) - (b.nightOrder || 0));
+  return Object.values(ROLES_REGISTRY)
+    .filter((role) => {
+      const isAlive = aliveRoleIds.has(role.id.toLowerCase());
+      const hasAction = (role as any).hasNightAction !== false && role.nightPriority !== undefined;
+      return isAlive && hasAction;
+    })
+    .sort((a, b) => (a.nightPriority || 99) - (b.nightPriority || 99));
 }
 
 /**
- * حل و پردازش وقایع شب بر اساس تقدم منطقی اکشن‌ها
+ * حل و پردازش وقایع شب بر اساس اولویت ۵ گانه قوانین کانونیکال ۳۰ نقش
  */
 export function resolveNight(
   players: Player[],
   actions: NightActions,
   armorStates: Record<string, boolean> = {},
   quotas: QuotaTracker = {}
-): { updatedPlayers: Player[]; report: NightResolutionReport; updatedArmors: Record<string, boolean>; updatedQuotas: QuotaTracker } {
+): {
+  updatedPlayers: Player[];
+  report: NightResolutionReport;
+  updatedArmors: Record<string, boolean>;
+  updatedQuotas: QuotaTracker;
+} {
   const logs: string[] = [];
   const deaths = new Set<string>();
   const healed = new Set<string>();
   const doctorSaved = new Set<string>();
   const lecterSaved = new Set<string>();
   const updatedArmors = { ...armorStates };
+  const updatedQuotas: QuotaTracker = JSON.parse(JSON.stringify(quotas));
 
   const playerMap = new Map<string, Player>(players.map((p) => [p.id, { ...p }]));
 
   // ----------------------------------------------------
-  // ۱. اولویت نخست: تطهیر کشیش و مسدودسازی‌ها (ناتاشا و گروگان‌گیر)
+  // ۱. اولویت اول (تطهیر و مسدودسازی): کشیش، ناتاشا و گروگان‌گیر
   // ----------------------------------------------------
   const blockedIds = new Set<string>();
   let silencedId: string | undefined;
   let hostageId: string | undefined;
 
+  // تطهیر کشیش
   if (actions.priestTargetId) {
     const priestTarget = playerMap.get(actions.priestTargetId);
     if (priestTarget) {
       priestTarget.isSilenced = false;
-      logs.push(`کشیش بازیکن ${priestTarget.name} را تطهیر و اثرات مسدودی او را پاک کرد.`);
+      logs.push(`کشیش با حضور بر بالین ${priestTarget.name}، هرگونه اثر سکوت و مسدودی را باطل کرد.`);
     }
   }
 
+  // سایلنت ناتاشا
   if (actions.silencerTargetId) {
     blockedIds.add(actions.silencerTargetId);
     silencedId = actions.silencerTargetId;
@@ -60,20 +72,21 @@ export function resolveNight(
     logs.push(`ناتاشا بازیکن ${target ? target.name : actions.silencerTargetId} را سایلنت کرد.`);
   }
 
+  // گروگان‌گیری
   if (actions.hostageTargetId) {
     blockedIds.add(actions.hostageTargetId);
     hostageId = actions.hostageTargetId;
     const target = playerMap.get(actions.hostageTargetId);
-    logs.push(`گروگان‌گیر بازیکن ${target ? target.name : actions.hostageTargetId} را خلع سلاح کرد.`);
+    logs.push(`گروگان‌گیر توانایی شبانه ${target ? target.name : actions.hostageTargetId} را خلع سلاح کرد.`);
   }
 
   // ----------------------------------------------------
-  // ۲. اولویت دوم: نجات‌ها (پزشک و دکتر لکتور)
+  // ۲. اولویت دوم (نجات‌ها): پزشک و دکتر لکتور
   // ----------------------------------------------------
   const doctorPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'doctor');
   if (actions.doctorSaveId && (!doctorPlayer || !blockedIds.has(doctorPlayer.id))) {
     const target = playerMap.get(actions.doctorSaveId);
-    const docId = doctorPlayer?.id || 'doctor_unknown';
+    const docId = doctorPlayer?.id || 'doctor_player';
     const isSelfSave = doctorPlayer && actions.doctorSaveId === doctorPlayer.id;
 
     if (!updatedQuotas[docId]) {
@@ -84,13 +97,13 @@ export function resolveNight(
       const maxSelfSaves = getDoctorMaxSelfSaves(players.length);
       const usedSelf = updatedQuotas[docId].selfUses || 0;
       if (usedSelf >= maxSelfSaves) {
-        logs.push(`⚠️ تلاش پزشک برای نجات خود ناموفق بود (سهمیه نجات خود به پایان رسیده است: ${usedSelf}/${maxSelfSaves}).`);
+        logs.push(`⚠️ تلاش پزشک برای نجات خود ناکام ماند (سقف سهمیه نجات خود پر شده است: ${usedSelf}/${maxSelfSaves}).`);
       } else {
         healed.add(actions.doctorSaveId);
         doctorSaved.add(actions.doctorSaveId);
         updatedQuotas[docId].selfUses = usedSelf + 1;
         updatedQuotas[docId].totalUses = (updatedQuotas[docId].totalUses || 0) + 1;
-        logs.push(`پزشک از خودش محافظت کرد 💉 (سهمیه مصرفی نجات خود: ${usedSelf + 1}/${maxSelfSaves}).`);
+        logs.push(`پزشک از خودش محافظت کرد 💉 (سهمیه مصرف‌شده: ${usedSelf + 1}/${maxSelfSaves}).`);
       }
     } else {
       healed.add(actions.doctorSaveId);
@@ -100,10 +113,10 @@ export function resolveNight(
     }
   }
 
-  const lecterPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'dr_lecter' || p.roleId === 'doctor_lecter');
+  const lecterPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'dr_lecter');
   if (actions.doctorLecterSaveId && (!lecterPlayer || !blockedIds.has(lecterPlayer.id))) {
     const target = playerMap.get(actions.doctorLecterSaveId);
-    const lecterId = lecterPlayer?.id || 'dr_lecter_unknown';
+    const lecterId = lecterPlayer?.id || 'dr_lecter_player';
     const isSelfSave = lecterPlayer && actions.doctorLecterSaveId === lecterPlayer.id;
 
     if (!updatedQuotas[lecterId]) {
@@ -114,13 +127,13 @@ export function resolveNight(
       const maxLecterSelfSaves = 1;
       const usedSelf = updatedQuotas[lecterId].selfUses || 0;
       if (usedSelf >= maxLecterSelfSaves) {
-        logs.push(`⚠️ تلاش دکتر لکتر برای نجات خود ناموفق بود (سهمیه نجات خود قبلاً مصرف شده است: ${usedSelf}/${maxLecterSelfSaves}).`);
+        logs.push(`⚠️ تلاش دکتر لکتر برای نجات خود ناکام ماند (سقف ۱ بار نجات خود قبلاً مصرف شده است).`);
       } else {
         lecterSaved.add(actions.doctorLecterSaveId);
         healed.add(actions.doctorLecterSaveId);
         updatedQuotas[lecterId].selfUses = usedSelf + 1;
         updatedQuotas[lecterId].totalUses = (updatedQuotas[lecterId].totalUses || 0) + 1;
-        logs.push(`دکتر لکتر از خودش محافظت کرد 🩺 (سهمیه مصرفی نجات خود: ${usedSelf + 1}/${maxLecterSelfSaves}).`);
+        logs.push(`دکتر لکتر از خودش محافظت کرد 🩺 (سهمیه مصرفی نجات خود: ۱/۱).`);
       }
     } else {
       lecterSaved.add(actions.doctorLecterSaveId);
@@ -131,19 +144,24 @@ export function resolveNight(
   }
 
   // ----------------------------------------------------
-  // ۳. اولویت سوم: شلیک مافیا و اسنایپر
+  // ۳. اولویت سوم (شلیک‌ها و زره): شلیک شب مافیا و اسنایپر
   // ----------------------------------------------------
   if (actions.mafiaShotId) {
     const target = playerMap.get(actions.mafiaShotId);
     if (target) {
+      const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
+      const isBulletproof = target.roleId === 'bulletproof' || (targetRoleDef as any)?.isPermanentNightImmune;
+
       if (doctorSaved.has(target.id) || lecterSaved.has(target.id)) {
-        logs.push(`شلیک مافیا به ${target.name} با مداوا بی‌اثر شد.`);
+        logs.push(`شلیک مافیا به ${target.name} با مراقبت و مداوا بی‌اثر شد.`);
+      } else if (isBulletproof) {
+        logs.push(`شلیک مافیا به روئین‌تن (${target.name}) اصابت کرد اما او مصونیت دائم شبانه دارد.`);
       } else if (target.roleId === 'armored' && updatedArmors[target.id] !== false) {
         updatedArmors[target.id] = false;
-        logs.push(`شلیک مافیا به زره‌پوش (${target.name}) اصابت کرد اما زره او مانع مرگ شد.`);
+        logs.push(`شلیک مافیا به زره‌پوش (${target.name}) اصابت کرد و جلیقه او شکسته شد.`);
       } else {
         deaths.add(target.id);
-        logs.push(`شلیک مافیا منجر به مرگ ${target.name} شد.`);
+        logs.push(`شلیک مافیا منجر به اصابت مرگبار به ${target.name} شد.`);
       }
     }
   }
@@ -153,33 +171,28 @@ export function resolveNight(
     const target = playerMap.get(actions.sniperShotId);
 
     if (sniperPlayer && !blockedIds.has(sniperPlayer.id) && target) {
-      const targetRole = target.roleId ? ROLE_MAP[target.roleId] : null;
-
-      const isTargetMafia = (targetRole && targetRole.team === 'mafia') ||
-                            target.roleId === 'dr_lecter' ||
-                            target.roleId === 'doctor_lecter' ||
-                            target.roleId === 'godfather' ||
-                            target.roleId === 'simple_mafia';
+      const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
+      const isTargetMafia = targetRoleDef?.team === 'mafia';
 
       if (isTargetMafia) {
         if (lecterSaved.has(target.id)) {
-          logs.push(`شلیک اسنایپر به مافیا (${target.name}) توسط دکتر لکتور نجات یافت.`);
+          logs.push(`شلیک تک‌تیرانداز به مافیا (${target.name}) توسط دکتر لکتور درمان شد.`);
         } else if (target.roleId === 'godfather' && updatedArmors[target.id] !== false) {
           updatedArmors[target.id] = false;
-          logs.push(`شلیک اسنایپر به جلیقه گادفادر (${target.name}) اصابت کرد و او زنده ماند.`);
+          logs.push(`شلیک تک‌تیرانداز به جلیقه ضدگلوله گادفادر (${target.name}) اصابت کرد و جلیقه از بین رفت.`);
         } else {
           deaths.add(target.id);
-          logs.push(`اسنایپر موفق شد مافیا (${target.name}) را حذف کند.`);
+          logs.push(`تک‌تیرانداز موفق شد مافیا (${target.name}) را با شلیک دقیق از پای درآورد.`);
         }
       } else {
         deaths.add(sniperPlayer.id);
-        logs.push(`اسنایپر به اشتباه به شهروند شلیک کرد و خودش کشته شد.`);
+        logs.push(`تک‌تیرانداز به اشتباه به شهروند شلیک کرد و قانون مجازات تیر اشتباه، جان خودش را گرفت.`);
       }
     }
   }
 
   // ----------------------------------------------------
-  // ۴. اولویت چهارم: استعلام کارآگاه با اعمال فریب جوکر
+  // ۴. اولویت چهارم (استعلام‌ها و فریب): کارآگاه و جوکر
   // ----------------------------------------------------
   let detectiveReport: { targetId: string; isPositive: boolean } | undefined;
   if (actions.detectiveInquiryId) {
@@ -187,12 +200,13 @@ export function resolveNight(
     if (!detectivePlayer || !blockedIds.has(detectivePlayer.id)) {
       const target = playerMap.get(actions.detectiveInquiryId);
       if (target && target.roleId) {
-        const targetRole = ROLE_MAP[target.roleId];
-        let isPositive = targetRole.team === 'mafia' && target.roleId !== 'godfather' && target.roleId !== 'infiltrator';
+        const targetRoleDef = getRoleDefinition(target.roleId);
+        const givesNegative = (targetRoleDef as any)?.givesNegativeInvestigation || target.roleId === 'godfather' || target.roleId === 'infiltrator';
+        let isPositive = targetRoleDef?.team === 'mafia' && !givesNegative;
 
         if (actions.jokerTargetId === target.id) {
           isPositive = !isPositive;
-          logs.push(`جوکر استعلام کارآگاه روی ${target.name} را معکوس کرد.`);
+          logs.push(`جوکر نتیجه استعلام کارآگاه روی ${target.name} را دستکاری و معکوس کرد.`);
         }
 
         detectiveReport = { targetId: target.id, isPositive };
@@ -202,17 +216,17 @@ export function resolveNight(
   }
 
   // ----------------------------------------------------
-  // ۵. اولویت پنجم: دیده‌بان و هکر
+  // ۵. اولویت پنجم (ردیابی و تحلیل شبکه): دیده‌بان و هکر
   // ----------------------------------------------------
   const watcherVisitors: string[] = [];
   if (actions.watcherTargetId) {
     const targetId = actions.watcherTargetId;
-    if (actions.mafiaShotId === targetId) watcherVisitors.push('شلیک‌کننده مافیا');
+    if (actions.mafiaShotId === targetId) watcherVisitors.push('تیم شلیک مافیا');
     if (actions.doctorSaveId === targetId) watcherVisitors.push('پزشک');
     if (actions.detectiveInquiryId === targetId) watcherVisitors.push('کارآگاه');
     if (actions.sniperShotId === targetId) watcherVisitors.push('اسنایپر');
     if (actions.silencerTargetId === targetId) watcherVisitors.push('ناتاشا');
-    logs.push(`دیده‌بان ${watcherVisitors.length} ردپا در اطراف هدف مشاهده کرد.`);
+    logs.push(`دیده‌بان ${watcherVisitors.length} ردپا در اطراف خانه هدف ثبت کرد.`);
   }
 
   let hackerReport: { sameTeam: boolean } | undefined;
@@ -220,14 +234,14 @@ export function resolveNight(
     const p1 = playerMap.get(actions.hackerTargetIds[0]);
     const p2 = playerMap.get(actions.hackerTargetIds[1]);
     if (p1?.roleId && p2?.roleId) {
-      const t1 = ROLE_MAP[p1.roleId]?.team;
-      const t2 = ROLE_MAP[p2.roleId]?.team;
+      const t1 = getRoleDefinition(p1.roleId)?.team;
+      const t2 = getRoleDefinition(p2.roleId)?.team;
       hackerReport = { sameTeam: t1 === t2 };
-      logs.push(`هکر اتحاد دو بازیکن را بررسی کرد: ${t1 === t2 ? 'هم‌ساید' : 'ناهم‌ساید'}`);
+      logs.push(`هکر شبکه هویت را ارزیابی کرد: دو مظنون ${t1 === t2 ? 'هم‌پیمان' : 'غیر هم‌پیمان'} هستند.`);
     }
   }
 
-  // اعمال وضعیت‌های مرگ و سکوت روی ساختار بازیکنان
+  // اعمال وضعیت‌های مرگ و سکوت
   deaths.forEach((id) => {
     const p = playerMap.get(id);
     if (p) p.isAlive = false;
@@ -252,5 +266,6 @@ export function resolveNight(
       bombedPlayerId: actions.bomberTargetId,
       logs,
     },
+    updatedQuotas,
   };
 }

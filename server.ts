@@ -925,44 +925,58 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('submit_secret_vote', ({ roomCode, voterId, candidateId, voterName }: any) => {
-    try {
-      const room = getOrCreateRoom(roomCode);
-      if (!room) return;
+    socket.on('submit_secret_vote', ({ roomCode, voterId, candidateId, voterName }: any) => {
+      try {
+        const room = getOrCreateRoom(roomCode);
+        if (!room || !room.secretVote || !room.secretVote.isActive) return;
 
-      const vId = voterId || socket.id;
-      const cId = candidateId || 'exit';
+        const vId = voterId || socket.id;
+        const cId = candidateId || 'exit';
 
-      if (!room.secretVote) {
-        room.secretVote = {
-          id: 'vote_' + Date.now(),
-          isActive: true,
-          votes: {},
-          title: 'رأی‌گیری شبانه'
-        } as any;
+        // ۱. جلوگیری از ارسال مجدد رأی (قانون تک‌رأی)
+        if (room.secretVote.votes && room.secretVote.votes[vId]) {
+          console.warn(`[VOTE REJECTED] ${vId} قبلاً رأی داده است.`);
+          socket.emit('vote_error', { message: 'شما قبلاً رأی خود را در این جلسه ثبت کرده‌اید.' });
+          return;
+        }
+
+        // ۲. اعتبارسنجی حضور در لیست واجدین شرایط
+        if (room.secretVote.eligibleVoterIds && room.secretVote.eligibleVoterIds.length > 0) {
+          if (!room.secretVote.eligibleVoterIds.includes(vId)) {
+            console.warn(`[VOTE REJECTED] ${vId} در لیست واجدین شرایط رأی‌گیری نیست.`);
+            socket.emit('vote_error', { message: 'شما در این جلسه حق رأی ندارید.' });
+            return;
+          }
+        }
+
+        // ۳. ممنوعیت رأی دادن متهم به خودش
+        if (vId === cId) {
+          console.warn(`[VOTE REJECTED] متهم ${vId} نمی‌تواند به خودش رأی دهد.`);
+          socket.emit('vote_error', { message: 'امکان رأی دادن به خود وجود ندارد.' });
+          return;
+        }
+
+        if (!room.secretVote.votes) room.secretVote.votes = {};
+
+        let voterPlayer = room.players ? room.players[vId] : null;
+        if (!voterPlayer && room.players) {
+          voterPlayer = Object.values(room.players).find((p: any) => p.id === vId || p.socketId === vId || p.socketId === socket.id) || null;
+        }
+        const vName = voterName || (voterPlayer ? voterPlayer.name : (socket.data?.name || "ناشناس"));
+        if (!room.secretVote.voterDetails) room.secretVote.voterDetails = {};
+        room.secretVote.voterDetails[vId] = { candidateId: cId, voterName: vName };
+        room.secretVote.votes[vId] = cId;
+        console.log(`[VOTE] ${vName} (${vId}) -> ${cId} in Room: ${roomCode}`);
+
+        io.to(room.code).emit('secret_vote_updated', {
+          totalVotes: Object.keys(room.secretVote.votes).length,
+          votes: room.secretVote.votes,
+          voterDetails: room.secretVote.voterDetails,
+        });
+      } catch (err) {
+        console.error('[ERROR in submit_secret_vote]', err);
       }
-      if (!room.secretVote) return;
-      if (!room.secretVote.votes) room.secretVote.votes = {};
-
-      let voterPlayer = room.players ? room.players[vId] : null;
-      if (!voterPlayer && room.players) {
-        voterPlayer = Object.values(room.players).find((p: any) => p.id === vId || p.socketId === vId || p.socketId === socket.id) || null;
-      }
-      const vName = voterName || (voterPlayer ? voterPlayer.name : (socket.data?.name || "ناشناس"));
-      if (!room.secretVote.voterDetails) room.secretVote.voterDetails = {};
-      room.secretVote.voterDetails[vId] = { candidateId: cId, voterName: vName };
-      room.secretVote.votes[vId] = cId;
-      console.log(`[VOTE] ${vName} (${vId}) -> ${cId} in Room: ${roomCode}`);
-
-      io.to(room.code).emit('secret_vote_updated', {
-        totalVotes: Object.keys(room.secretVote.votes).length,
-        votes: room.secretVote.votes,
-        voterDetails: room.secretVote.voterDetails,
-      });
-    } catch (err) {
-      console.error('[ERROR in submit_secret_vote]', err);
-    }
-  });
+    });
 
   socket.on('end_secret_vote', ({ roomCode }) => {
     const room = getOrCreateRoom(roomCode);

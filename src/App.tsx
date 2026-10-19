@@ -12,6 +12,7 @@ import { RoleSelectionPanel } from './components/RoleSelectionPanel';
 import { GodDashboard } from './components/GodDashboard';
 import { PlayerView } from './components/PlayerView';
 import { JoinCard } from './components/JoinCard';
+import { GodAuthModal } from './components/GodAuthModal';
 import { HostShareModal } from './components/HostShareModal';
 import { AudioPlayerModal } from './components/AudioPlayerModal';
 import { OfflineExportModal } from './components/OfflineExportModal';
@@ -23,6 +24,14 @@ const generate4DigitCode = () => Math.floor(1000 + Math.random() * 9000).toStrin
 
 export default function App() {
   // View mode: null (Welcome Portal) | 'god' | 'player'
+    const [isGodAuthenticated, setIsGodAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("mafia_god_auth") === "true";
+    }
+    return false;
+  });
+  const [showGodAuthModal, setShowGodAuthModal] = useState<boolean>(false);
+
   const [clientType, setClientType] = useState<'god' | 'player' | null>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -670,7 +679,23 @@ export default function App() {
         )}
       </main>
 
-      {/* Host QR Code Modal */}
+              {/* God Authentication Gate Modal */}
+        <GodAuthModal
+          isOpen={showGodAuthModal}
+          onSuccess={() => {
+            sessionStorage.setItem("mafia_god_auth", "true");
+            setIsGodAuthenticated(true);
+            setShowGodAuthModal(false);
+            setClientType("god");
+          }}
+          onCancel={() => {
+            setShowGodAuthModal(false);
+            setClientType("player");
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }}
+        />
+
+        {/* Host QR Code Modal */}
       <HostShareModal
         roomCode={roomCode}
         isOpen={isQrOpen}

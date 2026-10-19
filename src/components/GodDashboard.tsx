@@ -1,3 +1,5 @@
+import { getFinalTrialConfig } from "../core/rules/trialEngine";
+import { resolveSheriffShot, resolveJudgeExecution, resolveMayorVeto, resolveFinalTrialOutcome } from "../services/dayEngine";
 import { getSniperBulletQuota } from "../utils/sniperQuota";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Player, GameTimer, GameLog, EliminationReason, SecretVoteState, NightActions } from '../types/mafia';
@@ -332,19 +334,27 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     }
   };
 
-  const handleLaunchSingleDefendantNightVote = () => {
-    if (courtDefendants.length !== 1) return;
-    const defId = courtDefendants[0];
-    const defPlayer = players.find((p) => p.id === defId);
+  const handleLaunchCourtNightVote = () => {
+    if (courtDefendants.length < 2) return;
+    const trialConfig = getFinalTrialConfig(courtDefendants.length);
 
-    const eligibleVoterIds = alivePlayers.filter((p) => p.id !== defId).map((p) => p.id);
+    // تعیین واجدین شرایط رأی:
+    // در کمتر از ۴ متهم، متهمان اجازه رأی دادن ندارند.
+    // در ۴ متهم یا بیشتر، همه زنده‌ها حق رأی دارند.
+    const eligibleVoterIds = alivePlayers
+      .filter((p) => trialConfig.canDefendantsVoteEachOther || !courtDefendants.includes(p.id))
+      .map((p) => p.id);
+
+    const candidates = courtDefendants.map((id) => {
+      const p = players.find((x) => x.id === id);
+      return { id, name: p ? p.name : "متهم" };
+    });
 
     network.startSecretVote({
-      title: 'رأی‌گیری خروج شب: ' + (defPlayer ? defPlayer.name : ''),
+      title: `⚖️ رأی‌گیری مخفی دادگاه شبانه (${courtDefendants.length} متهم)`,
       startsLocked: true,
-      targetDefendantId: defId,
       eligibleVoterIds,
-      candidates: [{ id: defId, name: defPlayer ? defPlayer.name : 'متهم' }],
+      candidates,
     });
     audio.playGong();
   };
@@ -402,6 +412,42 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       const next = Math.min(maxAllowed, Math.max(0, current + delta));
       return { ...prev, [playerId]: next };
     });
+  };
+
+// ================= DAY ACTION HANDLERS =================
+  const handleSheriffShotAction = (sheriffId: string, targetId: string) => {
+    const outcome = resolveSheriffShot(players, sheriffId, targetId);
+    alert(outcome.log);
+    if (outcome.eliminatedPlayerId) {
+      onUpdatePlayer(outcome.eliminatedPlayerId, {
+        isAlive: false,
+        eliminationReason: outcome.eliminationReason || "sheriff_shot",
+      });
+      audio.playShot();
+    }
+  };
+
+  const handleJudgeVerdictAction = (judgeId: string, targetId: string) => {
+    const outcome = resolveJudgeExecution(players, judgeId, targetId);
+    alert(outcome.log);
+    if (outcome.eliminatedPlayerId) {
+      if (outcome.isJesterWin) {
+        alert("🎉 دلقک مستقل با اعدام در دادگاه به تنهایی پیروز بازی شد!");
+      }
+      onUpdatePlayer(outcome.eliminatedPlayerId, {
+        isAlive: false,
+        eliminationReason: outcome.eliminationReason || "judge_verdict",
+      });
+      audio.playGong();
+      handleResetDayVoting();
+    }
+  };
+
+  const handleMayorVetoAction = (mayorId: string, condemnedId: string) => {
+    const outcome = resolveMayorVeto(players, mayorId, condemnedId);
+    alert(outcome.log);
+    audio.playFlip();
+    handleResetDayVoting();
   };
 
   const handleResetDayVoting = () => {
@@ -994,7 +1040,78 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             </div>
           </div>
 
-          {dayVotePhase === 'court_entry' && (
+          {/* پانل عملیات ویژه نقش‌های روز (کلانتر، قاضی، شهردار) */}
+            {(() => {
+              const sheriff = alivePlayers.find((p) => p.roleId === "sheriff");
+              const judge = alivePlayers.find((p) => p.roleId === "judge");
+              const mayor = alivePlayers.find((p) => p.roleId === "mayor");
+
+              if (!sheriff && !judge && !mayor) return null;
+
+              return (
+                <div className="p-3 bg-neutral-950/80 border border-amber-900/40 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-amber-300">⚡ اکشن‌های فعال فاز روز</span>
+                    <span className="text-[10px] text-neutral-400">نقش‌های ویژه زنده در بازی</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {sheriff && (
+                      <button
+                        onClick={() => {
+                          const targets = alivePlayers.filter((p) => p.id !== sheriff.id);
+                          const promptMsg = `🚨 شلیک کلانتر (${sheriff.name}):\nنام یا شماره هدف را وارد کنید:\n\n` +
+                            targets.map((p, i) => `${i + 1}. ${p.name}`).join("\n");
+                          const input = prompt(promptMsg);
+                          if (!input) return;
+                          const found = targets.find((p, i) => String(i + 1) === input.trim() || p.name === input.trim() || p.id === input.trim());
+                          if (found) handleSheriffShotAction(sheriff.id, found.id);
+                          else alert("بازیکن نامعتبر است.");
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-rose-950 border border-rose-800 text-rose-200 text-xs font-bold hover:bg-rose-900 transition-all shadow-sm active:scale-95"
+                      >
+                        🔫 شلیک مستقیم کلانتر ({sheriff.name})
+                      </button>
+                    )}
+
+                    {judge && (
+                      <button
+                        onClick={() => {
+                          const targets = alivePlayers.filter((p) => p.id !== judge.id);
+                          const promptMsg = `⚖️ صدور حکم مستقیم قاضی (${judge.name}):\nنام یا شماره متهم برای خروج فوری را وارد کنید:\n\n` +
+                            targets.map((p, i) => `${i + 1}. ${p.name}`).join("\n");
+                          const input = prompt(promptMsg);
+                          if (!input) return;
+                          const found = targets.find((p, i) => String(i + 1) === input.trim() || p.name === input.trim() || p.id === input.trim());
+                          if (found) handleJudgeVerdictAction(judge.id, found.id);
+                          else alert("بازیکن نامعتبر است.");
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-purple-950 border border-purple-800 text-purple-200 text-xs font-bold hover:bg-purple-900 transition-all shadow-sm active:scale-95"
+                      >
+                        ⚖️ حکم قطعی قاضی ({judge.name})
+                      </button>
+                    )}
+
+                    {mayor && (
+                      <button
+                        onClick={() => {
+                          if (courtDefendants.length === 0) {
+                            alert("در حال حاضر دادگاهی برای اعمال وتو وجود ندارد.");
+                            return;
+                          }
+                          const isSure = confirm(`🏛️ آیا وتوی شهردار (${mayor.name}) اعمال شده و دادگاه جاری بدون خروج منحل شود؟`);
+                          if (isSure) handleMayorVetoAction(mayor.id, courtDefendants[0]);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-950 border border-amber-800 text-amber-200 text-xs font-bold hover:bg-amber-900 transition-all shadow-sm active:scale-95"
+                      >
+                        🏛️ وتوی دادگاه توسط شهردار ({mayor.name})
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {dayVotePhase === 'court_entry' && (
             <div className="space-y-3">
               <p className="text-xs text-neutral-300">
                 دست‌های بلند شده برای هر بازیکن را ثبت کنید (حداقل رأی ورود:{' '}

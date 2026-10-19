@@ -6,7 +6,6 @@ interface JoinCardProps {
   errorMessage?: string | null;
   isJoining?: boolean;
   onJoin: (code: string, name: string) => void;
-  onGodClick?: () => void;
   onBack?: () => void;
 }
 
@@ -15,7 +14,6 @@ export const JoinCard: React.FC<JoinCardProps> = ({
   errorMessage,
   isJoining = false,
   onJoin,
-  onGodClick,
   onBack,
 }) => {
   // Read code from prop or search params (?code=1234 or ?room=1234)
@@ -222,31 +220,18 @@ export const JoinCard: React.FC<JoinCardProps> = ({
           </button>
         </form>
 
-        {/* Optional God entrance or back button */}
-        {(onGodClick || onBack) && (
-          <div className="mt-5 pt-3.5 border-t border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-center">
-            {onBack && (
+          {/* Optional back button */}
+          {onBack && (
+            <div className="mt-5 pt-3.5 border-t border-neutral-800/80 flex items-center justify-center text-center">
               <button
                 type="button"
                 onClick={onBack}
                 className="text-xs text-neutral-400 hover:text-white transition-colors cursor-pointer"
               >
-                ← بازگشت به صفحه انتخاب نقش
+                ← بازگشت به صفحه قبلی
               </button>
-            )}
-            {onGodClick && (
-              <button
-                type="button"
-                onClick={onGodClick}
-                className="text-xs font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 mx-auto sm:mx-0 sm:mr-auto"
-              >
-                <Crown className="w-3.5 h-3.5 text-amber-400" />
-                <span>👑 ورود به عنوان گرداننده (God)</span>
-              </button>
-            )}
-          </div>
-        )}
-
+            </div>
+          )}
         {/* Security / Confidentiality note */}
         <div className="mt-3 text-center">
           <p className="text-[11px] text-neutral-500 flex items-center justify-center gap-1.5">
