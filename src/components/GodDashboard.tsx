@@ -2037,19 +2037,38 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 {/* ۱. شلیک شب مافیا (تا زمانی که حداقل یک مافیا زنده باشد) */}
                 {hasAliveMafia && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-rose-950 space-y-2">
-                    <span className="font-bold text-rose-400 flex items-center gap-1">
-                      🎯 هدف شات مافیا:
+                    <span className="font-bold text-rose-400 flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1">🎯 هدف اول شات مافیا:</span>
                     </span>
                     <select
                       value={nightActions.mafiaShotId || ""}
                       onChange={(e) => setNightActions((prev) => ({ ...prev, mafiaShotId: e.target.value || undefined }))}
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white text-xs"
                     >
                       <option value="">-- بدون شلیک --</option>
                       {alivePlayers.filter((p) => !isMafiaRoleId(p.roleId)).map((p) => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
+
+                    {/* شلیک دوم مافیا در صورت کشته شدن معشوقه */}
+                    {players.some(p => (p.roleId === "mistress" || p.roleId === "sweetheart") && !p.isAlive) && (
+                      <div className="pt-2 mt-2 border-t border-rose-900/40 space-y-1.5">
+                        <span className="text-[11px] font-bold text-rose-300 flex items-center gap-1">
+                          💔 انتقام معشوقه (تیر دوم مافیا):
+                        </span>
+                        <select
+                          value={nightActions.mafiaShotId2 || ""}
+                          onChange={(e) => setNightActions((prev) => ({ ...prev, mafiaShotId2: e.target.value || undefined }))}
+                          className="w-full bg-rose-950/40 border border-rose-800/60 rounded-xl p-2 text-rose-100 text-xs"
+                        >
+                          <option value="">-- بدون تیر دوم --</option>
+                          {alivePlayers.filter((p) => !isMafiaRoleId(p.roleId) && p.id !== nightActions.mafiaShotId).map((p) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -76,6 +76,7 @@ export interface SecretVoteState {
 export interface NightActions {
   // مافیا
   mafiaShotId?: string;
+  mafiaShotId2?: string; // شلیک دوم مافیا (فعال در صورت مرگ معشوقه)
   doctorLecterSaveId?: string;
   silencerTargetId?: string;
   thiefTargetId?: string;

@@ -146,50 +146,31 @@ export function resolveNight(
   // ----------------------------------------------------
   // ۳. اولویت سوم (شلیک‌ها و زره): شلیک شب مافیا و اسنایپر
   // ----------------------------------------------------
-  if (actions.mafiaShotId) {
-    const target = playerMap.get(actions.mafiaShotId);
-    if (target) {
+    // --- پردازش شلیک‌های مافیا (تک‌شات و شات دوم در صورت مرگ معشوقه) ---
+    const mafiaShots = [actions.mafiaShotId, actions.mafiaShotId2].filter((id): id is string => Boolean(id));
+    const uniqueMafiaShots = Array.from(new Set(mafiaShots));
+
+    for (const shotTargetId of uniqueMafiaShots) {
+      const target = playerMap.get(shotTargetId);
+      if (!target) continue;
+
       const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
-      const isBulletproof = target.roleId === 'bulletproof' || (targetRoleDef as any)?.isPermanentNightImmune;
+      const isBulletproof = target.roleId === "bulletproof" || (targetRoleDef as any)?.isPermanentNightImmune;
 
       if (doctorSaved.has(target.id) || lecterSaved.has(target.id)) {
         logs.push(`شلیک مافیا به ${target.name} با مراقبت و مداوا بی‌اثر شد.`);
       } else if (isBulletproof) {
         logs.push(`شلیک مافیا به روئین‌تن (${target.name}) اصابت کرد اما او مصونیت دائم شبانه دارد.`);
-      } else if (target.roleId === 'armored' && updatedArmors[target.id] !== false) {
+      } else if (target.roleId === "armored" && updatedArmors[target.id] !== false) {
         updatedArmors[target.id] = false;
-        logs.push(`شلیک مافیا به زره‌پوش (${target.name}) اصابت کرد و جلیقه او شکسته شد.`);
+        logs.push(`شلیک مافیا به زره‌پوش (${target.name}) اصابت کرد و جلیقه محافظتی او از بین رفت.`);
       } else {
-        deaths.add(target.id);
-        logs.push(`شلیک مافیا منجر به اصابت مرگبار به ${target.name} شد.`);
+        target.isAlive = false;
+        target.eliminationReason = "mafia_shot";
+        eliminatedPlayers.push(target);
+        logs.push(`مافیا با شلیک شبانه ${target.name} را از پای درآورد.`);
       }
     }
-  }
-
-  if (actions.sniperShotId && actions.sniperShotId !== 'PASS_ACTION') {
-    const sniperPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'sniper');
-    const target = playerMap.get(actions.sniperShotId);
-
-    if (sniperPlayer && !blockedIds.has(sniperPlayer.id) && target) {
-      const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
-      const isTargetMafia = targetRoleDef?.team === 'mafia';
-
-      if (isTargetMafia) {
-        if (lecterSaved.has(target.id)) {
-          logs.push(`شلیک تک‌تیرانداز به مافیا (${target.name}) توسط دکتر لکتور درمان شد.`);
-        } else if (target.roleId === 'godfather' && updatedArmors[target.id] !== false) {
-          updatedArmors[target.id] = false;
-          logs.push(`شلیک تک‌تیرانداز به جلیقه ضدگلوله گادفادر (${target.name}) اصابت کرد و جلیقه از بین رفت.`);
-        } else {
-          deaths.add(target.id);
-          logs.push(`تک‌تیرانداز موفق شد مافیا (${target.name}) را با شلیک دقیق از پای درآورد.`);
-        }
-      } else {
-        deaths.add(sniperPlayer.id);
-        logs.push(`تک‌تیرانداز به اشتباه به شهروند شلیک کرد و قانون مجازات تیر اشتباه، جان خودش را گرفت.`);
-      }
-    }
-  }
 
   // ----------------------------------------------------
   // ۴. اولویت چهارم (استعلام‌ها و فریب): کارآگاه و جوکر
@@ -221,7 +202,7 @@ export function resolveNight(
   const watcherVisitors: string[] = [];
   if (actions.watcherTargetId) {
     const targetId = actions.watcherTargetId;
-    if (actions.mafiaShotId === targetId) watcherVisitors.push('تیم شلیک مافیا');
+    if (actions.mafiaShotId === targetId || actions.mafiaShotId2 === targetId) watcherVisitors.push('تیم شلیک مافیا');
     if (actions.doctorSaveId === targetId) watcherVisitors.push('پزشک');
     if (actions.detectiveInquiryId === targetId) watcherVisitors.push('کارآگاه');
     if (actions.sniperShotId === targetId) watcherVisitors.push('اسنایپر');
