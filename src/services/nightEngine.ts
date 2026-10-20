@@ -49,35 +49,51 @@ export function resolveNight(
   const playerMap = new Map<string, Player>(players.map((p) => [p.id, { ...p }]));
 
   // ----------------------------------------------------
-  // ۱. اولویت اول (تطهیر و مسدودسازی): کشیش، ناتاشا و گروگان‌گیر
+  // ----------------------------------------------------
+  // ۱. اولویت اول (مسدودسازی و تطهیر): گروگان‌گیر، ناتاشا و کشیش
   // ----------------------------------------------------
   const blockedIds = new Set<string>();
   let silencedId: string | undefined;
   let hostageId: string | undefined;
 
-  // تطهیر کشیش
-  if (actions.priestTargetId) {
-    const priestTarget = playerMap.get(actions.priestTargetId);
-    if (priestTarget) {
-      priestTarget.isSilenced = false;
-      logs.push(`کشیش با حضور بر بالین ${priestTarget.name}، هرگونه اثر سکوت و مسدودی را باطل کرد.`);
-    }
-  }
-
-  // سایلنت ناتاشا
-  if (actions.silencerTargetId) {
-    blockedIds.add(actions.silencerTargetId);
-    silencedId = actions.silencerTargetId;
-    const target = playerMap.get(actions.silencerTargetId);
-    logs.push(`ناتاشا بازیکن ${target ? target.name : actions.silencerTargetId} را سایلنت کرد.`);
-  }
-
-  // گروگان‌گیری
+  // ۱.۱ گروگان‌گیری (مسدودسازی پایه)
   if (actions.hostageTargetId) {
     blockedIds.add(actions.hostageTargetId);
     hostageId = actions.hostageTargetId;
     const target = playerMap.get(actions.hostageTargetId);
     logs.push(`گروگان‌گیر توانایی شبانه ${target ? target.name : actions.hostageTargetId} را خلع سلاح کرد.`);
+  }
+
+  // ۱.۲ سایلنت ناتاشا (مشروط به گروگان گرفته نشدن ناتاشا)
+  const silencerPlayer = Array.from(playerMap.values()).find((p) => p.roleId === "silencer" || p.roleId === "natasha");
+  if (actions.silencerTargetId) {
+    if (silencerPlayer && blockedIds.has(silencerPlayer.id)) {
+      logs.push(`ناتاشا خلع سلاح شده بود و موفق به بستن زبان کسی نشد.`);
+    } else {
+      blockedIds.add(actions.silencerTargetId);
+      silencedId = actions.silencerTargetId;
+      const target = playerMap.get(actions.silencerTargetId);
+      logs.push(`ناتاشا بازیکن ${target ? target.name : actions.silencerTargetId} را سایلنت کرد.`);
+    }
+  }
+
+  // ۱.۳ تطهیر کشیش (رفع اثر سکوت امشب یا سکوت‌های پیشین)
+  if (actions.priestTargetId) {
+    const priestPlayer = Array.from(playerMap.values()).find((p) => p.roleId === "priest");
+    if (!priestPlayer || !blockedIds.has(priestPlayer.id)) {
+      const priestTarget = playerMap.get(actions.priestTargetId);
+      if (priestTarget) {
+        priestTarget.isSilenced = false;
+        if (silencedId === priestTarget.id) {
+          silencedId = undefined;
+          logs.push(`کشیش با دعای خود مانع از سکوت شبانه ${priestTarget.name} شد.`);
+        } else {
+          logs.push(`کشیش با حضور بر بالین ${priestTarget.name}، هرگونه اثر سکوت را باطل کرد.`);
+        }
+      }
+    } else {
+      logs.push(`کشیش در بند گروگان‌گیر بود و دعای او اثری نداشت.`);
+    }
   }
 
   // ----------------------------------------------------
