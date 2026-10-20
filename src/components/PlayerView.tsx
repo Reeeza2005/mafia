@@ -2297,23 +2297,58 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     </span>
                     <span className="text-neutral-400 group-open:rotate-180 transition-transform duration-300 text-sm">▼</span>
                   </summary>
-                  <div className="p-4 pt-0 space-y-3 border-t border-neutral-800/60 mt-1">
-                    <div className="pt-2">
-                      <p className="text-xs text-neutral-300 leading-relaxed font-medium">
-                        {role?.description || "توضیحاتی برای این نقش ثبت نشده است."}
-                      </p>
-                    </div>
-                    {role?.tips && role.tips.length > 0 && (
-                      <div className="bg-sky-950/40 p-3 rounded-xl border border-sky-900/50 text-sky-200/90">
-                        <span className="font-bold text-sky-400 flex items-center gap-1.5 text-xs mb-2">
-                          <Lightbulb className="w-3.5 h-3.5" /> نکات طلایی بازی
+                    <div className="p-4 pt-2 space-y-3.5 border-t border-neutral-800/80 mt-1 text-right">
+                      {/* ۱. شرط پیروزی ساید */}
+                      {role?.winningCondition && (
+                        <div className="p-2.5 rounded-xl bg-amber-950/30 border border-amber-800/50 flex items-start gap-2">
+                          <span className="text-amber-400 text-sm mt-0.5">🏆</span>
+                          <div>
+                            <span className="text-[11px] font-black text-amber-300 block">هدف و شرط پیروزی:</span>
+                            <p className="text-[11px] text-amber-200/90 mt-0.5 leading-relaxed font-medium">
+                              {role.winningCondition}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ۲. شرح کامل سناریو و وظایف */}
+                      <div className="bg-neutral-900/80 p-3 rounded-xl border border-neutral-800 space-y-1.5">
+                        <span className="text-[11px] font-black text-neutral-300 flex items-center gap-1.5">
+                          <span className="text-rose-400">📜</span> شرح مأموریت و وظایف نقش:
                         </span>
-                        <ul className="space-y-1.5 text-[11px] pr-3 list-disc list-outside marker:text-sky-500">
-                          {role.tips.map((tip, idx) => <li key={idx} className="pl-1">{tip}</li>)}
-                        </ul>
+                        <p className="text-xs text-neutral-300 leading-relaxed font-medium pr-1">
+                          {role?.description || "توضیحاتی برای این نقش ثبت نشده است."}
+                        </p>
                       </div>
-                    )}
-                  </div>
+
+                      {/* ۳. توانایی‌ها و اختیارات */}
+                      {role?.abilities && role.abilities.length > 0 && (
+                        <div className="bg-emerald-950/25 p-3 rounded-xl border border-emerald-900/50 space-y-2">
+                          <span className="text-[11px] font-black text-emerald-400 flex items-center gap-1.5">
+                            <span className="text-emerald-400">⚡</span> توانمندی‌ها و قابلیت‌های ویژه:
+                          </span>
+                          <ul className="space-y-1.5 text-[11px] pr-4 list-disc marker:text-emerald-500 text-emerald-200/90 font-medium">
+                            {role.abilities.map((ability, idx) => (
+                              <li key={idx} className="leading-relaxed">{ability}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* ۴. نکات استراتژیک و تاکتیک‌های بازی */}
+                      {role?.tips && role.tips.length > 0 && (
+                        <div className="bg-sky-950/35 p-3 rounded-xl border border-sky-900/50 space-y-2">
+                          <span className="text-[11px] font-black text-sky-400 flex items-center gap-1.5">
+                            <Lightbulb className="w-3.5 h-3.5 text-sky-400" /> نکات استراتژیک و تکنیک‌های برنده:
+                          </span>
+                          <ul className="space-y-1.5 text-[11px] pr-4 list-disc marker:text-sky-500 text-sky-200/90 font-medium">
+                            {role.tips.map((tip, idx) => (
+                              <li key={idx} className="leading-relaxed">{tip}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                 </details>
 
                 <button
