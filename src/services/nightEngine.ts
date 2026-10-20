@@ -113,7 +113,7 @@ export function resolveNight(
     }
   }
 
-  const lecterPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'dr_lecter');
+  const lecterPlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'dr_lecter' || p.roleId === 'doctor_lecter');
   if (actions.doctorLecterSaveId && (!lecterPlayer || !blockedIds.has(lecterPlayer.id))) {
     const target = playerMap.get(actions.doctorLecterSaveId);
     const lecterId = lecterPlayer?.id || 'dr_lecter_player';
@@ -176,6 +176,39 @@ export function resolveNight(
   // ۴. اولویت چهارم (استعلام‌ها و فریب): کارآگاه و جوکر
   // ----------------------------------------------------
   let detectiveReport: { targetId: string; isPositive: boolean } | undefined;
+    // --- پردازش شلیک اسنایپر و تعامل با سیو دکتر لکتر ---
+    if (actions.sniperShotId) {
+      const sniperPlayer = Array.from(playerMap.values()).find((p) => p.roleId === "sniper");
+      const target = playerMap.get(actions.sniperShotId);
+      if (target && (!sniperPlayer || !blockedIds.has(sniperPlayer.id))) {
+        const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
+        const isTargetMafia = targetRoleDef ? targetRoleDef.team === "mafia" : false;
+
+        if (isTargetMafia) {
+          if (lecterSaved.has(target.id)) {
+            logs.push(`شلیک تک‌تیرانداز به ${target.name} اصابت کرد، اما با مداوای به‌موقع دکتر لکتر نجات یافت.`);
+          } else if (target.roleId === "godfather" && updatedArmors[target.id] !== false) {
+            updatedArmors[target.id] = false;
+            logs.push(`شلیک تک‌تیرانداز به پدرخوانده (${target.name}) اصابت کرد و جلیقه ضدگلوله او شکسته شد.`);
+          } else {
+            target.isAlive = false;
+            target.eliminationReason = "sniper_shot";
+            eliminatedPlayers.push(target);
+            logs.push(`تک‌تیرانداز با شلیکی دقیق، مافیا (${target.name}) را به هلاکت رساند.`);
+          }
+        } else {
+          // شلیک اشتباه به شهروند -> اسنایپر حذف می‌شود
+          logs.push(`تک‌تیرانداز به شهروند (${target.name}) شلیک اشتباه کرد!`);
+          if (sniperPlayer) {
+            sniperPlayer.isAlive = false;
+            sniperPlayer.eliminationReason = "sniper_misfire";
+            eliminatedPlayers.push(sniperPlayer);
+            logs.push(`تک‌تیرانداز (${sniperPlayer.name}) به دلیل شلیک اشتباه به همشهری خود، از بازی حذف شد.`);
+          }
+        }
+      }
+    }
+
   if (actions.detectiveInquiryId) {
     const detectivePlayer = Array.from(playerMap.values()).find((p) => p.roleId === 'detective');
     if (!detectivePlayer || !blockedIds.has(detectivePlayer.id)) {
