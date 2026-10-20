@@ -359,6 +359,29 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     audio.playGong();
   };
 
+  const handleLaunchSingleDefendantNightVote = () => {
+    if (courtDefendants.length !== 1) return;
+    const defId = courtDefendants[0];
+    const defPlayer = players.find((x) => x.id === defId);
+
+    // واجدین شرایط: تمام افراد زنده به جز خود متهم
+    const eligibleVoterIds = alivePlayers
+      .filter((p) => p.id !== defId)
+      .map((p) => p.id);
+
+    const candidates = [
+      { id: defId, name: defPlayer ? defPlayer.name : "متهم دادگاه" }
+    ];
+
+    network.startSecretVote({
+      title: `⚖️ رأی‌گیری خروج تک‌متهم: «${defPlayer?.name || "متهم"}»`,
+      startsLocked: true,
+      eligibleVoterIds,
+      candidates,
+    });
+    audio.playGong();
+  };
+
   const handleTrigger5SecondVote = () => {
     audio.playFlip();
     network.unlockSecretVote(5);
@@ -376,8 +399,15 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     results.sort((a, b) => b.votes - a.votes);
     const maxVotes = results[0].votes;
 
-    if (maxVotes < quorum) {
-      alert('⚖️ نتیجه دادگاه:\n\nبیشترین رأی (' + maxVotes + ' رأی) کمتر از حد نصاب (' + quorum + ' رأی) است.\n\n❌ هیچ بازیکنی حذف نمی‌شود.');
+    // در دادگاه تک‌متهم (روز)، نیاز به حدنصاب نصف + ۱ است
+    if (courtDefendants.length === 1 && maxVotes < quorum) {
+      alert('⚖️ نتیجه دادگاه:\n\nآرای خروج متهم (' + maxVotes + ' رأی) به حد نصاب (' + quorum + ' رأی) نرسید.\n\n❌ بازیکن در بازی می‌ماند.');
+      handleResetDayVoting();
+      return;
+    }
+    // در دادگاه شبانه (۲ متهم به بالا)، در صورت عدم ثبت رأی هیچ‌کس حذف نمی‌شود
+    if (courtDefendants.length > 1 && maxVotes === 0) {
+      alert('⚖️ نتیجه دادگاه:\n\nهیچ رأیی برای خروج متهمان ثبت نشده است.\n\n❌ هیچ بازیکنی حذف نمی‌شود.');
       handleResetDayVoting();
       return;
     }
@@ -1173,15 +1203,19 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     ⚖️ دادگاه دفاعیه ({courtDefendants.length} متهم در دفاع)
                   </h4>
                   <p className="text-[11px] text-neutral-400 mt-0.5">
-                    {courtDefendants.length >= 4 ? (
-                      <span className="text-sky-400 font-bold">
-                        ★ ۴ نفر یا بیشتر در دفاع هستند: متهمان نیز حق رأی خروج دارند (به جز به خودشان).
-                      </span>
-                    ) : (
-                      <span className="text-rose-400 font-bold">
-                        ★ ۲ یا ۳ نفر در دفاع هستند: متهمان حق رأی خروج ندارند.
-                      </span>
-                    )}
+                      {courtDefendants.length === 1 ? (
+                        <span className="text-amber-400 font-bold">
+                          ☀️ دادگاه تک‌متهم (فاز روز): رأی‌گیری علنی با دست انجام می‌شود (حداقل رأی خروج: نصف + ۱). متهم حق رأی ندارد.
+                        </span>
+                      ) : courtDefendants.length >= 4 ? (
+                        <span className="text-sky-400 font-bold">
+                          🌙 دادگاه ۴ متهم به بالا (فاز شب): رأی‌گیری مخفی در سکوت شب. متهمان می‌توانند به سایر متهمان رأی دهند. بیشترین رأی خروج می‌یابد (تساوی = عدم خروج).
+                        </span>
+                      ) : (
+                        <span className="text-purple-400 font-bold">
+                          🌙 دادگاه ۲ یا ۳ متهم (فاز شب): رأی‌گیری مخفی در سکوت شب. متهمان حق رأی به یکدیگر را ندارند. بیشترین رأی خروج می‌یابد (تساوی = عدم خروج).
+                        </span>
+                      )}
                   </p>
                 </div>
               </div>
@@ -1230,11 +1264,13 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 })}
               </div>
 
-              {courtDefendants.length === 1 && (
+              {courtDefendants.length >= 2 && (
                 <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-800/80 space-y-3 mt-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <span className="text-xs font-black text-purple-300">🌙 رأی‌گیری مخفی شبانه (تک‌متهم دادگاه)</span>
+                      <span className="text-xs font-black text-purple-300">
+                        🌙 رأی‌گیری مخفی دادگاه در شب ({courtDefendants.length} متهم)
+                      </span>
                       {activeSecretVote && activeSecretVote.votes && Object.keys(activeSecretVote.votes).length > 0 && (
                         <div className="mt-2 p-2 rounded-xl bg-black/60 border border-purple-900 text-xs text-neutral-300">
                           <span className="font-bold text-amber-400">رأی‌دهندگان به خروج: </span>
@@ -1248,7 +1284,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                         </div>
                       )}
                       <p className="text-[11px] text-neutral-400 mt-0.5">
-                        کارت هم‌اندازه کارت بازی روی گوشی همه زنده‌ها (به جز متهم) ظاهر می‌شود و با لمس آن هیچ نوری نمی‌افتد (Anti-Peek).
+                        کارت کاندیداهای دادگاه روی گوشی بازیکنان واجد شرایط باز می‌شود (هر بازیکن ۱ حق رأی - ضد لو رفتن با لمس نامرئی).
                       </p>
                     </div>
                     {activeSecretVote && (
@@ -1260,7 +1296,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <button
-                      onClick={handleLaunchSingleDefendantNightVote}
+                      onClick={handleLaunchCourtNightVote}
                       className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs transition-all shadow-md active:scale-95"
                     >
                       ۱. ارسال کارت شب به گوشی‌ها 📱

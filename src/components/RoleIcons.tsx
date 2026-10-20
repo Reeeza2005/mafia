@@ -5,7 +5,8 @@ interface IconProps {
   size?: number;
 }
 
-export const RoleIcon: React.FC<IconProps & { roleId: string }> = ({ roleId, className = 'w-full h-full', size = 64 }) => {
+const FallbackSvgIcon: React.FC<IconProps & { roleId: string }> = ({ roleId, className = 'w-full h-full', size = 64 }) => {
+
   switch (roleId) {
     case 'godfather':
       return (
@@ -583,4 +584,24 @@ export const RoleIcon: React.FC<IconProps & { roleId: string }> = ({ roleId, cla
         </svg>
       );
   }
+};
+
+
+export const RoleIcon: React.FC<IconProps & { roleId: string }> = ({ roleId, className = 'w-full h-full', size = 64 }) => {
+  const [imgError, setImgError] = React.useState(false);
+  const normalizedId = (roleId || '').toLowerCase().trim();
+
+  if (!imgError && normalizedId) {
+    return (
+      <img
+        src={`/cards/${normalizedId}.jpeg`}
+        alt={roleId}
+        className={`${className} object-cover rounded-xl shadow-md transition-transform duration-200 hover:scale-105`}
+        onError={() => setImgError(true)}
+        loading="lazy"
+      />
+    );
+  }
+
+  return <FallbackSvgIcon roleId={roleId} className={className} size={size} />;
 };

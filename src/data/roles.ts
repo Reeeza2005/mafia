@@ -6,6 +6,7 @@ export const ALL_ROLES: Role[] = [
   // ==========================================
   {
     id: 'simple_mafia',
+    image: "/images/roles/simple_mafia.jpeg",
     name: 'مافیا ساده',
     englishName: 'Simple Mafia',
     team: 'mafia',
@@ -20,6 +21,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'godfather',
+    image: "/images/roles/godfather.jpeg",
     name: 'پدرخوانده (گادفادر)',
     englishName: 'Godfather',
     team: 'mafia',
@@ -34,6 +36,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'dr_lecter',
+    image: "/images/roles/dr_lecter.jpeg",
     name: 'دکتر لکتور',
     englishName: 'Dr. Lecter',
     team: 'mafia',
@@ -48,6 +51,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'natasha',
+    image: "/images/roles/natasha.jpeg",
     name: 'ناتاشا (سایلنسر)',
     englishName: 'Natasha',
     team: 'mafia',
@@ -62,6 +66,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'thief',
+    image: "/images/roles/thief.jpeg",
     name: 'سارق (جیب‌بر)',
     englishName: 'Thief',
     team: 'mafia',
@@ -76,6 +81,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'hostage_taker',
+    image: "/images/roles/hostage_taker.jpeg",
     name: 'گروگان‌گیر',
     englishName: 'Hostage Taker',
     team: 'mafia',
@@ -90,6 +96,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'bomber',
+    image: "/images/roles/bomber.jpeg",
     name: 'بمب‌گذار',
     englishName: 'Bomber',
     team: 'mafia',
@@ -104,6 +111,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'joker',
+    image: "/images/roles/joker.jpeg",
     name: 'جوکر',
     englishName: 'Joker',
     team: 'mafia',
@@ -118,6 +126,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'informant_mafia',
+    image: "/images/roles/informant_mafia.jpeg",
     name: 'خبرچین مافیا',
     englishName: 'Informant Mafia',
     team: 'mafia',
@@ -132,6 +141,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'infiltrator',
+    image: "/images/roles/infiltrator.jpeg",
     name: 'مافیای نفوذی',
     englishName: 'Infiltrator',
     team: 'mafia',
@@ -146,6 +156,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'negotiator',
+    image: "/images/roles/negotiator.jpeg",
     name: 'مذاکره‌کننده',
     englishName: 'Negotiator',
     team: 'mafia',
@@ -160,6 +171,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'shadow_mafia',
+    image: "/images/roles/shadow_mafia.jpeg",
     name: 'شبح مافیا',
     englishName: 'Shadow Mafia',
     team: 'mafia',
@@ -174,6 +186,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'terrorist',
+    image: "/images/roles/terrorist.jpeg",
     name: 'تروریست',
     englishName: 'Terrorist',
     team: 'mafia',
@@ -188,6 +201,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'mistress',
+    image: "/images/roles/mistress.jpeg",
     name: 'معشوقه',
     englishName: 'Mistress',
     team: 'mafia',
@@ -206,6 +220,7 @@ export const ALL_ROLES: Role[] = [
   // ==========================================
   {
     id: 'simple_citizen',
+    image: "/images/roles/simple_citizen.jpeg",
     name: 'شهروند ساده',
     englishName: 'Simple Citizen',
     team: 'citizen',
@@ -220,6 +235,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'doctor',
+    image: "/images/roles/doctor.jpeg",
     name: 'پزشک (دکتر)',
     englishName: 'Doctor',
     team: 'citizen',
@@ -234,6 +250,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'detective',
+    image: "/images/roles/detective.jpeg",
     name: 'کارآگاه',
     englishName: 'Detective',
     team: 'citizen',
@@ -248,6 +265,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'sniper',
+    image: "/images/roles/sniper.jpeg",
     name: 'اسنایپر (حرفه‌ای)',
     englishName: 'Sniper',
     team: 'citizen',
@@ -262,6 +280,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'bodyguard',
+    image: "/images/roles/bodyguard.jpeg",
     name: 'بادیگارد (محافظ)',
     englishName: 'Bodyguard',
     team: 'citizen',
@@ -276,6 +295,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'priest',
+    image: "/images/roles/priest.jpeg",
     name: 'کشیش',
     englishName: 'Priest',
     team: 'citizen',
@@ -290,6 +310,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'watcher',
+    image: "/images/roles/watcher.jpeg",
     name: 'دیده‌بان (نگهبان شب)',
     englishName: 'Watcher',
     team: 'citizen',
@@ -304,6 +325,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'hacker',
+    image: "/images/roles/hacker.jpeg",
     name: 'هکر (نخبه)',
     englishName: 'Hacker',
     team: 'citizen',
@@ -318,6 +340,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'gunsmith',
+    image: "/images/roles/gunsmith.jpeg",
     name: 'تفنگدار',
     englishName: 'Gunsmith',
     team: 'citizen',
@@ -332,6 +355,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'journalist',
+    image: "/images/roles/journalist.jpeg",
     name: 'خبرنگار',
     englishName: 'Journalist',
     team: 'citizen',
@@ -346,6 +370,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'armored',
+    image: "/images/roles/armored.jpeg",
     name: 'زره‌پوش',
     englishName: 'Armored',
     team: 'citizen',
@@ -360,6 +385,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'bulletproof',
+    image: "/images/roles/bulletproof.jpeg",
     name: 'روئین‌تن',
     englishName: 'Bulletproof',
     team: 'citizen',
@@ -374,6 +400,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'mayor',
+    image: "/images/roles/mayor.jpeg",
     name: 'شهردار',
     englishName: 'Mayor',
     team: 'citizen',
@@ -388,6 +415,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'judge',
+    image: "/images/roles/judge.jpeg",
     name: 'قاضی',
     englishName: 'Judge',
     team: 'citizen',
@@ -402,6 +430,7 @@ export const ALL_ROLES: Role[] = [
   },
   {
     id: 'sheriff',
+    image: "/images/roles/sheriff.jpeg",
     name: 'کلانتر (مارشال)',
     englishName: 'Sheriff',
     team: 'citizen',
@@ -420,6 +449,7 @@ export const ALL_ROLES: Role[] = [
   // ==========================================
   {
     id: 'independent_jester',
+    image: "/images/roles/independent_jester.jpeg",
     name: 'دلقک (مستقل)',
     englishName: 'Jester',
     team: 'independent',

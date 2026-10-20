@@ -1125,6 +1125,40 @@ io.on('connection', (socket) => {
   });
 
   // Reset entire game
+    socket.on("reset_game", ({ roomCode }) => {
+      const room = getOrCreateRoom(roomCode);
+      if (!room) return;
+
+      room.gameStarted = false;
+      room.isNight = false;
+      room.nightStep = 1;
+      room.mafiaChatActive = false;
+      room.logs = [{
+        id: Math.random().toString(36).substring(2, 9),
+        time: new Date().toLocaleTimeString("fa-IR"),
+        text: "🔄 بازی توسط گرداننده بازنشانی شد.",
+        type: "system"
+      }];
+
+      // ریست وضعیت تمام بازیکنان داخل اتاق
+      for (const pId in room.players) {
+        const p = room.players[pId];
+        p.isAlive = true;
+        delete (p as any).roleId;
+        delete (p as any).side;
+        delete (p as any).eliminationReason;
+        delete (p as any).gunGiven;
+        delete (p as any).hasDayShot;
+      }
+
+      console.log(`[SERVER reset_game] Room ${room.code} reset successfully.`);
+      io.to(room.code).emit("game_reset", {
+        room: room,
+        logs: room.logs,
+        players: Object.values(room.players)
+      });
+      io.to(room.code).emit("room_updated", room);
+    });
   
   // Challenge Management
     // Challenge Management

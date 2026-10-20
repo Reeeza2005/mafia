@@ -2232,663 +2232,103 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         /* ========================================================= */
         /* COMPACT ROLE TOGGLE & EXPANDABLE ROLE DOSSIER             */
         /* ========================================================= */
-        <div className="space-y-3">
+        <div className="space-y-3 mt-6 mb-8">
           {!isFlipped ? (
             <div
-              onClick={handleFlipCard}
-              className="w-full p-4 rounded-2xl bg-gradient-to-r from-neutral-900 via-neutral-950 to-neutral-900 border border-neutral-800 hover:border-rose-800/60 active:scale-[0.99] transition-all cursor-pointer shadow-lg flex items-center justify-between"
+              onClick={() => setIsFlipped(true)}
+              className="relative w-full h-24 rounded-2xl overflow-hidden border border-neutral-800 hover:border-rose-800/60 active:scale-[0.99] transition-all cursor-pointer shadow-xl flex items-center justify-between p-4 group"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-center shadow-inner">
-                  <Lock className="w-5 h-5 text-rose-500" />
-                
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+              {/* پس‌زمینه با عکس mafia.jpeg */}
+              <div className="absolute inset-0">
+                <img src="/images/roles/mafia.jpeg" alt="Mafia Card Back" className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/80 to-neutral-950/60" />
+              </div>
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
+              <div className="relative z-10 flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center shadow-inner overflow-hidden">
+                  <img src="/images/roles/mafia.jpeg" alt="Icon" className="w-full h-full object-cover" />
+                </div>
                 <div className="text-right">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-white">کارت نقش محرمانه شما</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-800/60 text-rose-300 font-bold">
-                      پنهان
-                    </span>
-                  
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-950/90 border border-rose-800/60 text-rose-300 font-bold">پنهان</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 mt-0.5 font-medium">برای لمس و مشاهده هویت خود کلیک کنید</p>
+                </div>
+              </div>
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-                  <p className="text-[11px] text-neutral-400 mt-0.5 font-medium">
-                    هر زمان خواستید نقش خود را مجدداً ببینید لمس کنید
-                  </p>
-                
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-              
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-              <div className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold flex items-center gap-1.5 border border-neutral-700">
-                <Eye className="w-3.5 h-3.5 text-rose-400" />
-                <span>مشاهده نقش</span>
-              
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-            
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
+              <div className="relative z-10 px-3.5 py-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 text-white text-xs font-bold flex items-center gap-1.5 border border-neutral-700 shadow-md">
+                <Eye className="w-4 h-4 text-rose-400" />
+                <span>مشاهده</span>
+              </div>
+            </div>
           ) : (
-            <div
-              onClick={handleFlipCard}
-              className="w-full cursor-pointer select-none relative space-y-2.5"
-            >
-              <div
-                className={`w-full rounded-3xl border-2 p-5 flex flex-col justify-between shadow-2xl transition-all duration-300 bg-neutral-950 ${
-                  role.team === 'mafia'
-                    ? 'border-rose-600/80 glow-mafia'
-                    : role.team === 'citizen'
-                    ? 'border-sky-500/80 glow-citizen'
-                    : 'border-purple-500/80 glow-neutral'
-                }`}
-                style={{
-                  background:
-                    role.team === 'mafia'
-                      ? 'linear-gradient(180deg, #1c0b11 0%, #09090b 45%, #050505 100%)'
-                      : role.team === 'citizen'
-                      ? 'linear-gradient(180deg, #0b1522 0%, #09090b 45%, #050505 100%)'
-                      : 'linear-gradient(180deg, #180b22 0%, #09090b 45%, #050505 100%)',
-                }}
-              >
-                {/* Header: Team Badge & Hide Button */}
-                <div className="flex items-center justify-between pb-2 border-b border-neutral-800/80">
-                  <span
-                    className={`text-[11px] font-bold px-3 py-1 rounded-full border shadow-sm ${
-                      role.team === 'mafia'
-                        ? 'bg-rose-950/90 text-rose-300 border-rose-700/80'
-                        : role.team === 'citizen'
-                        ? 'bg-sky-950/90 text-sky-300 border-sky-700/80'
-                        : 'bg-purple-950/90 text-purple-300 border-purple-700/80'
-                    }`}
-                  >
-                    {role.team === 'mafia' ? '🔴 ساید مافیا' : role.team === 'citizen' ? '🔵 ساید شهروند' : '🟣 ساید مستقل'}
+            <div className="relative w-full min-h-[560px] flex flex-col justify-between rounded-3xl overflow-hidden border border-rose-900/55 shadow-2xl animate-in zoom-in-95 duration-300 bg-neutral-950 p-5">
+              {/* عکس به عنوان پس‌زمینه کامل کارت */}
+              <div className="absolute inset-0 z-0">
+                {role?.image ? (
+                  <img src={role.image} alt={role?.name} className="w-full h-full object-cover object-top opacity-75" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-rose-950/40 text-rose-500 text-6xl">🎭</div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/70 to-neutral-950/40" />
+              </div>
+
+              {/* بالا: نام و تیم */}
+              <div className="relative z-10 flex justify-between items-start pt-2">
+                <div>
+                  <span className="text-rose-400 font-black text-xs tracking-wider mb-1 block drop-shadow">نقش محرمانه شما</span>
+                  <h2 className="text-3xl font-black text-white drop-shadow-lg">{role?.name || "نامشخص"}</h2>
+                </div>
+                <div>
+                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border shadow-lg backdrop-blur-md ${role?.side === "mafia" ? "bg-red-950/80 border-red-800 text-red-300" : "bg-blue-950/80 border-blue-800 text-blue-300"}`}>
+                    {role?.side === "mafia" ? "تیم مافیا" : "تیم شهروند"}
                   </span>
+                </div>
+              </div>
 
-                  <span className="text-[10px] text-rose-300 font-bold flex items-center gap-1 bg-rose-950/60 px-2.5 py-1 rounded-lg border border-rose-800/60">
-                    <EyeOff className="w-3 h-3 text-rose-400" />
-                    <span>بستن و پنهان‌سازی</span>
-                  </span>
-                
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+              {/* پایین: کشوی توضیحات و دکمه بستن */}
+              <div className="relative z-10 space-y-3 mt-auto pt-6">
+                <details className="group bg-neutral-950/85 backdrop-blur-md rounded-2xl border border-neutral-800/80 overflow-hidden transition-all shadow-xl">
+                  <summary className="flex items-center justify-between p-3.5 cursor-pointer text-xs font-bold text-neutral-200 hover:text-white select-none">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                      شرح وظایف و نکات استراتژیک نقش
+                    </span>
+                    <span className="text-neutral-400 group-open:rotate-180 transition-transform duration-300 text-sm">▼</span>
+                  </summary>
+                  <div className="p-4 pt-0 space-y-3 border-t border-neutral-800/60 mt-1">
+                    <div className="pt-2">
+                      <p className="text-xs text-neutral-300 leading-relaxed font-medium">
+                        {role?.description || "توضیحاتی برای این نقش ثبت نشده است."}
+                      </p>
+                    </div>
+                    {role?.tips && role.tips.length > 0 && (
+                      <div className="bg-sky-950/40 p-3 rounded-xl border border-sky-900/50 text-sky-200/90">
+                        <span className="font-bold text-sky-400 flex items-center gap-1.5 text-xs mb-2">
+                          <Lightbulb className="w-3.5 h-3.5" /> نکات طلایی بازی
+                        </span>
+                        <ul className="space-y-1.5 text-[11px] pr-3 list-disc list-outside marker:text-sky-500">
+                          {role.tips.map((tip, idx) => <li key={idx} className="pl-1">{tip}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </details>
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-
-                {/* Role Emblem & Title */}
-                <div className="flex flex-col items-center text-center my-3">
-                  <div className="w-20 h-20 rounded-2xl bg-neutral-950/90 p-2.5 border border-neutral-800 shadow-xl mb-2 flex items-center justify-center">
-                    <RoleIcon roleId={role.id} />
-                  
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-
-                  <h3 className="text-xl font-black text-white tracking-wide">{role.name}</h3>
-                  <span className="text-[11px] font-mono text-neutral-200 font-medium">{role.englishName}</span>
-
-                  <div className="mt-2 px-3 py-1.5 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs text-white font-medium leading-relaxed">
-                    {role.summary}
-                  
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-                
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-
-                {/* Comprehensive Details Section */}
-                <div className="space-y-2.5 text-right my-1">
-                  {/* 1. Full Description & Duties */}
-                  <div className="bg-neutral-900/80 p-3 rounded-2xl border border-neutral-800 text-xs text-neutral-200 leading-relaxed">
-                    <span className="font-bold text-white block mb-1 text-xs">📋 شرح وظایف و مأموریت:</span>
-                    <p className="leading-relaxed text-white font-medium">{role.description}</p>
-                  
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-
-                  {/* 2. Key Abilities */}
-                  {role.abilities && role.abilities.length > 0 && (
-                    <div className="bg-neutral-900/80 p-3 rounded-2xl border border-neutral-800 text-xs space-y-1.5">
-                      <span className="font-bold text-amber-300 flex items-center gap-1 text-xs">
-                        <Zap className="w-3.5 h-3.5 text-amber-400" />
-                        <span>قابلیت‌های ویژه:</span>
-                      </span>
-                      <ul className="space-y-1 text-[11px] text-white font-medium pr-1">
-                        {role.abilities.map((ability, idx) => (
-                          <li key={idx} className="flex items-start gap-1.5">
-                            <span className="text-amber-400 mt-0.5 font-bold">•</span>
-                            <span>{ability}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-                  )}
-
-                  {/* 3. Winning Condition */}
-                  {role.winningCondition && (
-                    <div className="bg-neutral-900/80 p-2.5 rounded-xl border border-neutral-800 text-xs flex items-start gap-2">
-                      <Trophy className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-emerald-400 block text-[11px]">شرط پیروزی:</span>
-                        <p className="text-[11px] text-white font-medium leading-tight">{role.winningCondition}</p>
-                      
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-                    
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-                  )}
-
-                  {/* 4. Strategy & Pro Tips */}
-                  {role.tips && role.tips.length > 0 && (
-                    <div className="bg-neutral-900/80 p-3 rounded-2xl border border-neutral-800 text-xs space-y-1">
-                      <span className="font-bold text-sky-300 flex items-center gap-1 text-[11px]">
-                        <Lightbulb className="w-3.5 h-3.5 text-sky-400" />
-                        <span>نکات استراتژیک بازی با این نقش:</span>
-                      </span>
-                      <ul className="space-y-1 text-[11px] text-neutral-200 font-medium pr-1">
-                        {role.tips.map((tip, idx) => (
-                          <li key={idx} className="flex items-start gap-1.5">
-                            <span className="text-sky-400 mt-0.5 font-bold">•</span>
-                            <span>{tip}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-                  )}
-
-                  {/* 5. Night Wake-up Command */}
-                  {role.wakeUpText && (
-                    <div className="bg-amber-950/30 border border-amber-900/50 p-2.5 rounded-xl text-[11px] text-amber-300 leading-relaxed">
-                      🌙 <strong>فرمان شب:</strong> {role.wakeUpText}
-                    
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-                  )}
-                
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-
-                {/* Bottom Hide Prompt */}
-                <div className="pt-3 text-center">
-                  <div className="w-full py-2.5 rounded-xl bg-rose-950/50 hover:bg-rose-900/60 border border-rose-800/60 text-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors">
-                    <EyeOff className="w-4 h-4 text-rose-400" />
-                    <span>لمس کارت برای بستن و پنهان‌سازی نقش</span>
-                  
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-                
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-              
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-            
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
+                <button
+                  onClick={() => setIsFlipped(false)}
+                  className="w-full py-3 rounded-xl bg-rose-950/85 hover:bg-rose-900 border border-rose-800/70 text-rose-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg backdrop-blur-md"
+                >
+                  <EyeOff className="w-4 h-4 text-rose-400" />
+                  بستن کارت و بازگشت به بازی
+                </button>
+              </div>
+            </div>
           )}
-        
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
+        </div>
         )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-      )}
-
-      
-      {/* Mafia Night Chat for Mafia Members */}
-      {player && isMafia(player.roleId) && mafiaChatActive && (
-        <div className="mt-4">
-          <MafiaChat
-            isGod={false}
-            isActive={mafiaChatActive}
-            messages={mafiaChatMessages}
-            currentUserId={player.id}
-            onSendMessage={(text) => network.sendMafiaMessage(player.id, text)}
-          />
-        
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
-
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
-
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
-      )}
-
-      {/* Personal Notebook */}
+        {/* Personal Notebook */}
 
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-lg mt-4">
         <button
