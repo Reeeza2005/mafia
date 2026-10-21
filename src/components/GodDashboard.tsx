@@ -1866,7 +1866,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => {
-                                setNightActions(prev => ({ ...prev, mafiaShotId: item.targetId }));
+                                const target2 = item.extraType ? players.find(p => p.id === item.extraType) : null;
+                                 setNightActions(prev => ({ ...prev, mafiaShotId: item.targetId, mafiaShotId2: item.extraType || prev.mafiaShotId2 }));
                                 setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
                                 network.sendNightResultToPlayer(item.playerId, `شلیک مافیا روی «${item.targetName}» تایید و ثبت شد 💥`);
                                 network.toggleMafiaChat(false);

@@ -38,10 +38,16 @@ interface PlayerViewProps {
 }
 
 
-const MAFIA_ROLE_IDS = new Set(['godfather', 'dr_lecter', 'doctor_lecter', 'saul_goodman', 'simple_mafia', 'mafia_simple', 'matador', 'bomber', 'natasha']);
-const isMafia = (roleId?: string) => Boolean(roleId && MAFIA_ROLE_IDS.has(roleId.toLowerCase()));
+const MAFIA_ROLE_IDS = new Set([
+  "godfather", "dr_lecter", "doctor_lecter", "saul_goodman", "simple_mafia", "mafia_simple", "mafia",
+  "matador", "hostage_taker", "bomber", "natasha", "silencer", "mistress", "sweetheart",
+  "thief", "burglar", "negotiator", "joker", "ghost_mafia", "ghost", "informant_mafia", "informant",
+  "infiltrator", "terrorist"
+]);
+  const isMafia = (roleId?: string) => Boolean(roleId && MAFIA_ROLE_IDS.has(roleId.toLowerCase()));
 
 export const PlayerView: React.FC<PlayerViewProps> = ({
+
   player,
   players = [],
   cardsDistributed,
@@ -51,6 +57,15 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   isVoteUnlocked,
   onJoin,
 }) => {
+  // معشوقه فقط زمانی مرده محسوب می‌شود که نقشش در بازی بوده و هیچ معشوقه زنده‌ای وجود نداشته باشد
+  const hasMistressDied = (() => {
+    if (!Array.isArray(players) || players.length === 0) return false;
+    const isMistress = (p: any) => p.roleId === "mistress" || p.roleId === "sweetheart";
+    const hasAnyMistressInGame = players.some(isMistress);
+    const hasAliveMistress = players.some(p => isMistress(p) && p.isAlive);
+    return hasAnyMistressInGame && !hasAliveMistress;
+  })();
+
   const [nameInput, setNameInput] = useState('');
   const [isFlipped, setIsFlipped] = useState(false);
   const [personalNotes, setPersonalNotes] = useState('');
@@ -59,6 +74,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [mafiaChatActive, setMafiaChatActive] = useState(false);
   const [mafiaChatMessages, setMafiaChatMessages] = useState<MafiaChatMessage[]>([]);
   const [selectedNightTargetId, setSelectedNightTargetId] = useState<string>("");
+  const [selectedNightTargetId2, setSelectedNightTargetId2] = useState<string>("");
   const [selectedWarTargetId, setSelectedWarTargetId] = useState("");
   const [selectedBlankTargetId, setSelectedBlankTargetId] = useState("");
   const [gunType, setGunType] = useState<"bullet" | "blank">("bullet");
@@ -837,7 +853,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           player.roleId === "simple_citizen" || 
           player.roleId === "citizen" || 
           (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "sniper", "gunsmith", "silencer"].includes(player.roleId))
-        ) && !(currentNightRole && (currentNightRole === player.roleId || (currentNightRole === "mafia" && isMafia(player.roleId) && getMafiaShooter(players)?.id === player.id))) && (
+        ) && !(currentNightRole && (currentNightRole === player.roleId || (currentNightRole === "mafia" && isMafia(player.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))))) && (
           <div className="rounded-2xl border border-indigo-900/40 bg-gradient-to-b from-indigo-950/30 to-black/60 p-4 space-y-2 text-center shadow-lg">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 text-lg mb-1 animate-pulse">
               🌙
@@ -998,7 +1014,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         
         {/* مخفی کردن منوی پیش‌فرض برای این دو نقش */}
         {player.roleId !== "bomber" && player.roleId !== "gunsmith" && player.isAlive && !nightActionDone && Boolean(player.roleId) && (
-          (currentNightRole === "mafia" && isMafia(player.roleId) && getMafiaShooter(players)?.id === player.id) ||
+          (currentNightRole === "mafia" && isMafia(player.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))) ||
           ((currentNightRole === "doctor_lecter" || currentNightRole === "dr_lecter") && (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")) ||
           (currentNightRole && currentNightRole === player.roleId)
         ) && (
@@ -1290,6 +1306,31 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                           ));
                       })()}
                 </select>
+
+              {currentNightRole === "mafia" && hasMistressDied && (
+                <div className="mt-2.5 p-2.5 rounded-xl bg-rose-950/40 border border-rose-800/60">
+                  <span className="text-[11px] font-bold text-rose-300 block mb-1">
+                    💔 انتقام معشوقه (تیر دوم مافیا):
+                  </span>
+                  <select
+                    value={selectedNightTargetId2}
+                    onChange={(e) => {
+                      setSelectedNightTargetId2(e.target.value);
+                      setNightActionSent(false);
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-rose-600"
+                  >
+                    <option value="">-- بدون تیر دوم --</option>
+                    {livePlayers
+                      .filter((p) => p.isAlive && !isMafia(p.roleId) && p.id !== selectedNightTargetId)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          🎯 {p.name} (تیر دوم)
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
               
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
         {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
@@ -1344,7 +1385,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                     if (player.roleId === "doctor" && selectedNightTargetId === player.id) {
                       setDoctorSelfSavesUsed(prev => prev + 1);
                     }
-                    network.sendNightTarget(player.id, actionRoleToSend, selectedNightTargetId);
+                    network.sendNightTarget(player.id, actionRoleToSend, selectedNightTargetId, selectedNightTargetId2 || undefined);
                 }
                 setNightActionSent(true);
                 audio.playFlip();

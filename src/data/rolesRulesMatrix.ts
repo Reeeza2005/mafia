@@ -464,7 +464,9 @@ export const ROLES_RULES_MATRIX: Record<string, RoleRuleDefinition> = {
  */
 export function isMafiaRoleId(roleId?: string): boolean {
   if (!roleId) return false;
-  const def = ROLES_RULES_MATRIX[roleId.toLowerCase()];
+  const r = roleId.toLowerCase();
+  if (r === "mafia" || r === "godfather" || r === "dr_lecter" || r === "doctor_lecter") return true;
+  const def = ROLES_RULES_MATRIX[r];
   return def ? def.team === "mafia" : false;
 }
 

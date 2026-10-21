@@ -183,7 +183,8 @@ export function resolveNight(
       } else {
         target.isAlive = false;
         target.eliminationReason = "mafia_shot";
-        eliminatedPlayers.push(target);
+        deaths.add(target.id);
+        deaths.add(target.id);
         logs.push(`مافیا با شلیک شبانه ${target.name} را از پای درآورد.`);
       }
     }
@@ -209,7 +210,7 @@ export function resolveNight(
           } else {
             target.isAlive = false;
             target.eliminationReason = "sniper_shot";
-            eliminatedPlayers.push(target);
+            deaths.add(target.id);
             logs.push(`تک‌تیرانداز با شلیکی دقیق، مافیا (${target.name}) را به هلاکت رساند.`);
           }
         } else {
@@ -218,7 +219,7 @@ export function resolveNight(
           if (sniperPlayer) {
             sniperPlayer.isAlive = false;
             sniperPlayer.eliminationReason = "sniper_misfire";
-            eliminatedPlayers.push(sniperPlayer);
+            deaths.add(sniperPlayer.id);
             logs.push(`تک‌تیرانداز (${sniperPlayer.name}) به دلیل شلیک اشتباه به همشهری خود، از بازی حذف شد.`);
           }
         }
