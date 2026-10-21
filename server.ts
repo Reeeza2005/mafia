@@ -314,7 +314,11 @@ app.post('/api/room/:code/buzz', (req, res) => {
 
 // Socket.io handlers
 
-const MAFIA_ROLES = new Set(['godfather', 'dr_lecter', 'doctor_lecter', 'saul_goodman', 'simple_mafia', 'mafia_simple', 'matador', 'bomber', 'natasha']);
+const MAFIA_ROLES = new Set([
+  'godfather', 'dr_lecter', 'doctor_lecter', 'saul_goodman', 'simple_mafia', 
+  'mafia_simple', 'matador', 'bomber', 'natasha', 'sweetheart', 'mistress', 
+  'mafia', 'consigliere', 'assassin', 'godfather_sub'
+]);
 
 function isMafiaRole(roleId?: string): boolean {
   if (!roleId) return false;

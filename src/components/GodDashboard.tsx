@@ -2575,17 +2575,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               isActive={mafiaChatActive}
               messages={mafiaChatMessages}
               onSendMessage={(text) => {
-                setMafiaChatMessages((prev) => [
-                  ...prev,
-                  {
-                    id: Math.random().toString(),
-                    senderId: 'god',
-                    senderName: 'گرداننده 👑',
-                    senderRole: 'god',
-                    text,
-                    time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
-                  }
-                ]);
+                network.sendMafiaMessage('god', text);
               }}
               onToggleChat={(active) => network.toggleMafiaChat(active)}
               onClearChat={() => network.clearMafiaChat()}

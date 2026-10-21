@@ -73,6 +73,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>('');
   const [mafiaChatActive, setMafiaChatActive] = useState(false);
   const [mafiaChatMessages, setMafiaChatMessages] = useState<MafiaChatMessage[]>([]);
+  const [isMafiaChatOpen, setIsMafiaChatOpen] = useState(false);
   const [selectedNightTargetId, setSelectedNightTargetId] = useState<string>("");
   const [selectedNightTargetId2, setSelectedNightTargetId2] = useState<string>("");
   const [selectedWarTargetId, setSelectedWarTargetId] = useState("");
@@ -2495,6 +2496,56 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         )}
 
       {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
-</div>
+
+      {/* چت شبانه اختصاصی مافیا - مینیمال و تاشو */}
+      {isMafia(player?.roleId) && (
+        <div className="fixed bottom-3 left-3 z-50">
+          {!isMafiaChatOpen ? (
+            <button
+              onClick={() => setIsMafiaChatOpen(true)}
+              className="flex items-center gap-2 bg-neutral-900/90 hover:bg-neutral-800 border border-red-700/60 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-95 text-xs font-bold text-neutral-200 hover:text-white"
+            >
+              <span className="text-sm">💬</span>
+              <span>چت مافیا</span>
+              {mafiaChatActive && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              )}
+              {mafiaChatMessages.length > 0 && (
+                <span className="bg-red-600/90 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                  {mafiaChatMessages.length}
+                </span>
+              )}
+            </button>
+          ) : (
+            <div className="w-[88vw] sm:w-80 max-h-[380px] flex flex-col bg-neutral-950/95 border border-red-600/70 rounded-2xl p-2.5 backdrop-blur-xl shadow-2xl transition-all">
+              <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-red-950/80">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs">💬</span>
+                  <span className="text-[11px] font-black text-red-400">گفتگوی مخفی مافیا</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold border ${mafiaChatActive ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300' : 'bg-neutral-900 border-neutral-700 text-neutral-400'}`}>
+                    {mafiaChatActive ? '🟢 متصل' : '🔒 بسته'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsMafiaChatOpen(false)}
+                  className="w-5 h-5 flex items-center justify-center rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="overflow-y-auto max-h-[290px] text-xs">
+                <MafiaChat
+                  isActive={mafiaChatActive}
+                  messages={mafiaChatMessages}
+                  currentUserId={player.id}
+                  onSendMessage={(msg) => network.sendMafiaMessage(player.id, msg)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+    </div>
   );
 };
