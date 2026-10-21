@@ -41,6 +41,7 @@ export interface QuotaTracker {
     blankBulletsLeft?: number;
     inquiriesLeft?: number;
     armorActive?: boolean;
+    lastTargetId?: string;
   };
 }
 
@@ -488,7 +489,7 @@ export function getMafiaShooter(players: Player[]): Player | null {
     ["thief", "burglar"],
     ["negotiator"],
     ["joker"],
-    ["ghost_mafia", "ghost"],
+    ["shadow_mafia", "ghost_mafia", "ghost"],
     ["informant_mafia", "informant"],
     ["infiltrator"],
     ["terrorist"],

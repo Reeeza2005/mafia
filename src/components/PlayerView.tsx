@@ -110,6 +110,13 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   }, [activePlayer?.gunGiven]);
   const [gunShotAnnouncement, setGunShotAnnouncement] = useState<{ message: string; isReal: boolean } | null>(null);
   const [doctorSelfSavesUsed, setDoctorSelfSavesUsed] = useState<number>(0);
+  const [natashaLastSilencedId, setNatashaLastSilencedId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`mafia_natasha_last_${player?.id}`) || null;
+    } catch {
+      return null;
+    }
+  });
   const [lecterSelfSavesUsed, setLecterSelfSavesUsed] = useState<number>(() => {
     try {
       return parseInt(localStorage.getItem(`mafia_lecter_self_${player?.id}`) || "0", 10) || 0;
@@ -324,7 +331,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   };
 
   const handleRequestChallenge = () => {
-    if (!player || !player.isAlive || player.usedDailyChallenge || isChallengeRequested) return;
+    if (!player || !player.isAlive || player.isSilenced || activePlayer?.isSilenced || player.usedDailyChallenge || isChallengeRequested) return;
     audio.playFlip();
     network.requestChallenge(player.id);
     setIsChallengeRequested(true);
@@ -1365,7 +1372,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
                   network.sendGunsmithTargets(player.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
                 } else {
                   if (!selectedNightTargetId) return;
-                  const actionRoleToSend = currentNightRole === "mafia" ? "mafia" : (player.roleId === "dr_lecter" ? "doctor_lecter" : (player.roleId || ""));
+                  const actionRoleToSend = currentNightRole === "mafia" ? "mafia" : (player.roleId === "dr_lecter" ? "doctor_lecter" : ((player.roleId === "natasha" || player.roleId === "silencer") ? "natasha" : (player.roleId || "")));
                   if ((player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player.id) {
                       setLecterSelfSavesUsed(prev => {
                         const nextVal = prev + 1;

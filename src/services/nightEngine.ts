@@ -65,19 +65,28 @@ export function resolveNight(
   }
 
   // ۱.۲ سایلنت ناتاشا (مشروط به گروگان گرفته نشدن ناتاشا)
-  const silencerPlayer = Array.from(playerMap.values()).find((p) => p.roleId === "silencer" || p.roleId === "natasha");
-  if (actions.silencerTargetId) {
-    if (silencerPlayer && blockedIds.has(silencerPlayer.id)) {
-      logs.push(`ناتاشا خلع سلاح شده بود و موفق به بستن زبان کسی نشد.`);
-    } else {
-      blockedIds.add(actions.silencerTargetId);
-      silencedId = actions.silencerTargetId;
-      const target = playerMap.get(actions.silencerTargetId);
-      logs.push(`ناتاشا بازیکن ${target ? target.name : actions.silencerTargetId} را سایلنت کرد.`);
-    }
-  }
+   const silencerPlayer = Array.from(playerMap.values()).find((p) => p.roleId === "silencer" || p.roleId === "natasha");
+   if (actions.silencerTargetId) {
+     const silencerId = silencerPlayer?.id || 'natasha_player';
+     if (!updatedQuotas[silencerId]) {
+       updatedQuotas[silencerId] = { totalUses: 0, selfUses: 0 };
+     }
 
-  // ۱.۳ تطهیر کشیش (رفع اثر سکوت امشب یا سکوت‌های پیشین)
+     if (silencerPlayer && blockedIds.has(silencerPlayer.id)) {
+       logs.push(`ناتاشا خلع سلاح شده بود و موفق به بستن زبان کسی نشد.`);
+     } else if (updatedQuotas[silencerId].lastTargetId === actions.silencerTargetId) {
+       const target = playerMap.get(actions.silencerTargetId);
+       logs.push(`⚠️ ناتاشا نمی‌تواند «${target ? target.name : actions.silencerTargetId}» را در دو شب متوالی سایلنت کند (اقدام باطل شد).`);
+     } else {
+       blockedIds.add(actions.silencerTargetId);
+       silencedId = actions.silencerTargetId;
+       updatedQuotas[silencerId].lastTargetId = actions.silencerTargetId;
+       updatedQuotas[silencerId].totalUses = (updatedQuotas[silencerId].totalUses || 0) + 1;
+       const target = playerMap.get(actions.silencerTargetId);
+       logs.push(`ناتاشا بازیکن ${target ? target.name : actions.silencerTargetId} را سایلنت کرد.`);
+     }
+   }
+
   if (actions.priestTargetId) {
     const priestPlayer = Array.from(playerMap.values()).find((p) => p.roleId === "priest");
     if (!priestPlayer || !blockedIds.has(priestPlayer.id)) {

@@ -94,6 +94,8 @@ export const ALL_ROLES: Role[] = [
       "اگر بازیکنی ادعای استعلام دارد یا لیدر شهر شده، سایلنت او در روز دادگاه می‌تواند منجر به اعدام یک شهروند بی‌دفاع شود."
     ],
     nightOrder: 4,
+    nightPriority: 4,
+    hasNightAction: true,
     wakeUpText: "ناتاشا برای انتخاب قربانی سکوت بیدار شود."
   },
   {

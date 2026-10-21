@@ -6,6 +6,7 @@ export interface PlayerQuotaState {
   blankBulletsLeft?: number;
   inquiriesLeft?: number;
   armorActive?: boolean;
+  lastTargetId?: string;
 }
 
 export type QuotaTracker = Record<string, PlayerQuotaState>;

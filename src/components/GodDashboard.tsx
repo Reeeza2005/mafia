@@ -1724,7 +1724,28 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     </button>
                   )}
 
-                  {alivePlayers.some(p => p.roleId === "bomber") && (
+                                      {alivePlayers.some(p => p.roleId === "natasha" || p.roleId === "silencer") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const isCurrent = currentActiveNightStep === "natasha" || currentActiveNightStep === "silencer";
+                          const targetRole = alivePlayers.find(p => p.roleId === "silencer") ? "silencer" : "natasha";
+                          const next = isCurrent ? null : targetRole;
+                          setCurrentActiveNightStep(next);
+                          network.setNightStep(next, roomCode);
+                          if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          currentActiveNightStep === "natasha" || currentActiveNightStep === "silencer"
+                            ? "bg-fuchsia-600 text-white shadow-lg ring-2 ring-fuchsia-400"
+                            : "bg-fuchsia-950/50 text-fuchsia-300 border border-fuchsia-900/60 hover:bg-fuchsia-900/70"
+                        }`}
+                      >
+                        🤫 بیدارباش ناتاشا
+                      </button>
+                    )}
+
+                    {alivePlayers.some(p => p.roleId === "bomber") && (
                     <button
                       onClick={() => {
                         network.getSocket()?.emit("god:wake_role", { roomCode, roleId: "bomber" });
@@ -1976,7 +1997,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                     لغو ✕
                                   </button>
                                 </div>
-                          ) : item.roleId === "silencer" ? (
+                          ) : (item.roleId === "natasha" || item.roleId === "silencer") ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -2153,7 +2174,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 )}
 
                 {/* ۶. سکوت ناتاشا */}
-                {activeNightRoleIds.has("natasha") && (
+                {(activeNightRoleIds.has("natasha") || activeNightRoleIds.has("silencer")) && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-fuchsia-950 space-y-2">
                     <span className="font-bold text-fuchsia-400 flex items-center gap-1">
                       🤫 سکوت ناتاشا:
@@ -2164,7 +2185,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
                     >
                       <option value="">-- بدون سایلنس --</option>
-                      {alivePlayers.map((p) => (
+                        {alivePlayers.filter(p => p.roleId !== 'natasha' && p.roleId !== 'silencer' && p.id !== (quotas[players.find(x => x.roleId === 'natasha' || x.roleId === 'silencer')?.id || 'natasha_player']?.lastTargetId)).map((p) => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
