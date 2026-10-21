@@ -2318,8 +2318,8 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
               {/* بالا: نام و تیم */}
               <div className="relative z-10 flex justify-between items-start pt-2">
                 <div>
-                  <span className="text-rose-400 font-black text-xs tracking-wider mb-1 block drop-shadow">نقش محرمانه شما</span>
-                  <h2 className="text-3xl font-black text-white drop-shadow-lg">{role?.name || "نامشخص"}</h2>
+                                    {/* نام کارت نقش به صورت بصری مخفی شده تا تداخلی با منطق نقشی ایجاد نکند */}
+                    <h2 className="hidden">{role?.name || "نامشخص"}</h2>
                 </div>
                 <div>
                   <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border shadow-lg backdrop-blur-md ${role?.side === "mafia" ? "bg-red-950/80 border-red-800 text-red-300" : "bg-blue-950/80 border-blue-800 text-blue-300"}`}>
