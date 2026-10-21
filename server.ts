@@ -1355,6 +1355,13 @@ io.on('connection', (socket) => {
         socket.emit("error_message", "نمی‌توانید روی خودتان بمب بگذارید.");
         return;
       }
+
+      // کنترل سهمیه ۱ بار مصرف بمب‌گذار
+      const bomberPlayer = room.players[socket.id];
+      if (bomberPlayer?.hasPlantedBomb) {
+        socket.emit("error_message", "شما قبلاً سهمیه بمب‌گذاری خود را مصرف کرده‌اید.");
+        return;
+      }
       
       if (!room.dayState) room.dayState = {};
       room.dayState.activeBomb = {
@@ -1366,7 +1373,9 @@ io.on('connection', (socket) => {
         status: "planted",
         plantedAtNight: room.nightCount || 1
       };
+      if (bomberPlayer) bomberPlayer.hasPlantedBomb = true;
       socket.emit("action_success", { message: "بمب با موفقیت تنظیم و کار گذاشته شد." });
+        io.to(roomCode).emit("bomb_status_updated", { activeBomb: room.dayState.activeBomb });
     });
 
     socket.on("bomb:trigger", ({ roomCode }) => {

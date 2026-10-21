@@ -542,6 +542,27 @@ sendMafiaMessage(playerId: string, text: string) {
       this.socket.emit("day_gun_shot_broadcast", { roomCode: rCode, shooterName, targetName, isReal, targetId });
     }
   }
+
+  plantBomb(victimId: string, wires: Record<string, string>, roomCode?: string) {
+    if (this.socket) {
+      const rCode = roomCode || (this as any).currentRoomCode || (this as any).roomCode;
+      this.socket.emit("bomb:plant", { roomCode: rCode, victimId, wires });
+    }
+  }
+
+  triggerBomb(roomCode?: string) {
+    if (this.socket) {
+      const rCode = roomCode || (this as any).currentRoomCode || (this as any).roomCode;
+      this.socket.emit("bomb:trigger", { roomCode: rCode });
+    }
+  }
+
+  cutBombWire(color: string, roomCode?: string) {
+    if (this.socket) {
+      const rCode = roomCode || (this as any).currentRoomCode || (this as any).roomCode;
+      this.socket.emit("bomb:cut", { roomCode: rCode, color });
+    }
+  }
 }
 
 export const network = new NetworkService();

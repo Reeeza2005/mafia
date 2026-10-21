@@ -45,7 +45,7 @@ export const BomberAction: React.FC<Props> = ({ socket, roomCode, currentPlayerI
 
   const handleSubmit = () => {
     if (!isFormValid) return;
-    socket.emit("bomb:plant", { roomCode, victimId: targetId, wires });
+    if ((window as any).network) { (window as any).network.plantBomb(targetId, wires, roomCode); } else { socket.emit("bomb:plant", { roomCode, victimId: targetId, wires }); }
     onActionCompleted();
   };
 

@@ -380,7 +380,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -402,7 +402,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
           <div>
@@ -430,7 +430,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
           <form
@@ -481,7 +481,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
       
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -503,7 +503,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
     );
   }
@@ -538,7 +538,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             
             <div className="space-y-1">
@@ -568,7 +568,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
             <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-4">
@@ -595,7 +595,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
             <button
@@ -625,7 +625,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -647,7 +647,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
       )}
 
@@ -678,7 +678,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           <button
             onClick={() => setBuzzAlert(null)}
@@ -706,7 +706,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
       )}
 
@@ -735,7 +735,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           <div>
             <h3 className="text-sm font-bold text-white">{player.name}</h3>
@@ -762,7 +762,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -784,7 +784,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
         {/* Badges & Vibration test */}
@@ -831,7 +831,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
       
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -853,7 +853,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
       {/* کارت وضعیت فاز شب برای شهروند ساده و نقش‌های فاقد اکشن شبانه */}
@@ -885,7 +885,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             <h4 className="text-xs font-black text-indigo-200">شهر در سکوت شب فرو رفته است</h4>
             <p className="text-[11px] leading-relaxed text-neutral-400">
@@ -914,7 +914,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -936,7 +936,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         )}
 
@@ -970,7 +970,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             <p className="text-[11px] text-neutral-400 leading-relaxed">
               شلیک نهایی توسط سرتیم انجام می‌شود. هدف پیشنهادی خود را در چت تیمی زیر مطرح کنید.
@@ -995,7 +995,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         )}
 
@@ -1072,7 +1072,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
               )}
 
@@ -1102,7 +1102,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
               )}
               {nightActionSent && (
@@ -1130,7 +1130,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
             {/* انتخاب‌های اختصاصی تفنگدار: دو کادر همزمان جنگی و مشقی */}
@@ -1173,7 +1173,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
                 <div className="space-y-1">
@@ -1210,7 +1210,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
               
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -1232,7 +1232,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             )}
 
@@ -1265,7 +1265,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             ) : null}
 
@@ -1359,7 +1359,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             )}
 
@@ -1422,7 +1422,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         )}
 
@@ -1454,7 +1454,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           <p className="text-[11px] text-neutral-300 leading-relaxed">
             شما یک اسلحه در اختیار دارید. می‌توانید در فاز روز شلیک خود را از طریق اعلام به گرداننده یا کلیک روی دکمه شلیک انجام دهید.
@@ -1485,7 +1485,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             
             <div className="flex items-center gap-2">
@@ -1541,7 +1541,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             {gunShotPending && (
               <p className="text-[10px] text-amber-300 animate-pulse text-center">
@@ -1568,7 +1568,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -1590,7 +1590,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
       )}
 
@@ -1663,7 +1663,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
               
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -1685,7 +1685,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
               {/* Running indicator badge */}
@@ -1720,7 +1720,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -1742,7 +1742,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
             {/* Middle row: Large digital timer */}
@@ -1781,7 +1781,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -1803,7 +1803,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
             {/* Bottom progress bar */}
@@ -1841,7 +1841,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             )}
           
@@ -1864,7 +1864,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         );
       })()}
@@ -1895,7 +1895,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           ) : isChallengeRequested ? (
             <div className="w-full py-2.5 px-4 rounded-xl bg-amber-950/40 border border-amber-600/60 text-center text-xs text-amber-300 font-bold flex items-center justify-center gap-2 animate-pulse">
@@ -1920,7 +1920,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           ) : (
             <button
@@ -1951,7 +1951,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
       )}
 
@@ -1988,7 +1988,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -2010,7 +2010,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
             {isVoteUnlocked && (
               <span className="px-3 py-1 rounded-xl bg-amber-500 text-neutral-950 text-xs font-black shadow-lg shadow-amber-500/20 animate-bounce flex items-center gap-1.5">
@@ -2038,7 +2038,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
 
           {(secretVote.isLocked && !isVoteUnlocked) ? (
@@ -2067,7 +2067,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           ) : hasVoted ? (
             <div className="py-8 text-center space-y-2 bg-neutral-900/40 rounded-2xl border border-neutral-800">
@@ -2094,7 +2094,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           ) : (
             <div className="space-y-3">
@@ -2149,7 +2149,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
                 </>
               )}
@@ -2173,7 +2173,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           )}
         
@@ -2196,7 +2196,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
       )}
 
@@ -2225,7 +2225,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
           <div>
             <h3 className="text-base font-bold text-white">در انتظار توزیع کارت‌ها...</h3>
@@ -2252,7 +2252,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -2274,7 +2274,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
       ) : (
         /* ========================================================= */
@@ -2457,7 +2457,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
         )}
       
@@ -2480,7 +2480,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 </div>
     
         {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
@@ -2502,7 +2502,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+      
 
       {/* چت شبانه اختصاصی مافیا - مینیمال و تاشو */}
       {isMafia(player?.roleId) && (
@@ -2553,6 +2553,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         </div>
       )}
 
-    </div>
+      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
+</div>
   );
 };

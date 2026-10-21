@@ -135,6 +135,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   const [dayVotePhase, setDayVotePhase] = useState<'idle' | 'nomination' | 'court_entry' | 'defense'>('idle');
 
   const [challengeRequests, setChallengeRequests] = useState<{ playerId: string; playerName: string; time: string }[]>([]);
+  const [activeBomb, setActiveBomb] = useState<any>(null);
 
   // Sync timer state
   // همگام‌سازی ثانیه‌های محلی با تایمر
@@ -142,6 +143,21 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     setLocalSeconds(timer.seconds);
     if (timer.speakerId) setSpeakerId(timer.speakerId);
   }, [timer.seconds, timer.speakerId]);
+
+  // لیسنرهای وضعیت بمب برای گرداننده با cleanup
+  useEffect(() => {
+    const un1 = network.on("bomb_status_updated", (data: any) => setActiveBomb(data?.activeBomb || null));
+    const un2 = network.on("bomb_triggered", (data: any) => setActiveBomb(data?.bomb || null));
+    const un3 = network.on("bomb_exploded", () => setActiveBomb(null));
+    const un4 = network.on("bomb_defused", () => setActiveBomb(null));
+
+    return () => {
+      if (typeof un1 === "function") un1();
+      if (typeof un2 === "function") un2();
+      if (typeof un3 === "function") un3();
+      if (typeof un4 === "function") un4();
+    };
+  }, []);
 
   // لیسنر چت مافیا با cleanup کامل
   useEffect(() => {
