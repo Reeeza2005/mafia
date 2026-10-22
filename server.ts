@@ -465,6 +465,7 @@ io.on('connection', (socket) => {
         roleId: data.roleId,
         targetId: data.targetId,
         targetName: target?.name || "نامشخص",
+        wires: (data as any)?.wires || null,
         extraType: data.extraType,
         time: new Date().toLocaleTimeString('fa-IR')
       });
@@ -706,9 +707,16 @@ io.on('connection', (socket) => {
   });
 
   // God distributes roles
-  socket.on('distribute_roles', ({ roomCode, selectedRoleIds }) => {
-    const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
-    const room = getOrCreateRoom(targetCode);
+    // God distributes roles
+    socket.on('distribute_roles', ({ roomCode, selectedRoleIds }) => {
+      const targetCode = roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+      const room = getOrCreateRoom(targetCode);
+      if (!room) return;
+      if (room.dayState) room.dayState.activeBomb = null;
+      Object.values(room.players).forEach((p: any) => {
+        delete p.hasPlantedBomb;
+        delete p.plantedBomb;
+      });
     const activePlayers = Object.values(room.players).filter((p) => p.connected);
 
     if (selectedRoleIds.length !== activePlayers.length) {
@@ -717,19 +725,26 @@ io.on('connection', (socket) => {
     }
 
     // Shuffle roles (Fisher-Yates)
-    const shuffledRoles = [...selectedRoleIds];
-    for (let i = shuffledRoles.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledRoles[i], shuffledRoles[j]] = [shuffledRoles[j], shuffledRoles[i]];
-    }
+      // بر زدن تصادفی واقعی نقش‌ها (Fisher-Yates)
+      const shuffledRoles = [...selectedRoleIds];
+      for (let i = shuffledRoles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledRoles[i], shuffledRoles[j]] = [shuffledRoles[j], shuffledRoles[i]];
+      }
 
-    room.rolesInGame = [...selectedRoleIds];
-    room.cardsDistributed = true;
-    room.gameStarted = true;
+      // بر زدن بازیکنان برای حذف وابستگی به ترتیب ورود به اتاق
+      for (let i = activePlayers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [activePlayers[i], activePlayers[j]] = [activePlayers[j], activePlayers[i]];
+      }
 
-    // Assign to players
-    activePlayers.forEach((player, idx) => {
-      player.roleId = shuffledRoles[idx];
+      room.rolesInGame = [...selectedRoleIds];
+      room.cardsDistributed = true;
+      room.gameStarted = true;
+
+      // تخصیص نقش به بازیکنان
+      activePlayers.forEach((player, idx) => {
+        player.roleId = shuffledRoles[idx];
       player.isAlive = true;
       player.isSilenced = false;
       player.eliminationReason = undefined;
@@ -1344,91 +1359,206 @@ io.on('connection', (socket) => {
       }
     });
 
-    // ==========================================
-    // رویدادهای نقش بمب‌گذار (Bomber)
-    // ==========================================
-    socket.on("bomb:plant", ({ roomCode, victimId, wires }) => {
-      const room = getOrCreateRoom(roomCode);
-      
-      // جلوگیری از بمب‌گذاری روی خود
-      if (victimId === socket.id) {
-        socket.emit("error_message", "نمی‌توانید روی خودتان بمب بگذارید.");
-        return;
-      }
+      // =========================================================================
+      //  💣 موتور رسمی و متمرکز نقش بمب‌گذار (Bomber Lifecycle Engine)
+      // =========================================================================
 
-      // کنترل سهمیه ۱ بار مصرف بمب‌گذار
-      const bomberPlayer = room.players[socket.id];
-      if (bomberPlayer?.hasPlantedBomb) {
-        socket.emit("error_message", "شما قبلاً سهمیه بمب‌گذاری خود را مصرف کرده‌اید.");
-        return;
-      }
-      
-      if (!room.dayState) room.dayState = {};
-      room.dayState.activeBomb = {
-        bomberId: socket.id,
-        bomberName: room.players[socket.id]?.name || "ناشناس",
-        victimId,
-        victimName: room.players[victimId]?.name || "ناشناس",
-        wires,
-        status: "planted",
-        plantedAtNight: room.nightCount || 1
-      };
-      if (bomberPlayer) bomberPlayer.hasPlantedBomb = true;
-      socket.emit("action_success", { message: "بمب با موفقیت تنظیم و کار گذاشته شد." });
-        io.to(roomCode).emit("bomb_status_updated", { activeBomb: room.dayState.activeBomb });
-    });
+      // ۱. ثبت تصمیم شبانه بمب‌گذار (انصراف یا کاشت بمب)
+        // ۱. ثبت تصمیم شبانه بمب‌گذار (انصراف یا کاشت بمب)
+        socket.on("bomb:submit_night", ({ roomCode, isSkip, targetId, wires }) => {
+          const room = getOrCreateRoom(roomCode);
+          if (!room) return;
 
-    socket.on("bomb:trigger", ({ roomCode }) => {
-      const room = getOrCreateRoom(roomCode);
-      const bomb = room.dayState?.activeBomb;
-      if (!bomb || bomb.status !== "planted") return;
-      
-      bomb.status = "triggered";
-      bomb.timerSecondsLeft = 15; // ۱۵ ثانیه زمان برای قربانی
-      
-      io.to(roomCode).emit("bomb_triggered", { bomb });
-      
-      // ایجاد تایمر قدرتمند سمت سرور
-      const interval = setInterval(() => {
-        const currentBomb = getOrCreateRoom(roomCode).dayState?.activeBomb;
-        if (!currentBomb || currentBomb.status !== "triggered") {
-          clearInterval(interval);
+          // یافتن بمب‌گذار با سوکت یا شناسه
+          const bomber = room.players[socket.id] || Object.values(room.players).find((p: any) => p.socketId === socket.id || p.id === socket.id);
+          if (!bomber || bomber.roleId !== "bomber") {
+            console.log("[💣 سرور] بمب‌گذار پیدا نشد یا نقش نامعتبر است:", socket.id);
+            return;
+          }
+
+          if (isSkip) {
+            console.log(`[💣 سرور] انصراف بمب‌گذار «${bomber.name}» ثبت شد.`);
+            const payload = {
+              playerId: bomber.id || socket.id,
+              playerName: bomber.name,
+              roleId: "bomber",
+              targetId: "skip",
+              targetName: "انصراف در این شب",
+              wires: null,
+              isSkip: true,
+              time: new Date().toLocaleTimeString("fa-IR")
+            };
+            if (room.godSocketId) io.to(room.godSocketId).emit("night_target_received", payload);
+            io.to(room.code || roomCode).emit("night_target_received", payload);
+            return;
+          }
+
+          // اگر بمب فعال در بازی نیست، سهمیه در دست جدید آزاد است
+          if (bomber.hasPlantedBomb && room.dayState?.activeBomb) {
+            console.log(`[💣 سرور] بمب‌گذار «${bomber.name}» قبلاً در این دست بمب کاشته است.`);
+            socket.emit("error_message", "شما قبلاً سهمیه بمب‌گذاری خود را مصرف کرده‌اید.");
+            return;
+          }
+
+          const target = room.players[targetId] || Object.values(room.players).find((p: any) => p.id === targetId || p.socketId === targetId);
+          if (!target || !target.isAlive) {
+            console.log("[💣 سرور] هدف بمب‌گذار نامعتبر یا مرده است:", targetId);
+            return;
+          }
+
+          console.log(`[💣 سرور] درخواست کاشت بمب از «${bomber.name}» روی «${target.name}» دریافت و به گاد ارسال شد.`);
+
+          const payload = {
+            playerId: bomber.id || socket.id,
+            playerName: bomber.name,
+            roleId: "bomber",
+            targetId: target.id || targetId,
+            targetName: target.name,
+            wires: wires,
+            isSkip: false,
+            time: new Date().toLocaleTimeString("fa-IR")
+          };
+
+          if (room.godSocketId) {
+            io.to(room.godSocketId).emit("night_target_received", payload);
+          }
+          // ارسال بک‌آپ برای اتاق تا در صورت جابجایی سوکت گاد قطع نشود
+          io.to(room.code || roomCode).emit("night_target_received", payload);
+        });
+      socket.on("bomb:god_confirm", ({ roomCode, bomberId, targetId, wires, isSkip }) => {
+        const room = getOrCreateRoom(roomCode);
+        if (isSkip) {
+          io.to(room.code || roomCode).emit("night_step_state", { role: null });
           return;
         }
-        
-        currentBomb.timerSecondsLeft--;
-        if (currentBomb.timerSecondsLeft <= 0) {
-          clearInterval(interval);
-          currentBomb.status = "timeout_exploded";
-          if (room.players[currentBomb.victimId]) room.players[currentBomb.victimId].isAlive = false;
-          io.to(roomCode).emit("bomb_exploded", { reason: "timeout", victimId: currentBomb.victimId });
+
+        const bomber = room.players[bomberId];
+        const target = room.players[targetId];
+        if (!bomber || !target) return;
+
+        if (!room.dayState) room.dayState = {};
+        room.dayState.activeBomb = {
+          bomberId: bomberId,
+          bomberName: bomber.name,
+          victimId: targetId,
+          victimName: target.name,
+          wires: wires,
+          status: "planted"
+        };
+        bomber.hasPlantedBomb = true;
+
+        io.to(room.code || roomCode).emit("bomb_status_updated", { activeBomb: room.dayState.activeBomb });
+        io.to(bomberId).emit("action_success", { message: `بمب با موفقیت روی «${target.name}» کار گذاشته شد.` });
+        io.to(room.code || roomCode).emit("night_step_state", { role: null });
+        console.log(`[💣 سرور] بمب تایید شد: بمب‌گذار ${bomber.name} روی ${target.name}`);
+      });
+
+      // ۳. فعال‌سازی چاشنی انفجار در فاز روز توسط بمب‌گذار
+      socket.on("bomb:request_status", ({ roomCode }) => {
+        const room = getOrCreateRoom(roomCode);
+        if (room.dayState?.activeBomb) {
+          io.to(room.code || roomCode).emit("bomb_status_updated", { activeBomb: room.dayState.activeBomb });
         }
-      }, 1000);
-    });
+      });
 
-    socket.on("bomb:cut", ({ roomCode, color }) => {
-      const room = getOrCreateRoom(roomCode);
-      const bomb = room.dayState?.activeBomb;
-      // فقط قربانی حق بریدن سیم را دارد
-      if (!bomb || bomb.status !== "triggered" || socket.id !== bomb.victimId) return;
+      socket.on("bomb:detonate_day", ({ roomCode }) => {
+        const room = getOrCreateRoom(roomCode);
+        const bomb = room.dayState?.activeBomb;
+        if (!bomb || bomb.status !== "planted") return;
+        if (bomb.bomberId !== socket.id) return;
 
-      bomb.selectedWire = color;
-      const outcome = bomb.wires[color];
+        bomb.status = "detonating";
+        io.to(room.code || roomCode).emit("bomb_status_updated", { activeBomb: bomb });
+        io.to(bomb.victimId).emit("bomb:challenge_start", {
+          message: "روی شما بمب کار گذاشته شده است! یک سیم را برای نجات خود قطع کنید."
+        });
+        console.log(`[💣 سرور] چاشنی توسط بمب‌گذار کشیده شد! بمب فعال شد در دستان: «${bomb.victimName}»`);
+      });
 
-      if (outcome === "defuse") {
-        bomb.status = "defused";
-        io.to(roomCode).emit("bomb_defused", { victimId: bomb.victimId });
-      } else if (outcome === "target_death") {
-        bomb.status = "exploded_target";
-        if (room.players[bomb.victimId]) room.players[bomb.victimId].isAlive = false;
-        io.to(roomCode).emit("bomb_exploded", { reason: "cut_target", victimId: bomb.victimId });
-      } else if (outcome === "bomber_death") {
-        bomb.status = "exploded_bomber";
-        if (room.players[bomb.bomberId]) room.players[bomb.bomberId].isAlive = false;
-        io.to(roomCode).emit("bomb_exploded", { reason: "cut_bomber", victimId: bomb.bomberId });
-      }
-    });
-    
+      // ۴. قطع سیم توسط قربانی و اعمال پیامد قطعی در موتور بازی
+      // ۴. پایان تایمر ۱۵ ثانیه خنثی‌سازی (انفجار قطعی و اخراج قربانی)
+      socket.on("bomb:timeout", ({ roomCode }) => {
+        const room = getOrCreateRoom(roomCode);
+        const bomb = room.dayState?.activeBomb;
+        if (!bomb || bomb.status !== "detonating") return;
+
+        console.log(`[💣 سرور] پایان وقت خنثی‌سازی! «${bomb.victimName}» منفجر شد.`);
+        const victim = room.players[bomb.victimId] || Object.values(room.players).find(p => p.id === bomb.victimId || p.socketId === bomb.victimId || p.name === bomb.victimName);
+        if (victim) {
+          victim.isAlive = false;
+          victim.eliminationReason = "انفجار بمب ساعتی (اتمام زمان)";
+        }
+        room.dayState.activeBomb = null;
+
+        const currentPlayers = Object.values(room.players);
+        io.to(room.code || roomCode).emit("bomb_exploded", { victimId: bomb.victimId, victimName: bomb.victimName });
+        io.to(room.code || roomCode).emit("bomb_status_updated", {
+          activeBomb: null,
+          resultText: `💥 زمان خنثی‌سازی به پایان رسید! بمب منفجر شد و «${bomb.victimName}» از بازی خارج شد.`
+        });
+        io.to(room.code || roomCode).emit("players_updated", { players: currentPlayers });
+        io.to(room.code || roomCode).emit("sync_players", { players: currentPlayers });
+        if (victim) {
+          io.to(room.code || roomCode).emit("player_status_changed", victim);
+        }
+      });
+
+      // ۵. قطع سیم توسط قربانی و اعمال پیامد قطعی
+      socket.on("bomb:cut_wire", ({ roomCode, wire }) => {
+        const room = getOrCreateRoom(roomCode);
+        const bomb = room.dayState?.activeBomb;
+        if (!bomb || bomb.status !== "detonating") return;
+
+        const outcome = bomb.wires ? bomb.wires[wire] : "defuse";
+        let resultText = "";
+
+        if (outcome === "defuse") {
+          resultText = `🎉 سیم خنثی قطع شد! بمب با مهارت توسط «${bomb.victimName}» بدون تلفات خنثی گردید.`;
+          io.to(room.code || roomCode).emit("bomb_defused", { victimId: bomb.victimId });
+        } else if (outcome === "target_death") {
+          resultText = `💥 سیم اشتباه بریده شد! بمب در دستان «${bomb.victimName}» منفجر شد و او جان باخت.`;
+          const victim = room.players[bomb.victimId] || Object.values(room.players).find(p => p.id === bomb.victimId || p.socketId === bomb.victimId || p.name === bomb.victimName);
+          if (victim) {
+            victim.isAlive = false;
+            victim.eliminationReason = "انفجار بمب ساعتی";
+          }
+          io.to(room.code || roomCode).emit("bomb_exploded", { victimId: bomb.victimId, victimName: bomb.victimName });
+        } else if (outcome === "bomber_death") {
+          resultText = `💥 تله معکوس فعال شد! بمب روی خود بمب‌گذار «${bomb.bomberName}» منفجر شد و او کشته شد!`;
+          const bomber = room.players[bomb.bomberId] || Object.values(room.players).find(p => p.id === bomb.bomberId || p.socketId === bomb.bomberId || p.name === bomb.bomberName);
+          if (bomber) {
+            bomber.isAlive = false;
+            bomber.eliminationReason = "انفجار معکوس بمب روی بمب‌گذار";
+          }
+          io.to(room.code || roomCode).emit("bomb_exploded", { victimId: bomb.bomberId, victimName: bomb.bomberName });
+        }
+
+        room.dayState.activeBomb = null;
+        const currentPlayers = Object.values(room.players);
+        io.to(room.code || roomCode).emit("bomb_status_updated", { activeBomb: null, resultText });
+        io.to(room.code || roomCode).emit("players_updated", { players: currentPlayers });
+        io.to(room.code || roomCode).emit("sync_players", { players: currentPlayers });
+
+        const deadPlayer = (outcome === "bomber_death")
+          ? (room.players[bomb.bomberId] || Object.values(room.players).find(p => p.id === bomb.bomberId || p.name === bomb.bomberName))
+          : (room.players[bomb.victimId] || Object.values(room.players).find(p => p.id === bomb.victimId || p.name === bomb.victimName));
+
+        if (deadPlayer) {
+          io.to(room.code || roomCode).emit("player_status_changed", deadPlayer);
+          console.log(`[💣 سرور] اخراج قطعی برای «${deadPlayer.name}» صادر گردید.`);
+        }
+        console.log(`[💣 سرور] نتیجه قطعی برش سیم (${wire}): ${resultText}`);
+      });
+
+            socket.on("bomb:cancel", ({ roomCode, reason }) => {
+        const room = getOrCreateRoom(roomCode);
+        if (room.dayState?.activeBomb) {
+          room.dayState.activeBomb = null;
+          io.to(roomCode).emit("bomb_status_updated", { activeBomb: null });
+          console.log(`[Bomb] بمب به دلیل ${reason} لغو شد.`);
+        }
+      });
+
   socket.on('disconnect', () => {
     // Look up player across rooms
     for (const roomCode of Object.keys(rooms)) {

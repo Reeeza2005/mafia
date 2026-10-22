@@ -237,6 +237,20 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       setIncomingDayShotTargets(prev => [...prev.filter(t => t.shooterId !== data.shooterId), data]);
     });
 
+    const unGameReset = network.on("game_reset", () => {
+      console.log("[گاد] پاکسازی صف درخواست‌های شب و بمب به علت ریست بازی");
+      setIncomingNightTargets([]);
+      setIncomingDayShotRequests([]);
+      setIncomingDayShotTargets([]);
+      setPendingDayShot(null);
+      setActiveBomb(null);
+      setNightActions({
+        mafiaShotId: undefined,
+        doctorSaveId: undefined,
+        doctorLecterSaveId: undefined,
+      });
+    });
+
     const unNightTarget = network.on("night_target_received", (data: any) => {
       if (data && data.playerId) {
         setIncomingNightTargets((prev) => [
@@ -250,6 +264,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       if (typeof unReq === "function") unReq();
       if (typeof unTargetRec === "function") unTargetRec();
       if (typeof unNightTarget === "function") unNightTarget();
+      if (typeof unGameReset === "function") unGameReset();
     };
   }, []);
 
@@ -670,6 +685,13 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
         console.warn("[GodDashboard] Audio play error (safely ignored):", audioErr);
       }
 
+      // ۶.۵. بررسی سلامت بمب‌گذار و ابطال بمب در صورت کشته شدن در شب
+      if (activeBomb && activeBomb.bomberId && deadList.includes(activeBomb.bomberId)) {
+        console.log("[GodDashboard] بمب‌گذار در شب کشته شده است. بمب باطل شد.");
+        setActiveBomb(null);
+        network.getSocket()?.emit("bomb:cancel", { roomCode, reason: "bomber_died_at_night" });
+      }
+
       // ۷. تغییر فاز شبکه به روز
       try {
         if (network && typeof (network as any).toggleNightPhase === 'function') {
@@ -701,6 +723,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       });
 
       console.log("[GodDashboard] انتقال به فاز روز با موفقیت انجام شد.");
+        (network.socket || (network as any).getSocket?.())?.emit('bomb:request_status', { roomCode });
     } catch (globalErr: any) {
       console.error("[GodDashboard] خطای سراسری در دکمه فاز روز:", globalErr);
       alert("خطا در انتقال به روز: " + (globalErr?.message || globalErr));
@@ -1762,19 +1785,24 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     )}
 
                     {alivePlayers.some(p => p.roleId === "bomber") && (
-                    <button
-                      onClick={() => {
-                        network.getSocket()?.emit("god:wake_role", { roomCode, roleId: "bomber" });
-                      }}
-                      className={`w-full py-2.5 px-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all duration-300 ${
-                        currentActiveNightStep === "bomber"
-                          ? "bg-red-600/30 text-red-300 border border-red-500/50"
-                          : "bg-neutral-800/50 text-neutral-400 border border-neutral-700/50"
-                      }`}
-                    >
-                      💣 بیدارباش بمب‌گذار
-                    </button>
-                  )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const isCurrent = currentActiveNightStep === "bomber";
+                          const next = isCurrent ? null : "bomber";
+                          setCurrentActiveNightStep(next);
+                          network.setNightStep(next, roomCode);
+                          if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          currentActiveNightStep === "bomber"
+                            ? "bg-red-600 text-white shadow-lg ring-2 ring-red-400"
+                            : "bg-red-950/50 text-red-300 border border-red-900/60 hover:bg-red-900/70"
+                        }`}
+                      >
+                        💣 بیدارباش بمب‌گذار
+                      </button>
+                    )}
 
                   <button
                     type="button"
@@ -1866,7 +1894,26 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                 </button>
                               </div>
                             );
-                          })() : item.roleId === "gunsmith" ? (
+                               })() : item.roleId === "bomber" ? (
+                                 <button
+                                   type="button"
+                                   onClick={() => {
+                                     const isSkip = item.isSkip || item.targetId === "skip";
+                                     (network.socket || (network as any).getSocket?.())?.emit("bomb:god_confirm", {
+                                       roomCode,
+                                       bomberId: item.playerId,
+                                       targetId: item.targetId,
+                                       wires: item.wires,
+                                       isSkip
+                                     });
+                                     setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                     setCurrentActiveNightStep(null);
+                                   }}
+                                   className="px-2.5 py-1 rounded-lg bg-red-950 border border-red-700 text-red-200 text-[10px] font-bold hover:bg-red-900 cursor-pointer shadow-lg shadow-red-950/40"
+                                 >
+                                   {item.isSkip || item.targetId === "skip" ? "تایید انصراف بمب‌گذار ✓" : "تایید کارگذاری بمب 💣"}
+                                 </button>
+                                ) : item.roleId === "gunsmith" ? (
                             <button
                               type="button"
                               onClick={() => {

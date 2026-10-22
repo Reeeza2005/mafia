@@ -1,5 +1,6 @@
 import { getSniperBulletQuota } from "../utils/sniperQuota";
 import { MafiaChat, MafiaChatMessage } from "./MafiaChat";
+import { BomberAction } from "./night/BomberAction";
 import React, { useState, useEffect } from 'react';
 import { Player, GameTimer, SecretVoteState } from '../types/mafia';
 import { ROLE_MAP } from '../data/roles';
@@ -83,17 +84,96 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [nightActionDone, setNightActionDone] = useState(false);
   const [nightActionSent, setNightActionSent] = useState(false);
   const [nightPhaseActive, setNightPhaseActive] = useState(false);
+  const [activeBomb, setActiveBomb] = useState<any>(null);
+  const [bombResultBanner, setBombResultBanner] = useState<string | null>(null);
+  const [bombTimer, setBombTimer] = useState<number>(15);
   const [nightResultMessage, setNightResultMessage] = useState<{ message: string; resultType?: string; time: string } | null>(null);
 
-  const [activeBomb, setActiveBomb] = useState<any>(null);
 
   useEffect(() => {
-    if (!network) return;
-    const un1 = network.on("bomb_triggered", (data: any) => setActiveBomb(data.bomb));
-    const un2 = network.on("bomb_exploded", () => setActiveBomb(null));
-    const un3 = network.on("bomb_defused", () => setActiveBomb(null));
-    return () => { un1(); un2(); un3(); };
-  }, []);
+    const sock = network?.socket || (network as any)?.getSocket?.();
+    if (!sock) return;
+
+    const handleBombStatus = (data: any) => {
+      console.log('[💣 سوکت مستقیم] آپدیت وضعیت بمب:', data?.activeBomb);
+      setActiveBomb(data?.activeBomb || null);
+      if (data?.resultText) {
+        setBombResultBanner(data.resultText);
+        setTimeout(() => setBombResultBanner(null), 8000);
+      }
+    };
+
+    const handleBombTriggered = (data: any) => setActiveBomb(data?.bomb || null);
+    const handleBombReset = () => setActiveBomb(null);
+    const handleBombExploded = (data: any) => {
+      console.log("[💣 کلاینت] انفجار بمب دریافت شد:", data);
+      setActiveBomb(null);
+      if (data?.victimId === player?.id || (player?.name && data?.victimName === player?.name)) {
+        player.isAlive = false;
+        player.eliminationReason = "انفجار بمب ساعتی (اتمام زمان)";
+        if (activePlayer) {
+          activePlayer.isAlive = false;
+          activePlayer.eliminationReason = "انفجار بمب ساعتی (اتمام زمان)";
+        }
+      }
+    };
+
+    sock.on('bomb_status_updated', handleBombStatus);
+    sock.on('bomb_triggered', handleBombTriggered);
+    sock.on('bomb_exploded', handleBombExploded);
+    sock.on('bomb_defused', handleBombReset);
+sock.on('game_reset', () => {
+      console.log('[💣 کلاینت] بازی ریست شد؛ پاکسازی کامل اکشن‌ها و بمب');
+      setActiveBomb(null);
+      setBombResultBanner(null);
+      setBombTimer(15);
+      setNightActionDone(false);
+      setNightActionSent(false);
+      setSelectedNightTargetId("");
+    });
+    sock.on('game_started', () => {
+      setActiveBomb(null);
+      setBombResultBanner(null);
+      setNightActionDone(false);
+      setNightActionSent(false);
+      setSelectedNightTargetId("");
+    });
+    sock.on('game_started', () => {
+      setActiveBomb(null);
+      setBombResultBanner(null);
+      setNightActionDone(false);
+      setNightActionSent(false);
+      setSelectedNightTargetId("");
+    });
+
+    return () => {
+      sock.off('bomb_status_updated', handleBombStatus);
+      sock.off('bomb_triggered', handleBombTriggered);
+      sock.off('bomb_exploded', handleBombExploded);
+      sock.off('bomb_defused', handleBombReset);
+      sock.off('game_reset', handleBombReset);
+    };
+  }, [network]);
+
+  // ⏱️ شمارش معکوس ۱۵ ثانیه‌ای خنثی‌سازی بمب
+  useEffect(() => {
+    if (activeBomb?.status === 'detonating' && activeBomb?.victimId === player?.id) {
+      setBombTimer(15);
+      const interval = setInterval(() => {
+        setBombTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            const rCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || '';
+            const sock = network?.socket || (network as any)?.getSocket?.();
+            sock?.emit('bomb:timeout', { roomCode: rCode });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeBomb?.status, activeBomb?.victimId, player?.id]);
   const [livePlayers, setLivePlayers] = useState<Player[]>([]);
     const [myDayGun, setMyDayGun] = useState<{ type: string; used: boolean } | null>(null);
   const [showGunReceivedModal, setShowGunReceivedModal] = useState<boolean>(false);
@@ -373,12 +453,30 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
+        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && activeBomb && activeBomb.status === "planted" && (
+          <div className="bg-red-950/40 border border-red-800/60 rounded-xl p-4 my-4 shadow-xl">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-red-400 text-sm font-bold flex items-center gap-2">
+                <span>💣</span> چاشنی فعال بمب کارگذاشته‌شده
+              </p>
+              <span className="text-xs bg-red-900/60 text-red-200 px-2.5 py-1 rounded-full border border-red-700/50">
+                آماده انفجار
+              </span>
+            </div>
+            <p className="text-xs text-neutral-300 mb-3 leading-relaxed">
+              بمب با موفقیت کار گذاشته شده است. در صورت تمایل می‌توانید در زمان مناسب فاز روز، چاشنی را فعال کنید تا چالش انتخاب سیم برای قربانی آغاز گردد.
+            </p>
+            <button
+              type="button"
+              onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })}
+              className="w-full bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-lg shadow-lg transition-all text-xs flex items-center justify-center gap-2"
+            >
+              <span>💥</span> فعال‌سازی چاشنی بمب
+            </button>
           </div>
         )}
+
+        
 
       
 </div>
@@ -395,12 +493,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -423,12 +516,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -474,12 +562,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -496,12 +579,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -512,6 +590,130 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
   return (
     <div className="max-w-md mx-auto space-y-4 pb-8 dir-rtl text-right select-none">
+
+      {/* 💣 پیام سراسری نتیجه انفجار / خنثی‌سازی */}
+      {bombResultBanner && (
+        <div className="fixed top-4 inset-x-4 z-50 p-4 rounded-2xl bg-neutral-900 border-2 border-amber-500 shadow-2xl text-center font-black text-sm text-amber-200 animate-bounce">
+          {bombResultBanner}
+        </div>
+      )}
+
+        {/* 💣 دکمه چاشنی فاز روز برای بمب‌گذار */}
+        {player?.isAlive && (player?.roleId === 'bomber' || activePlayer?.roleId === 'bomber') && activeBomb && activeBomb.status === 'planted' && (
+          <div className="bg-red-950/90 border-2 border-red-500 rounded-2xl p-4 my-3 text-center space-y-3 shadow-2xl shadow-red-950 animate-pulse">
+            <div className="text-xs text-red-200 font-black flex items-center justify-center gap-1.5">
+              <span>💣</span>
+              <span>بمب شما روی «{activeBomb.victimName || 'قربانی'}» آماده انفجار است!</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const rCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || '';
+                console.log('[💣 کلاینت] ارسال دستور چاشنی bomb:detonate_day به اتاق:', rCode);
+                const sock = network.socket || (network as any).getSocket?.();
+                sock?.emit('bomb:detonate_day', { roomCode: rCode });
+              }}
+              className="w-full py-3.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 text-white font-black text-sm rounded-xl shadow-lg shadow-red-900/60 cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-2 border border-red-400"
+            >
+              <span>💥 کشیدن چاشنی و انفجار بمب!</span>
+            </button>
+          </div>
+        )}
+
+          {/* 💣 مودال همگانی بمب فعال (قربانی با ۳ سیم + سایر بازیکنان با کادر زنده) */}
+          {player?.isAlive && activeBomb?.status === "detonating" && (
+            <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+              {activeBomb?.victimId === player?.id ? (
+                /* 🔴 نمای اختصاصی قربانی (دارای ۳ سیم خنثی‌سازی) */
+                <div className="bg-neutral-900 border-2 border-red-600 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-[0_0_50px_rgba(220,38,38,0.6)] animate-pulse">
+                  <div className="text-5xl animate-bounce">💣⚠️</div>
+                  <div>
+                    <h2 className="text-xl font-black text-red-500">بمب در دستان شما فعال شد!</h2>
+                    <p className="text-xs text-neutral-300 mt-1 font-medium">
+                      تنها یکی از سیم‌ها نجات‌بخش است؛ سریع انتخاب کن!
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center py-2">
+                    <div className={`text-4xl font-black font-mono px-6 py-2 rounded-2xl border-2 ${
+                      bombTimer <= 5 ? "bg-red-950/90 text-red-500 border-red-600 animate-ping" : "bg-neutral-800 text-amber-400 border-amber-500"
+                    }`}>
+                      00:{bombTimer < 10 ? `0${bombTimer}` : bombTimer}
+                    </div>
+                    <span className="text-[10px] text-neutral-400 mt-1">ثانیه تا انفجار قطعی</span>
+                  </div>
+
+                  <div className="space-y-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || "";
+                        const sock = network?.socket || (network as any)?.getSocket?.();
+                        sock?.emit("bomb:cut_wire", { roomCode: rCode, wire: "red" });
+                      }}
+                      className="w-full py-3 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-black text-sm rounded-xl shadow-lg border-2 border-red-400 cursor-pointer transition-all flex items-center justify-center gap-2"
+                    >
+                      <span>✂️</span>
+                      <span>قطع سیم قرمز 🔴</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || "";
+                        const sock = network?.socket || (network as any)?.getSocket?.();
+                        sock?.emit("bomb:cut_wire", { roomCode: rCode, wire: "blue" });
+                      }}
+                      className="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-sm rounded-xl shadow-lg border-2 border-blue-400 cursor-pointer transition-all flex items-center justify-center gap-2"
+                    >
+                      <span>✂️</span>
+                      <span>قطع سیم آبی 🔵</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || "";
+                        const sock = network?.socket || (network as any)?.getSocket?.();
+                        sock?.emit("bomb:cut_wire", { roomCode: rCode, wire: "yellow" });
+                      }}
+                      className="w-full py-3 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-sm rounded-xl shadow-lg border-2 border-yellow-300 cursor-pointer transition-all flex items-center justify-center gap-2"
+                    >
+                      <span>✂️</span>
+                      <span>قطع سیم زرد 🟡</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* 🟡 نمای همگانی سایر بازیکنان (کادر هیجانی با نام قربانی و بدون سیم‌ها) */
+                <div className="bg-neutral-900 border-2 border-amber-500 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-[0_0_40px_rgba(245,158,11,0.5)] animate-pulse">
+                  <div className="text-5xl animate-bounce">💣⚠️</div>
+                  <div className="space-y-1">
+                    <span className="inline-block px-3 py-1 bg-red-950/80 border border-red-500/40 rounded-full text-red-400 text-[11px] font-bold">
+                      چاشنی انفجار کشیده شد!
+                    </span>
+                    <h2 className="text-lg font-black text-white pt-2 leading-snug">
+                      بمب در دستان <span className="text-red-500 underline underline-offset-4">«{activeBomb?.victimName}»</span> فعال شده است!
+                    </h2>
+                    <p className="text-xs text-neutral-300 font-medium">
+                      او در حال انتخاب یکی از ۳ سیم بمب ساعتی است...
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center py-2">
+                    <div className={`text-4xl font-black font-mono px-6 py-2 rounded-2xl border-2 ${
+                      bombTimer <= 5 ? "bg-red-950/90 text-red-500 border-red-600 animate-ping" : "bg-neutral-800 text-amber-400 border-amber-500"
+                    }`}>
+                      00:{bombTimer < 10 ? `0${bombTimer}` : bombTimer}
+                    </div>
+                    <span className="text-[10px] text-neutral-400 mt-1">ثانیه تا انفجار قطعی</span>
+                  </div>
+
+                  <div className="bg-neutral-800/80 border border-neutral-700 rounded-xl p-3 text-xs text-neutral-300 font-semibold">
+                    نفس‌ها در سینه حبس شده؛ سرنوشت بازی در دستان «{activeBomb?.victimName}» است!
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
       {/* Modal شناور استعلام کارآگاه و اعلان‌های شب */}
       {nightResultMessage && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
@@ -531,12 +733,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -561,12 +758,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -588,12 +780,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -618,12 +805,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -640,12 +822,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -671,12 +848,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -699,12 +871,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -728,12 +895,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -755,12 +917,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -777,12 +934,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -824,12 +976,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -846,12 +993,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -878,12 +1020,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -907,12 +1044,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -929,12 +1061,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -963,12 +1090,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -988,12 +1110,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1001,19 +1118,21 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
 
         {/* Night Action Selector & In-game Feedback for Player */}
       {/* --- اکشن‌های شب بمب‌گذار و تفنگ‌دار --- */}
-        {player.roleId === "bomber" && currentNightRole === "bomber" && (
-          <BomberAction 
-            socket={network.getSocket()} 
-            roomCode={roomCode} 
-            currentPlayerId={player.id} 
-            players={Object.fromEntries(players.map(p => [p.id, p]))} 
-            onActionCompleted={() => setNightActionDone(true)} 
+        {player.isAlive && player.roleId === "bomber" && nightPhaseActive && currentNightRole === "bomber" && !nightActionDone && (
+          <BomberAction
+            socket={network?.getSocket?.() || null}
+            roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""}
+            currentPlayerId={player?.id || ""}
+            players={Object.fromEntries(
+              ((Array.isArray(livePlayers) && livePlayers.length > 0 ? livePlayers : Array.isArray(players) ? players : [])).map(p => [p.id, p])
+            )}
+            onActionCompleted={() => setNightActionDone(true)}
           />
         )}
         {player.roleId === "gunsmith" && currentNightRole === "gunsmith" && (
           <GunsmithAction 
             socket={network.getSocket()} 
-            roomCode={roomCode} 
+            roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""} 
             currentPlayerId={player.id} 
             players={Object.fromEntries(players.map(p => [p.id, p]))} 
             onActionCompleted={() => setNightActionDone(true)} 
@@ -1065,12 +1184,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1095,12 +1209,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1123,12 +1232,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1166,12 +1270,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1203,12 +1302,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1225,12 +1319,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1258,12 +1347,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1352,12 +1436,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1415,12 +1494,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1447,12 +1521,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1478,12 +1547,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1534,12 +1598,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1561,12 +1620,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1583,12 +1637,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1656,12 +1705,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1678,12 +1722,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1713,12 +1752,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1735,12 +1769,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1774,12 +1803,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1796,12 +1820,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1834,12 +1853,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1857,12 +1871,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1888,12 +1897,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1913,12 +1917,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1944,12 +1943,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -1981,12 +1975,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2003,12 +1992,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2031,12 +2015,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2060,12 +2039,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2087,12 +2061,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2142,12 +2111,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2166,12 +2130,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2189,12 +2148,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2218,12 +2172,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2245,12 +2194,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2267,12 +2211,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2450,12 +2389,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2473,12 +2407,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 </div>
@@ -2495,12 +2424,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
           </div>
         )}
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && (
-          <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl mt-4 mb-4 text-center">
-            <p className="text-red-400 text-sm font-bold mb-3">💣 کنترل چاشنی بمب</p>
-            <button onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">فعال‌سازی آنی چاشنی</button>
-          </div>
-        )}
+        
 
       
 
@@ -2553,7 +2477,6 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
         </div>
       )}
 
-      {activeBomb && <BombChallengeModal socket={network.getSocket()} roomCode={roomCode} bomb={activeBomb} currentPlayerId={player?.id || ""} />}
 </div>
   );
 };
