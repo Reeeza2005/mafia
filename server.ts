@@ -459,6 +459,22 @@ io.on('connection', (socket) => {
       const player = room.players[data.playerId];
       const target = room.players[data.targetId];
 
+        // 👁️ ثبت رفت‌وآمدهای شبانه برای دیده‌بان
+        if (!room.nightVisits) room.nightVisits = {};
+        if (player && data.targetId && data.targetId !== "skip") {
+          if (!room.nightVisits[data.targetId]) room.nightVisits[data.targetId] = [];
+          if (!room.nightVisits[data.targetId].includes(player.name)) {
+            room.nightVisits[data.targetId].push(player.name);
+          }
+        }
+
+        // ثبت هدف دیده‌بان
+        if (data.roleId === "watcher" || data.roleId === "bodyguard" || data.roleId === "guard") {
+          room.guardTargetId = data.targetId;
+          room.guardPlayerId = data.playerId;
+          console.log(`[🛡️ سرور] کشیک دیده‌بان «${player?.name}» روی «${target?.name || data.targetId}» ثبت شد.`);
+        }
+
       io.to(room.godSocketId).emit('night_target_received', {
         playerId: data.playerId,
         playerName: player?.name || "بازیکن",
@@ -715,6 +731,7 @@ io.on('connection', (socket) => {
       if (room.dayState) room.dayState.activeBomb = null;
       Object.values(room.players).forEach((p: any) => {
         delete p.hasPlantedBomb;
+          delete p.lastGuardedId;
         delete p.plantedBomb;
       });
     const activePlayers = Object.values(room.players).filter((p) => p.connected);
@@ -865,6 +882,11 @@ io.on('connection', (socket) => {
       room.godSocketId = socket.id;
       console.log(`[🌙 بیدارباش شب] نقش فعال: ${data.role || "پایان نوبت"} | اتاق: ${room.code}`);
       io.to(room.code).emit('night_step_state', { role: data.role });
+      if (data.role) {
+        room.isNight = true;
+        io.to(room.code).emit('night_phase_state', { active: true });
+        io.to(room.code).emit('night_phase_toggled', { active: true });
+      }
     });
 
     socket.on('toggle_night_phase', (data: { roomCode?: string; active: boolean }) => {
@@ -873,7 +895,37 @@ io.on('connection', (socket) => {
       const room = rooms[rCode.toString().toUpperCase()];
       if (!room) return;
 
-      io.to(room.code).emit('night_phase_state', { active: !!data.active });
+      room.isNight = data.active;
+      io.to(rCode.toString().toUpperCase()).emit('night_phase_toggled', { active: data.active });
+      io.to(rCode.toString().toUpperCase()).emit('night_phase_state', { active: data.active });
+
+      // مخابره گزارش دیده‌بان (نگهبان) با شروع فاز روز
+      if (!data.active && room.guardPlayerId && room.guardTargetId) {
+        const guardPlayer = room.players[room.guardPlayerId];
+        const targetPlayer = room.players[room.guardTargetId];
+        if (guardPlayer && room.guardTargetId !== "skip") {
+          const allVisitors = room.nightVisits?.[room.guardTargetId] || [];
+          const visitors = allVisitors.filter((name: string) => name !== guardPlayer.name);
+          const targetName = targetPlayer?.name || "هدف شما";
+
+          const reportMessage = visitors.length > 0
+            ? `👁️ گزارش دیده‌بان شب:\nشما دیشب کشیک «${targetName}» بودید.\nافراد مراجعه‌کننده به او: ${visitors.join('، ')}`
+            : `👁️ گزارش دیده‌بان شب:\nشما دیشب کشیک «${targetName}» بودید.\nدر طول شب هیچ رفت‌وآمد مشکوکی به سمت او ثبت نشد.`;
+
+          const payload = {
+            message: reportMessage,
+            resultType: "guard_report",
+            targetName: targetName,
+            visitors: visitors,
+            time: new Date().toLocaleTimeString("fa-IR")
+          };
+
+          console.log(`[🛡️ سرور] مخابره گزارش دیده‌بان به «${guardPlayer.name}»: ${visitors.join(', ') || 'هیچ‌کس'}`);
+          io.to(guardPlayer.socketId || guardPlayer.id).emit("night_result_received", payload);
+        }
+        room.guardTargetId = null;
+        room.nightVisits = {};
+      }
     });
 
     socket.on('update_night_actions', ({ roomCode, nightActions }) => {

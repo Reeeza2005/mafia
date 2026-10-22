@@ -1619,33 +1619,52 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               <div className="bg-neutral-950/80 border border-neutral-800 rounded-2xl p-3 space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-neutral-300">
                   <span>🌙 بیدارباش نوبتی نقش‌ها:</span>
-                  {currentActiveNightStep ? (
-                    <span className="text-[11px] text-amber-400 animate-pulse bg-amber-950/60 border border-amber-800 px-2.5 py-0.5 rounded-full">
-                      نوبت فعال: {currentActiveNightStep}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-neutral-500">همه خواب هستند 💤</span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = currentActiveNightStep === "mafia" ? null : "mafia";
-                      setCurrentActiveNightStep(next);
-                      network.setNightStep(next, roomCode);
-                      network.toggleMafiaChat(next === "mafia");
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      currentActiveNightStep === "mafia"
-                        ? "bg-red-700 text-white shadow-lg ring-2 ring-red-500"
-                        : "bg-red-950/50 text-red-300 border border-red-900/60 hover:bg-red-900/70"
-                    }`}
-                  >
-                    🕶️ بیدارباش مافیا (چت + شات)
-                  </button>
+                    {currentActiveNightStep ? (
+                      <span className="text-[11px] text-amber-400 animate-pulse bg-amber-950/60 border border-amber-800 px-2.5 py-0.5 rounded-full">
+                        نوبت فعال: {currentActiveNightStep}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-neutral-500">همه خواب هستند 💤</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {/* دکمه ۱: مافیا */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = currentActiveNightStep === "mafia" ? null : "mafia";
+                        setCurrentActiveNightStep(next);
+                        network.setNightStep(next, roomCode);
+                        network.toggleMafiaChat(next === "mafia");
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        currentActiveNightStep === "mafia"
+                          ? "bg-red-700 text-white shadow-lg ring-2 ring-red-500"
+                          : "bg-red-950/50 text-red-300 border border-red-900/60 hover:bg-red-900/70"
+                      }`}
+                    >
+                      🕶️ بیدارباش مافیا (چت + شات)
+                    </button>
 
-            {alivePlayers.some(p => p.roleId === "doctor") && (
+                    {/* دکمه ۲: دیده‌بان (نگهبان / رصدگر) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = (currentActiveNightStep === "watcher" || currentActiveNightStep === "bodyguard") ? null : "watcher";
+                        setCurrentActiveNightStep(next);
+                        network.setNightStep(next, roomCode);
+                        if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        (currentActiveNightStep === "watcher" || currentActiveNightStep === "bodyguard")
+                          ? "bg-amber-600 text-white shadow-lg ring-2 ring-amber-400"
+                          : "bg-amber-950/50 text-amber-300 border border-amber-900/60 hover:bg-amber-900/70"
+                      }`}
+                    >
+                      👁️ بیدارباش دیده‌بان (کشیک شب)
+                    </button>
+
+              {alivePlayers.some(p => p.roleId === "doctor") && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1981,7 +2000,26 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                   تایید نجات 💉
                                 </button>
                               </div>
-                            ) : (item.roleId === "doctor_lecter" || item.roleId === "lecter") ? (
+                            ) : (item.roleId === "watcher" || item.roleId === "bodyguard" || item.roleId === "guard") ? (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] text-amber-400 font-bold ml-1">
+                                    کشیک: {item.targetName}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setNightActions(prev => ({ ...prev, watcherTargetId: item.targetId }));
+                                      setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                      network.sendNightResultToPlayer(item.playerId, `کشیک شما روی «${item.targetName}» تایید شد 👁️`);
+                                      network.setNightStep(null, roomCode);
+                                      setCurrentActiveNightStep(null);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-amber-950 border border-amber-700 text-amber-200 text-[10px] font-bold hover:bg-amber-900 cursor-pointer shadow-md"
+                                  >
+                                    تایید کشیک دیده‌بان 👁️
+                                  </button>
+                                </div>
+                              ) : (item.roleId === "doctor_lecter" || item.roleId === "lecter") ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -2161,6 +2199,23 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 )}
 
                 {/* ۲. سیو پزشک */}
+              {alivePlayers.some(p => p.roleId === "bodyguard" || p.roleId === "guard") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = (currentActiveNightStep === "bodyguard" || currentActiveNightStep === "guard") ? null : "bodyguard";
+                        setCurrentActiveNightStep(next);
+                        network.setNightStep(next, roomCode);
+                        if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        (currentActiveNightStep === "bodyguard" || currentActiveNightStep === "guard")
+                          ? "bg-amber-600 text-white shadow-lg ring-2 ring-amber-400"
+                          : "bg-amber-950/50 text-amber-300 border border-amber-900/60 hover:bg-amber-900/70"
+                      }`}
+                    >
+                    </button>
+              )}
                 {alivePlayers.some(p => p.roleId === "doctor") && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-sky-950 space-y-2">
                     <span className="font-bold text-sky-400 flex items-center gap-1">

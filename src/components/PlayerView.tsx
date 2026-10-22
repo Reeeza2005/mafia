@@ -1,6 +1,7 @@
 import { getSniperBulletQuota } from "../utils/sniperQuota";
 import { MafiaChat, MafiaChatMessage } from "./MafiaChat";
 import { BomberAction } from "./night/BomberAction";
+import { GuardAction } from "./night/GuardAction";
 import React, { useState, useEffect } from 'react';
 import { Player, GameTimer, SecretVoteState } from '../types/mafia';
 import { ROLE_MAP } from '../data/roles';
@@ -348,12 +349,19 @@ sock.on('game_reset', () => {
     });
 
         const unNightStep = network.on("night_step_state", (data: any) => {
+      console.log("[PlayerView] دریافت وضعیت نوبت شب:", data, "| نقش من:", player?.roleId, "| شناسه من:", player?.id);
       setCurrentNightRole(data?.role || null);
       setNightActionDone(false);
       setSelectedNightTargetId("");
+      if (data?.role) {
+        setNightPhaseActive(true);
+      }
     });
 
     const unNightPhase = network.on("night_phase_state", (data: any) => {
+      if (typeof data?.active === "boolean") setNightPhaseActive(data.active);
+    });
+    const unNightToggled = network.on("night_phase_toggled", (data: any) => {
       if (typeof data?.active === "boolean") setNightPhaseActive(data.active);
     });
 
@@ -1129,7 +1137,21 @@ sock.on('game_reset', () => {
             onActionCompleted={() => setNightActionDone(true)}
           />
         )}
-        {player.roleId === "gunsmith" && currentNightRole === "gunsmith" && (
+        {/* --- اکشن شب دیده‌بان / نگهبان --- */}
+          {(player.roleId === "watcher" || player.roleId === "bodyguard" || player.roleId === "guard" || (player as any).roleName?.includes("دیده‌بان") || (player as any).roleName?.includes("نگهبان")) &&
+             (currentNightRole === "watcher" || currentNightRole === "bodyguard" || currentNightRole === "guard") && 
+           (currentNightRole === "bodyguard" || currentNightRole === "guard") && 
+             (
+            <GuardAction
+              players={Array.isArray(livePlayers) && livePlayers.length > 0 ? livePlayers : Array.isArray(players) ? players : []}
+              myPlayerId={player.id}
+              roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""}
+              lastGuardedId={(player as any).lastGuardedId || null}
+              onActionCompleted={() => setNightActionDone(true)}
+            />
+          )}
+
+          {player.roleId === "gunsmith" && currentNightRole === "gunsmith" && (
           <GunsmithAction 
             socket={network.getSocket()} 
             roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""} 
