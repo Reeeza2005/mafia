@@ -1124,7 +1124,32 @@ sock.on('game_reset', () => {
 </div>
         )}
 
-        {/* Night Action Selector & In-game Feedback for Player */}
+        {/* --- پاپ‌آپ هشدار مسدودسازی به بازیکن گروگان گرفته شده --- */}
+      {player.isAlive && nightPhaseActive && currentNightRole && (currentNightRole === player.roleId || (currentNightRole === "mafia" && isMafia(player.roleId))) && (roomState as any)?.hostageTargetId === player.id && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-gradient-to-b from-rose-950 to-neutral-950 border-2 border-rose-600 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4">
+            <div className="w-16 h-16 rounded-full bg-rose-900/60 border border-rose-500/80 mx-auto flex items-center justify-center text-3xl shadow-inner animate-pulse">
+              ⛓️
+            </div>
+            <h3 className="text-lg font-black text-white">شما به گروگان گرفته شده‌اید!</h3>
+            <p className="text-xs text-rose-200/90 leading-relaxed font-bold">
+              امشب توسط گروگان‌گیر مافیا در بند کشیده شدید؛ بنابراین تمام توانایی‌ها و ارتباط شبانه شما کاملاً مسدود و خنثی شده است.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setNightActionDone(true);
+                setCurrentNightRole(null);
+              }}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-red-700 text-white font-extrabold text-sm shadow-lg hover:from-rose-500 hover:to-red-600 active:scale-95 transition-all"
+            >
+              متوجه شدم (خوابیدن تا صبح) 💤
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Night Action Selector & In-game Feedback for Player */}
       {/* --- اکشن‌های شب بمب‌گذار و تفنگ‌دار --- */}
         {player.isAlive && player.roleId === "bomber" && nightPhaseActive && currentNightRole === "bomber" && !nightActionDone && (
           <BomberAction
@@ -1172,7 +1197,11 @@ sock.on('game_reset', () => {
               <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
                 {currentNightRole === "mafia"
                   ? "💥 انتخاب هدف شلیک شبانه مافیا"
-                  : (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
+                  : (player.roleId === "hostage_taker" || player.roleId === "hostage")
+                        ? livePlayers.filter(p => p.isAlive && p.id !== player.id).map(p => (
+                            <option key={p.id} value={p.id}>⛓️ {p.name}</option>
+                          ))
+                        : (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
                   ? "🩺 نجات شبانه یار مافیا (دکتر لکتر)"
                   : player.roleId === "godfather"
                   ? "💥 انتخاب هدف شلیک مافیا (پدرخوانده)"

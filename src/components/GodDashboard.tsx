@@ -1646,7 +1646,27 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       🕶️ بیدارباش مافیا (چت + شات)
                     </button>
 
-                    {/* دکمه ۲: دیده‌بان (نگهبان / رصدگر) */}
+                    {/* دکمه اختصاصی: گروگان‌گیر */}
+                     {alivePlayers.some(p => p.roleId === "hostage_taker" || p.roleId === "hostage") && (
+                       <button
+                         type="button"
+                         onClick={() => {
+                           const next = currentActiveNightStep === "hostage_taker" ? null : "hostage_taker";
+                           setCurrentActiveNightStep(next);
+                           network.setNightStep(next, roomCode);
+                           if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                         }}
+                         className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                           currentActiveNightStep === "hostage_taker"
+                             ? "bg-rose-700 text-white shadow-lg ring-2 ring-rose-500"
+                             : "bg-rose-950/50 text-rose-300 border border-rose-900/60 hover:bg-rose-900/70"
+                         }`}
+                       >
+                         ⛓️ بیدارباش گروگان‌گیر
+                       </button>
+                     )}
+
+                     {/* دکمه ۲: دیده‌بان (نگهبان / رصدگر) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -2117,6 +2137,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                               type="button"
                               onClick={() => {
                                 setNightActions(prev => ({ ...prev, hostageTargetId: item.targetId }));
+                            if (item.targetId) {
+                              onUpdatePlayer(item.targetId, { isHostaged: true } as any);
+                            }
                                 setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
                                 network.sendNightResultToPlayer(item.playerId, `گروگان‌گیری «${item.targetName}» تایید شد ⛓️`);
                                 network.setNightStep(null, roomCode);
