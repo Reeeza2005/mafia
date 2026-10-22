@@ -43,8 +43,8 @@ interface PlayerViewProps {
 const MAFIA_ROLE_IDS = new Set([
   "godfather", "dr_lecter", "doctor_lecter", "saul_goodman", "simple_mafia", "mafia_simple", "mafia",
   "matador", "hostage_taker", "bomber", "natasha", "silencer", "mistress", "sweetheart",
-  "thief", "burglar", "negotiator", "joker", "ghost_mafia", "ghost", "informant_mafia", "informant",
-  "infiltrator", "terrorist"
+  "burglar", "negotiator", "joker", "ghost_mafia", "ghost", "informant",
+  
 ]);
   const isMafia = (roleId?: string) => Boolean(roleId && MAFIA_ROLE_IDS.has(roleId.toLowerCase()));
 

@@ -1112,7 +1112,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           {/* پانل عملیات ویژه نقش‌های روز (کلانتر، قاضی، شهردار) */}
             {(() => {
               const sheriff = alivePlayers.find((p) => p.roleId === "sheriff");
-              const judge = alivePlayers.find((p) => p.roleId === "judge");
+              const judge = null;
               const mayor = alivePlayers.find((p) => p.roleId === "mayor");
 
               if (!sheriff && !judge && !mayor) return null;
@@ -1862,7 +1862,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             const targetPlayer = players.find(p => p.id === item.targetId);
                             const tRole = targetPlayer?.roleId || "";
                             // گادفادر منفی، سایر مافیاها مثبت، شهروندان منفی
-                            let isPositive = (tRole !== "godfather" && tRole !== "infiltrator" && (ROLE_MAP[tRole]?.team === "mafia" || isMafiaRoleId(tRole)));
+                            let isPositive = (tRole !== "godfather"  && (ROLE_MAP[tRole]?.team === "mafia" || isMafiaRoleId(tRole)));
                             if (nightActions.jokerTargetId && nightActions.jokerTargetId === item.targetId) {
                               isPositive = !isPositive;
                             }

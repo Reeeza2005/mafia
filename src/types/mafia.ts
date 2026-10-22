@@ -6,7 +6,7 @@ export type EliminationReason =
   | 'sniper_shot'
   | 'sheriff_shot'
   | 'bomber'
-  | 'terrorist'
+  
   | 'jester_revenge'
   | 'suicide'
   | 'leave'
