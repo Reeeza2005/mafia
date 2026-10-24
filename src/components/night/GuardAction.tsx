@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { Player } from '../../types/mafia';
-import { Eye, Shield, Check, X, UserCheck } from 'lucide-react';
+import { Shield, Check, X } from 'lucide-react';
 import { network } from '../../services/network';
+
+interface Player {
+  id: string;
+  name: string;
+  isAlive: boolean;
+}
 
 interface GuardActionProps {
   players: Player[];
@@ -21,12 +26,10 @@ export const GuardAction: React.FC<GuardActionProps> = ({
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
-  // بازیکنان زنده (به جز کسانی که دیشب انتخاب شده بودند)
+  // حذف خود بادیگارد از لیست اهداف قابل محافظت
   const selectablePlayers = players.filter((p) => p.isAlive && p.id !== myPlayerId);
 
   const handleSubmit = (isSkip: boolean = false) => {
-    if (isSubmitted) return;
-
     const targetId = isSkip ? "skip" : selectedTargetId;
     if (!isSkip && !targetId) return;
 
@@ -43,7 +46,6 @@ export const GuardAction: React.FC<GuardActionProps> = ({
 
     if (activeSocket) {
       activeSocket.emit("night_target_submit", payload);
-      activeSocket.emit("guard:submit_night", payload);
     } else {
       network.sendNightTarget(targetId || "skip", "bodyguard");
     }
@@ -53,83 +55,80 @@ export const GuardAction: React.FC<GuardActionProps> = ({
   };
 
   if (isSubmitted) {
+    const targetName = players.find((p) => p.id === selectedTargetId)?.name;
     return (
-      <div className="bg-neutral-900/90 border border-emerald-500/40 rounded-2xl p-6 text-center space-y-3 animate-in fade-in">
-        <div className="w-12 h-12 mx-auto rounded-full bg-emerald-950/80 border border-emerald-500 flex items-center justify-center text-emerald-400">
-          <Check className="w-6 h-6" />
+      <div className="bg-blue-950/40 border border-blue-600/40 rounded-2xl p-4 text-center space-y-2 animate-fade-in shadow-lg">
+        <div className="w-10 h-10 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-1 border border-blue-500/30">
+          <Shield className="w-5 h-5" />
         </div>
-        <h4 className="text-sm font-black text-white">کشیک شبانه شما ثبت شد</h4>
-        <p className="text-xs text-neutral-400">
-          پنجره بسته شد. اول صبح گزارش رفت‌وآمدها به هدف شما مخابره خواهد شد.
+        <h4 className="text-sm font-black text-white">محافظت شبانه شما ثبت شد 🛡️</h4>
+        <p className="text-xs text-blue-200">
+          {selectedTargetId === "skip" ? "امشب از کسی محافظت نکردید." : `شما امشب سپر جان «${targetName || "بازیکن انتخاب‌شده"}» شدید.`}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 shadow-2xl space-y-4 dir-rtl text-right select-none animate-in fade-in duration-200">
-      <div className="flex items-center gap-3 border-b border-neutral-800 pb-3">
-        <div className="w-10 h-10 rounded-2xl bg-amber-950/60 border border-amber-600/40 flex items-center justify-center text-amber-400">
-          <Eye className="w-5 h-5" />
-        </div>
-        <div>
-          <h3 className="text-sm font-black text-white">کشیک شبانه دیده‌بان</h3>
-          <p className="text-[11px] text-neutral-400">یک نفر را انتخاب کنید تا رفت‌وآمدهای خانه‌اش را ثبت کنید.</p>
+    <div className="bg-neutral-900/90 border border-blue-900/40 rounded-2xl p-4 space-y-3.5 shadow-xl text-right">
+      <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
+        <span className="text-[11px] font-bold text-neutral-400">فاز شب: نوبت محافظ (جان‌فدا)</span>
+        <div className="flex items-center gap-1.5 text-blue-400 text-xs font-black">
+          <Shield className="w-4 h-4" />
+          <span>سپر محافظتی شهر</span>
         </div>
       </div>
 
-      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+      <p className="text-xs text-neutral-300 leading-relaxed">
+        یک بازیکن را برای محافظت فیزیکی انتخاب کنید تا در برابر شلیک شبانه مافیا از او دفاع کنید:
+      </p>
+
+      <div className="space-y-1.5 max-h-48 overflow-y-auto pl-1 pr-1">
         {selectablePlayers.map((player) => {
-          const isLastGuarded = player.id === lastGuardedId;
           const isSelected = selectedTargetId === player.id;
+          const isLastGuarded = lastGuardedId === player.id;
 
           return (
             <button
               key={player.id}
+              type="button"
               disabled={isLastGuarded}
               onClick={() => setSelectedTargetId(player.id)}
-              className={`w-full p-3 rounded-2xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                isLastGuarded
-                  ? 'bg-neutral-950/50 border-neutral-800 text-neutral-600 cursor-not-allowed opacity-50'
-                  : isSelected
-                  ? 'bg-amber-600/20 border-amber-500 text-amber-300 shadow-md'
-                  : 'bg-neutral-800/60 border-neutral-700/60 text-neutral-200 hover:bg-neutral-800'
+              className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-blue-600/20 border-blue-500 text-blue-200 shadow-md ring-1 ring-blue-500/50'
+                  : isLastGuarded
+                  ? 'bg-neutral-950/40 border-neutral-800/40 text-neutral-600 cursor-not-allowed opacity-60'
+                  : 'bg-neutral-950/60 border-neutral-800 text-neutral-300 hover:border-neutral-700'
               }`}
             >
               <div className="flex items-center gap-2">
-                <Shield className={`w-4 h-4 ${isSelected ? 'text-amber-400' : 'text-neutral-500'}`} />
+                <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-blue-400' : 'bg-neutral-600'}`} />
                 <span>{player.name}</span>
               </div>
-              {isLastGuarded ? (
-                <span className="text-[10px] text-neutral-500 font-normal">دیشب کشیک بودید</span>
-              ) : isSelected ? (
-                <UserCheck className="w-4 h-4 text-amber-400" />
-              ) : null}
+              {isLastGuarded && <span className="text-[10px] text-neutral-500">دیشب محافظت کردید</span>}
             </button>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-800">
+      <div className="flex items-center gap-2 pt-2 border-t border-neutral-800">
         <button
-          onClick={() => handleSubmit(true)}
-          className="py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-400 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          <X className="w-3.5 h-3.5" />
-          <span>انصراف در این شب</span>
-        </button>
-
-        <button
-          disabled={!selectedTargetId}
+          type="button"
           onClick={() => handleSubmit(false)}
-          className={`py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-md ${
-            selectedTargetId
-              ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white cursor-pointer active:scale-95'
-              : 'bg-neutral-800 text-neutral-600 cursor-not-allowed'
-          }`}
+          disabled={!selectedTargetId}
+          className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:hover:bg-blue-600 text-white font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Check className="w-4 h-4" />
-          <span>تایید و ارسال کشیک ✓</span>
+          <span>تایید محافظت 🛡️</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSubmit(true)}
+          className="px-3 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+        >
+          <X className="w-3.5 h-3.5" />
+          <span>صرف‌نظر</span>
         </button>
       </div>
     </div>

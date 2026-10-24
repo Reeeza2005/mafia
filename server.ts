@@ -322,7 +322,7 @@ const MAFIA_ROLES = new Set([
 
 function isMafiaRole(roleId?: string): boolean {
   if (!roleId) return false;
-  return MAFIA_ROLES.has(roleId.toLowerCase());
+  return ["simple_mafia", "godfather", "dr_lecter", "natasha", "hostage_taker", "bomber", "joker", "negotiator", "mistress"].includes(roleId);
 }
 
 function broadcastMafiaChatUpdate(io: any, room: GameRoom) {
@@ -469,7 +469,11 @@ io.on('connection', (socket) => {
         }
 
         // ثبت هدف دیده‌بان
-        if (data.roleId === "watcher" || data.roleId === "bodyguard" || data.roleId === "guard") {
+        if (data.roleId === "bodyguard" || data.roleId === "guard") {
+          room.bodyguardTargetId = data.targetId;
+          room.guardTargetId = data.targetId;
+          console.log(`[🛡️ سرور] محافظت بادیگارد «${player?.name}» روی «${target?.name || data.targetId}» ثبت شد.`);
+        } else if (data.roleId === "watcher") {
           room.guardTargetId = data.targetId;
           room.guardPlayerId = data.playerId;
           console.log(`[🛡️ سرور] کشیک دیده‌بان «${player?.name}» روی «${target?.name || data.targetId}» ثبت شد.`);
@@ -1367,51 +1371,71 @@ io.on('connection', (socket) => {
     // ==========================================
     socket.on("gun:give", ({ roomCode, targetId, bulletType }) => {
       const room = getOrCreateRoom(roomCode);
-      
-      // جلوگیری از اعطای تیر جنگی به خود
-      if (targetId === socket.id && bulletType === "live") {
-        socket.emit("error_message", "تفنگ‌دار مجاز به اعطای تیر جنگی به خود نیست.");
-        return;
-      }
-      
+      if (!room) return;
+
       if (!room.dayState) room.dayState = {};
       if (!room.dayState.guns) room.dayState.guns = {};
-      
+
       room.dayState.guns[targetId] = {
         recipientId: targetId,
+        targetId: targetId,
         recipientName: room.players[targetId]?.name || "ناشناس",
         bulletType,
+        type: bulletType,
         isUsed: false,
+        used: false,
         assignedNight: room.nightCount || 1
       };
+
+      // ۱. تایید برای خود تفنگ‌دار
       socket.emit("action_success", { message: "تفنگ با موفقیت تحویل داده شد." });
+
+      // ۲. مخابره لیست تفنگ‌ها به کل اتاق تا دارنده تفنگ بلافاصله مطلع شود
+      const gunList = Object.values(room.dayState.guns);
+      io.to(roomCode).emit("day_guns_updated", { guns: gunList });
+      console.log(`[🔫 تفنگ‌دار] سلاح (${bulletType === "live" ? "جنگی" : "مشقی"}) به بازیکن «${room.players[targetId]?.name || targetId}» اهدا شد.`);
     });
 
-    socket.on("gun:shoot", ({ roomCode, targetId }) => {
+    socket.on("gun:shoot", ({ roomCode, shooterId, targetId }) => {
       const room = getOrCreateRoom(roomCode);
-      const gun = room.dayState?.guns?.[socket.id];
-      if (!gun || gun.isUsed) return;
-      
+      if (!room) return;
+
+      const effectiveShooterId = shooterId || socket.id;
+      const gun = room.dayState?.guns?.[effectiveShooterId];
+      if (!gun || gun.isUsed || gun.used) return;
+
       gun.isUsed = true;
+      gun.used = true;
       gun.shotDay = room.dayCount || 1;
       gun.shotTargetId = targetId;
 
-      if (gun.bulletType === "live") {
-        if (room.players[targetId]) room.players[targetId].isAlive = false;
-        const targetSide = room.players[targetId]?.role?.side === "mafia" ? "مافیا" : "شهروند";
-        io.to(roomCode).emit("gun_fired", { 
-          shooterId: socket.id, targetId, isLive: true, targetSide, 
-          message: `تیر جنگی بود و بازیکن حذف شد. ساید مقتول: ${targetSide}`
-        });
-      } else {
-        io.to(roomCode).emit("gun_fired", { 
-          shooterId: socket.id, targetId, isLive: false, 
-          message: `شلیک مشقی بود و کسی آسیب ندید.` 
-        });
+      const shooterName = room.players[effectiveShooterId]?.name || "تیرانداز";
+      const targetName = room.players[targetId]?.name || "هدف";
+      const isLive = gun.bulletType === "live" || gun.type === "live";
+
+      if (isLive) {
+        if (room.players[targetId]) {
+          room.players[targetId].isAlive = false;
+        }
       }
+
+      // انتشار نتیجه شلیک برای تمام بازیکنان
+      io.to(roomCode).emit("day_gun_shot_result", {
+        shooterId: effectiveShooterId,
+        shooterName,
+        targetId,
+        targetName,
+        isReal: isLive,
+        isLive: isLive
+      });
+
+      // به‌روزرسانی وضعیت اسلحه‌ها در اتاق
+      const gunList = Object.values(room.dayState.guns);
+      io.to(roomCode).emit("day_guns_updated", { guns: gunList });
+      console.log(`[💥 شلیک دادگاه] ${shooterName} به ${targetName} شلیک کرد (${isLive ? "جنگی" : "مشقی"}).`);
     });
 
-      // =========================================================================
+    // =========================================================================
       //  💣 موتور رسمی و متمرکز نقش بمب‌گذار (Bomber Lifecycle Engine)
       // =========================================================================
 

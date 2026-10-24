@@ -46,7 +46,7 @@ const MAFIA_ROLE_IDS = new Set([
   "burglar", "negotiator", "joker", "ghost_mafia", "ghost", "informant",
   
 ]);
-  const isMafia = (roleId?: string) => Boolean(roleId && MAFIA_ROLE_IDS.has(roleId.toLowerCase()));
+  const isMafia = (roleId?: string): boolean => Boolean(roleId && ["simple_mafia", "godfather", "dr_lecter", "natasha", "hostage_taker", "bomber", "joker", "negotiator", "mistress"].includes(roleId));
 
 export const PlayerView: React.FC<PlayerViewProps> = ({
 
@@ -449,17 +449,7 @@ sock.on('game_reset', () => {
             <div className="w-full h-full bg-neutral-950 rounded-[22px] flex items-center justify-center">
               <Skull className="w-10 h-10 text-rose-500" />
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && activeBomb && activeBomb.status === "planted" && (
           <div className="bg-red-950/40 border border-red-800/60 rounded-xl p-4 my-4 shadow-xl">
@@ -489,17 +479,7 @@ sock.on('game_reset', () => {
       
 </div>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -512,17 +492,7 @@ sock.on('game_reset', () => {
               نام خود را وارد کنید تا به بازی متصل شوید.
             </p>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -558,34 +528,14 @@ sock.on('game_reset', () => {
             </button>
           </form>
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
       
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -729,17 +679,7 @@ sock.on('game_reset', () => {
             <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-3xl shadow-inner">
               {nightResultMessage.resultType === "positive" ? "🟢" : nightResultMessage.resultType === "negative" ? "⚪" : "📩"}
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -754,17 +694,7 @@ sock.on('game_reset', () => {
                 {nightResultMessage.time}
               </span>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -776,17 +706,7 @@ sock.on('game_reset', () => {
                 {nightResultMessage.message}
               </p>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -801,34 +721,14 @@ sock.on('game_reset', () => {
               متوجه شدم ✓
             </button>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -844,17 +744,7 @@ sock.on('game_reset', () => {
             <Vibrate className="w-6 h-6 animate-pulse" />
             <span className="font-black text-sm">{buzzAlert.message}</span>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -867,17 +757,7 @@ sock.on('game_reset', () => {
             بستن
           </button>
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -891,17 +771,7 @@ sock.on('game_reset', () => {
           <div className="w-9 h-9 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-center font-black text-white text-sm">
             {player.name.slice(0, 1)}
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -913,34 +783,14 @@ sock.on('game_reset', () => {
               {player.isAlive ? '🟢 در بازی (زنده)' : '🔴 حذف شده از بازی'}
             </span>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -972,34 +822,14 @@ sock.on('game_reset', () => {
             <Vibrate className="w-3.5 h-3.5" />
           </button>
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
       
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1010,23 +840,13 @@ sock.on('game_reset', () => {
         {player.isAlive && nightPhaseActive && (
           player.roleId === "simple_citizen" || 
           player.roleId === "citizen" || 
-          (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "sniper", "gunsmith", "silencer"].includes(player.roleId))
-        ) && !(currentNightRole && (currentNightRole === player.roleId || (currentNightRole === "mafia" && isMafia(player.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))))) && (
+          (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "hostage_taker", "sniper", "bodyguard", "guard", "bodyguard", "guard", "gunsmith", "silencer"].includes(player.roleId))
+        ) && !(currentNightRole && ((currentNightRole === player.roleId || ((currentNightRole === "bodyguard" || currentNightRole === "guard") && (player.roleId === "bodyguard" || player.roleId === "guard"))) || (currentNightRole === "mafia" && isMafia(player.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))))) && (
           <div className="rounded-2xl border border-indigo-900/40 bg-gradient-to-b from-indigo-950/30 to-black/60 p-4 space-y-2 text-center shadow-lg">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 text-lg mb-1 animate-pulse">
               🌙
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1040,34 +860,14 @@ sock.on('game_reset', () => {
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping" />
               منتظر طلوع صبح و اعلام گرداننده باشید...
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1086,17 +886,7 @@ sock.on('game_reset', () => {
                 همفکری در چت
               </span>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1106,17 +896,7 @@ sock.on('game_reset', () => {
               شلیک نهایی توسط سرتیم انجام می‌شود. هدف پیشنهادی خود را در چت تیمی زیر مطرح کنید.
             </p>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1124,16 +904,16 @@ sock.on('game_reset', () => {
 </div>
         )}
 
-        {/* --- پاپ‌آپ هشدار مسدودسازی به بازیکن گروگان گرفته شده --- */}
-      {player.isAlive && nightPhaseActive && currentNightRole && (currentNightRole === player.roleId || (currentNightRole === "mafia" && isMafia(player.roleId))) && (roomState as any)?.hostageTargetId === player.id && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-gradient-to-b from-rose-950 to-neutral-950 border-2 border-rose-600 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4">
+      {/* --- پاپ‌آپ اخطار به بازیکن گروگان گرفته شده --- */}
+      {player.isAlive && nightPhaseActive && Boolean(currentNightRole) && Boolean((player as any)?.isHostaged) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="bg-gradient-to-b from-rose-950 to-neutral-950 border border-rose-600 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4">
             <div className="w-16 h-16 rounded-full bg-rose-900/60 border border-rose-500/80 mx-auto flex items-center justify-center text-3xl shadow-inner animate-pulse">
               ⛓️
             </div>
             <h3 className="text-lg font-black text-white">شما به گروگان گرفته شده‌اید!</h3>
             <p className="text-xs text-rose-200/90 leading-relaxed font-bold">
-              امشب توسط گروگان‌گیر مافیا در بند کشیده شدید؛ بنابراین تمام توانایی‌ها و ارتباط شبانه شما کاملاً مسدود و خنثی شده است.
+              امشب توسط گروگان‌گیر مافیا در بند کشیده شدید؛ بنابراین تمام توانایی‌ها و ارتباط شبانه شما مسدود شده است.
             </p>
             <button
               type="button"
@@ -1141,15 +921,57 @@ sock.on('game_reset', () => {
                 setNightActionDone(true);
                 setCurrentNightRole(null);
               }}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-red-700 text-white font-extrabold text-sm shadow-lg hover:from-rose-500 hover:to-red-600 active:scale-95 transition-all"
+              className="w-full py-3 rounded-2xl bg-rose-600 text-white font-extrabold text-sm shadow-lg hover:bg-rose-500 active:scale-95 transition-all"
             >
               متوجه شدم (خوابیدن تا صبح) 💤
             </button>
           </div>
         </div>
       )}
+      
+        {/* --- اکشن شلیک تفنگ در فاز روز (دادگاه) --- */}
+        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
+          <div className="bg-orange-950/60 border border-orange-500/80 p-4 rounded-2xl my-4 shadow-2xl animate-fade-in text-right">
+            <div className="flex items-center justify-between border-b border-orange-800/60 pb-2 mb-3">
+              <span className="text-xs font-black text-orange-200">شما دارای اسلحه هستید!</span>
+              <span className="text-base">🔫</span>
+            </div>
+            <p className="text-[11px] text-orange-300/90 mb-3 leading-relaxed">
+              تفنگ‌دار به شما یک قبضه سلاح تحویل داده است. در طول فاز روز و دادگاه می‌توانید یک بازیکن را نشانه بگیرید:
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                id="gunDayTarget"
+                className="flex-1 bg-black/80 border border-orange-800/80 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
+              >
+                <option value="">-- انتخاب هدف شلیک --</option>
+                {players.filter(p => p.isAlive && p.id !== player.id).map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  const sel = document.getElementById("gunDayTarget") as HTMLSelectElement;
+                  const tid = sel?.value;
+                  if (!tid) {
+                    alert("لطفاً ابتدا یک هدف برای شلیک انتخاب کنید.");
+                    return;
+                  }
+                  const sock = (network as any)?.getSocket?.() || (network as any)?.socket;
+                  const rCode = (network as any)?.roomCode || (network as any)?.getRoomCode?.() || "";
+                  sock?.emit("gun:shoot", { roomCode: rCode, shooterId: player.id, targetId: tid });
+                  setMyDayGun(prev => prev ? { ...prev, used: true } : null);
+                }}
+                className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer text-center"
+              >
+                💥 شلیک در دادگاه
+              </button>
+            </div>
+          </div>
+        )}
 
-      {/* Night Action Selector & In-game Feedback for Player */}
+        {/* Night Action Selector & In-game Feedback for Player */}
       {/* --- اکشن‌های شب بمب‌گذار و تفنگ‌دار --- */}
         {player.isAlive && player.roleId === "bomber" && nightPhaseActive && currentNightRole === "bomber" && !nightActionDone && (
           <BomberAction
@@ -1162,18 +984,16 @@ sock.on('game_reset', () => {
             onActionCompleted={() => setNightActionDone(true)}
           />
         )}
-        {/* --- اکشن شب دیده‌بان / نگهبان --- */}
-          {(player.roleId === "watcher" || player.roleId === "bodyguard" || player.roleId === "guard" || (player as any).roleName?.includes("دیده‌بان") || (player as any).roleName?.includes("نگهبان")) &&
-             (currentNightRole === "watcher" || currentNightRole === "bodyguard" || currentNightRole === "guard") && 
-           (currentNightRole === "bodyguard" || currentNightRole === "guard") && 
-             (
-            <GuardAction
-              players={Array.isArray(livePlayers) && livePlayers.length > 0 ? livePlayers : Array.isArray(players) ? players : []}
-              myPlayerId={player.id}
-              roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""}
-              lastGuardedId={(player as any).lastGuardedId || null}
-              onActionCompleted={() => setNightActionDone(true)}
-            />
+          {/* --- اکشن شب محافظ / جان‌فدا (بادیگارد) --- */}
+          {player.isAlive && (player.roleId === "bodyguard" || player.roleId === "guard") &&
+           (currentNightRole === "bodyguard" || currentNightRole === "guard") && (
+             <GuardAction
+               players={Array.isArray(livePlayers) && livePlayers.length > 0 ? livePlayers : Array.isArray(players) ? players : []}
+               myPlayerId={player.id}
+               roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""}
+               lastGuardedId={(player as any).lastGuardedId || null}
+               onActionCompleted={() => setNightActionDone(true)}
+             />
           )}
 
           {player.roleId === "gunsmith" && currentNightRole === "gunsmith" && (
@@ -1187,7 +1007,7 @@ sock.on('game_reset', () => {
         )}
         
         {/* مخفی کردن منوی پیش‌فرض برای این دو نقش */}
-        {player.roleId !== "bomber" && player.roleId !== "gunsmith" && player.isAlive && !nightActionDone && Boolean(player.roleId) && (
+        {((player.roleId !== "bomber" && player.roleId !== "gunsmith") || (currentNightRole === "mafia" && isMafia(player.roleId))) && player.isAlive && !nightActionDone && Boolean(player.roleId) && (
           (currentNightRole === "mafia" && isMafia(player.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))) ||
           ((currentNightRole === "doctor_lecter" || currentNightRole === "dr_lecter") && (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")) ||
           (currentNightRole && currentNightRole === player.roleId)
@@ -1223,17 +1043,7 @@ sock.on('game_reset', () => {
                     })()}
                   </span>
                 
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1248,17 +1058,7 @@ sock.on('game_reset', () => {
                     {((activePlayer as any)?.lecterSelfSavesUsed ?? lecterSelfSavesUsed) >= 1 ? "⚪ (مصرف شد)" : "🟢 ۱/۱"}
                   </span>
                 
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1271,17 +1071,7 @@ sock.on('game_reset', () => {
                 </span>
               )}
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1309,17 +1099,7 @@ sock.on('game_reset', () => {
                     ))}
                   </select>
                 
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1341,34 +1121,14 @@ sock.on('game_reset', () => {
                     ))}
                   </select>
                 
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
               
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1386,17 +1146,7 @@ sock.on('game_reset', () => {
                 <span className="text-xs text-amber-300 font-bold block">⚪ تمامی فشنگ‌های شما مصرف شده است.</span>
                 <span className="text-[10px] text-neutral-400 mt-1 block">امکان شلیک در شب‌های بعدی وجود ندارد.</span>
               
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1475,17 +1225,7 @@ sock.on('game_reset', () => {
                 </div>
               )}
               
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1502,7 +1242,7 @@ sock.on('game_reset', () => {
                   network.sendGunsmithTargets(player.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
                 } else {
                   if (!selectedNightTargetId) return;
-                  const actionRoleToSend = currentNightRole === "mafia" ? "mafia" : (player.roleId === "dr_lecter" ? "doctor_lecter" : ((player.roleId === "natasha" || player.roleId === "silencer") ? "natasha" : (player.roleId || "")));
+                  const actionRoleToSend = currentNightRole === "hostage_taker" || player.roleId === "hostage_taker" ? "hostage_taker" : (currentNightRole === "mafia" ? "mafia" : (player.roleId === "dr_lecter" ? "doctor_lecter" : ((player.roleId === "natasha" || player.roleId === "silencer") ? "natasha" : (player.roleId || ""))));
                   if ((player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player.id) {
                       setLecterSelfSavesUsed(prev => {
                         const nextVal = prev + 1;
@@ -1533,17 +1273,7 @@ sock.on('game_reset', () => {
               {nightActionSent ? "درخواست ارسال شد (منتظر تایید گاد...) ⏳" : "ثبت و ارسال به گرداننده ✉️"}
             </button>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1560,17 +1290,7 @@ sock.on('game_reset', () => {
             </span>
             <span className="text-[10px] text-rose-400 font-bold">فاز روز</span>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1586,17 +1306,7 @@ sock.on('game_reset', () => {
                 {gunShotPending ? "در حال انتظار برای تایید گاد..." : "وضعیت: آماده مسلح"}
               </span>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1637,17 +1347,7 @@ sock.on('game_reset', () => {
                 {gunShotPending ? "ارسال شد ⏳" : "شلیک به هدف 💥"}
               </button>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1659,34 +1359,14 @@ sock.on('game_reset', () => {
               </p>
             )}
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1744,34 +1424,14 @@ sock.on('game_reset', () => {
                       : 'عمومی / همگانی'}
                   </span>
                 
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
               
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1791,34 +1451,14 @@ sock.on('game_reset', () => {
                   {timer.isRunning ? 'در حال شمارش' : 'متوقف'}
                 </span>
               
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1842,34 +1482,14 @@ sock.on('game_reset', () => {
                 {String(Math.floor(localSeconds / 60)).padStart(2, '0')}:
                 {String(localSeconds % 60).padStart(2, '0')}
               
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1892,17 +1512,7 @@ sock.on('game_reset', () => {
                   }}
                 />
               
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1910,17 +1520,7 @@ sock.on('game_reset', () => {
 </div>
             )}
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1936,17 +1536,7 @@ sock.on('game_reset', () => {
             <div className="w-full py-2.5 px-4 rounded-xl bg-neutral-900/60 border border-neutral-800 text-center text-xs text-neutral-500 font-bold">
               🚫 سهمیه چالش روزانه شما استفاده شده است
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1956,17 +1546,7 @@ sock.on('game_reset', () => {
             <div className="w-full py-2.5 px-4 rounded-xl bg-amber-950/40 border border-amber-600/60 text-center text-xs text-amber-300 font-bold flex items-center justify-center gap-2 animate-pulse">
               <span>🙋‍♂️ درخواست چالش شما برای گرداننده ارسال شد (در صف)</span>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -1982,17 +1562,7 @@ sock.on('game_reset', () => {
             </button>
           )}
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2014,34 +1584,14 @@ sock.on('game_reset', () => {
                   حالت شب (Anti-Peek): بدون تغییر نور صفحه
                 </p>
               
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2054,17 +1604,7 @@ sock.on('game_reset', () => {
               </span>
             )}
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2078,17 +1618,7 @@ sock.on('game_reset', () => {
                 کارت رأی آماده است. منتظر فرمان ۵ ثانیه‌ای گرداننده باشید...
               </p>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2100,17 +1630,7 @@ sock.on('game_reset', () => {
                 ✓ رأی خروج شما در سکوت ثبت شد. (تا پایان ۵ ثانیه صبر کنید)
               </p>
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2150,17 +1670,7 @@ sock.on('game_reset', () => {
                       </button>
                     ))}
                   
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2169,17 +1679,7 @@ sock.on('game_reset', () => {
                 </>
               )}
             
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2187,17 +1687,7 @@ sock.on('game_reset', () => {
 </div>
           )}
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2211,17 +1701,7 @@ sock.on('game_reset', () => {
           <div className="w-24 h-24 mx-auto rounded-3xl bg-neutral-950 border border-neutral-800 flex items-center justify-center">
             <Lock className="w-10 h-10 text-neutral-600 animate-bounce" />
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2233,34 +1713,14 @@ sock.on('game_reset', () => {
               گرداننده بازی هنوز کارت‌ها را پخش نکرده است. به محض توزیع، کارت محرمانه شما ظاهر خواهد شد.
             </p>
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
         
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2320,8 +1780,8 @@ sock.on('game_reset', () => {
                     <h2 className="hidden">{role?.name || "نامشخص"}</h2>
                 </div>
                 <div>
-                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border shadow-lg backdrop-blur-md ${role?.side === "mafia" ? "bg-red-950/80 border-red-800 text-red-300" : "bg-blue-950/80 border-blue-800 text-blue-300"}`}>
-                    {role?.side === "mafia" ? "تیم مافیا" : "تیم شهروند"}
+                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border shadow-lg backdrop-blur-md ${(role?.team === "mafia" || role?.side === "mafia" || isMafia(player.roleId)) ? "bg-red-950/80 border-red-800 text-red-300" : "bg-blue-950/80 border-blue-800 text-blue-300"}`}>
+                    {(role?.team === "mafia" || role?.side === "mafia" || isMafia(player.roleId)) ? "تیم مافیا" : "تیم شهروند"}
                   </span>
                 </div>
               </div>
@@ -2428,17 +1888,7 @@ sock.on('game_reset', () => {
               className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 leading-relaxed"
             />
           
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
@@ -2446,34 +1896,14 @@ sock.on('game_reset', () => {
 </div>
         )}
       
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 
       
 </div>
     
-        {/* --- اکشن‌های روز (تفنگ و بمب) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
-          <div className="bg-orange-950/40 border border-orange-500/50 p-4 rounded-xl mt-4 mb-4">
-            <h3 className="text-orange-400 font-bold mb-3 flex items-center gap-2"><span>🔫</span> شما یک تفنگ آماده دارید!</h3>
-            <select id="gunDayTarget" className="w-full bg-black/60 border border-orange-900/50 rounded-lg p-2.5 text-sm text-white mb-3">
-              <option value="">-- انتخاب هدف --</option>
-              {players.filter(p => p.isAlive && p.id !== player.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <button onClick={() => { const tid = (document.getElementById("gunDayTarget") as HTMLSelectElement)?.value; if (tid) { network.getSocket()?.emit("gun:shoot", { roomCode, targetId: tid }); setMyDayGun(prev => prev ? { ...prev, used: true } : null); } }} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg">شلیک در دادگاه</button>
-          </div>
-        )}
+        
 
         
 

@@ -169,7 +169,45 @@ export function resolveNight(
   }
 
   // ----------------------------------------------------
-  // ۳. اولویت سوم (شلیک‌ها و زره): شلیک شب مافیا و اسنایپر
+  
+    // --- ۲.۵ پردازش اثر محافظت بادیگارد (جان‌فدا) ---
+    const guardTargetId = (actions as any).bodyguardTargetId || (actions as any).guardTargetId;
+    const bodyguardPlayer = Array.from(playerMap.values()).find((p) => (p.roleId === "bodyguard" || p.roleId === "guard") && p.isAlive);
+    const isBodyguardBlocked = bodyguardPlayer && blockedIds.has(bodyguardPlayer.id);
+
+    // بررسی شلیک مافیا به فرد تحت محافظت
+    let guardedSavedFromMafia = false;
+    let bodyguardSacrificed = false;
+
+    if (guardTargetId && bodyguardPlayer && !isBodyguardBlocked) {
+      const bgId = bodyguardPlayer.id;
+      if (!updatedQuotas[bgId]) {
+        updatedQuotas[bgId] = { totalUses: 0, selfUses: 0, guardArmorUsed: 0 };
+      }
+
+      // اگر مافیا به فرد تحت محافظت شلیک کرده باشد
+      if (actions.mafiaShotId === guardTargetId || (actions as any).mafiaShotId2 === guardTargetId) {
+        const guardedTarget = playerMap.get(guardTargetId);
+        const targetName = guardedTarget ? guardedTarget.name : "شهروند";
+
+        if (!updatedQuotas[bgId].guardArmorUsed) {
+          // بار اول: جلیقه حمایتی دفع می‌کند
+          updatedQuotas[bgId].guardArmorUsed = 1;
+          guardedSavedFromMafia = true;
+          healed.add(guardTargetId);
+          logs.push(`🛡️ جلیقه حمایتی محافظ فعال شد: تیر مافیا به سمت «${targetName}» دفع شد و خطری ایجاد نکرد.`);
+        } else {
+          // بار دوم: خود بادیگارد جان‌فدا می‌شود
+          guardedSavedFromMafia = true;
+          healed.add(guardTargetId);
+          bodyguardSacrificed = true;
+          deaths.add(bgId);
+          logs.push(`⚰️ جان‌فشانی شجاعانه: «${bodyguardPlayer.name}» (بادیگارد) در راه محافظت از «${targetName}» جان خود را فدا کرد و کشته شد.`);
+        }
+      }
+    }
+
+    // ۳. اولویت سوم (شلیک‌ها و زره): شلیک شب مافیا و اسنایپر
   // ----------------------------------------------------
     // --- پردازش شلیک‌های مافیا (تک‌شات و شات دوم در صورت مرگ معشوقه) ---
     const mafiaShots = [actions.mafiaShotId, actions.mafiaShotId2].filter((id): id is string => Boolean(id));
@@ -182,7 +220,7 @@ export function resolveNight(
       const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
       const isBulletproof = target.roleId === "bulletproof" || (targetRoleDef as any)?.isPermanentNightImmune;
 
-      if (doctorSaved.has(target.id) || lecterSaved.has(target.id)) {
+      if (doctorSaved.has(target.id) || lecterSaved.has(target.id) || (guardedSavedFromMafia && target.id === guardTargetId)) {
         logs.push(`شلیک مافیا به ${target.name} با مراقبت و مداوا بی‌اثر شد.`);
       } else if (isBulletproof) {
         logs.push(`شلیک مافیا به روئین‌تن (${target.name}) اصابت کرد اما او مصونیت دائم شبانه دارد.`);
