@@ -112,6 +112,8 @@ export interface NightResolutionReport {
   hackerReport?: { sameTeam: boolean };
   bombedPlayerId?: string;
   negotiationSuccessful?: boolean;
+  convertedPlayerId?: string;
+  negotiatorFailedReason?: string;
   logs: string[];
 }
 

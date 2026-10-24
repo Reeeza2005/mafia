@@ -319,6 +319,63 @@ export function resolveNight(
     }
   }
 
+  // ۶. اولویت ششم: پردازش مذاکره‌کننده مافیا (یارگیری)
+  let negotiationSuccessful = false;
+  let convertedPlayerId: string | undefined;
+  let negotiatorFailedReason: string | undefined;
+
+  if (actions.negotiatorTargetId) {
+    const negotiatorPlayer = Array.from(playerMap.values()).find(
+      (p) => p.isAlive && p.roleId?.toLowerCase() === "negotiator"
+    );
+
+    if (!negotiatorPlayer) {
+      negotiatorFailedReason = "مذاکره‌کننده زنده نیست یا در بازی حضور ندارد.";
+      logs.push(`⚠️ مذاکره انجام نشد: ${negotiatorFailedReason}`);
+    } else {
+      const negId = negotiatorPlayer.id;
+      if (!updatedQuotas[negId]) {
+        updatedQuotas[negId] = { totalUses: 0, selfUses: 0 };
+      }
+
+      if ((updatedQuotas[negId].totalUses || 0) >= 1) {
+        negotiatorFailedReason = "سهمیه ۱ باره مذاکره در این بازی قبلاً استفاده شده است.";
+        logs.push(`⚠️ تلاش برای مذاکره رد شد: ${negotiatorFailedReason}`);
+      } else {
+        const deadMafiaCount = Array.from(playerMap.values()).filter((p) => {
+          if (p.isAlive) return false;
+          const roleDef = p.roleId ? getRoleDefinition(p.roleId) : undefined;
+          return roleDef?.team === "mafia";
+        }).length;
+
+        if (deadMafiaCount < 1) {
+          negotiatorFailedReason = "تا زمانی که حداقل یک عضو مافیا کشته نشده باشد، مذاکره مجاز نیست.";
+          logs.push(`⚠️ تلاش برای مذاکره ناموفق بود: ${negotiatorFailedReason}`);
+        } else {
+          updatedQuotas[negId].totalUses = 1;
+          updatedQuotas[negId].lastTargetId = actions.negotiatorTargetId;
+
+          const target = playerMap.get(actions.negotiatorTargetId);
+          if (!target || !target.isAlive) {
+            negotiatorFailedReason = "هدف مذاکره زنده یا معتبر نیست.";
+            logs.push(`⚠️ مذاکره با شکست مواجه شد: ${negotiatorFailedReason}`);
+          } else if (deaths.has(target.id)) {
+            negotiatorFailedReason = "هدف مذاکره در حوادث امشب به قتل رسید.";
+            logs.push(`⚠️ مذاکره ناکام ماند: ${negotiatorFailedReason}`);
+          } else if (target.roleId === "simple_citizen") {
+            target.roleId = "simple_mafia";
+            negotiationSuccessful = true;
+            convertedPlayerId = target.id;
+            logs.push(`🤝 مذاکره موفقیت‌آمیز بود: شهروند ساده (${target.name}) به تیم مافیا پیوست.`);
+          } else {
+            negotiatorFailedReason = "هدف انتخابی شهروند ساده نبود؛ مذاکره سوخت.";
+            logs.push(`❌ مذاکره شکست خورد: هدف (${target.name}) دارای نقش توانایی‌دار بود و به مافیا نپیوست.`);
+          }
+        }
+      }
+    }
+  }
+
   // اعمال وضعیت‌های مرگ و سکوت
   deaths.forEach((id) => {
     const p = playerMap.get(id);
@@ -342,6 +399,9 @@ export function resolveNight(
       watcherVisitors,
       hackerReport,
       bombedPlayerId: actions.bomberTargetId,
+      negotiationSuccessful,
+      convertedPlayerId,
+      negotiatorFailedReason,
       logs,
     },
     updatedQuotas,

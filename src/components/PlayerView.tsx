@@ -1236,7 +1236,7 @@ sock.on('game_reset', () => {
                   network.sendGunsmithTargets(player.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
                 } else {
                   if (!selectedNightTargetId) return;
-                  const actionRoleToSend = currentNightRole === "hostage_taker" || player.roleId === "hostage_taker" ? "hostage_taker" : (currentNightRole === "mafia" ? "mafia" : (player.roleId === "dr_lecter" ? "doctor_lecter" : ((player.roleId === "natasha" || player.roleId === "silencer") ? "natasha" : (player.roleId || ""))));
+                  const actionRoleToSend = (currentNightRole === "negotiator" || player.roleId === "negotiator") ? "negotiator" : currentNightRole === "hostage_taker" || player.roleId === "hostage_taker" ? "hostage_taker" : (currentNightRole === "mafia" ? "mafia" : (player.roleId === "dr_lecter" ? "doctor_lecter" : ((player.roleId === "natasha" || player.roleId === "silencer") ? "natasha" : (player.roleId || ""))));
                   if ((player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player.id) {
                       setLecterSelfSavesUsed(prev => {
                         const nextVal = prev + 1;

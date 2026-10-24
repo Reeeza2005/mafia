@@ -613,6 +613,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             if (orig.hasArmor !== updatedArmors[up.id]) {
               updates.hasArmor = updatedArmors[up.id];
             }
+              if (orig.roleId !== up.roleId) {
+                updates.roleId = up.roleId;
+              }
             if (Object.keys(updates).length > 0 && typeof onUpdatePlayer === 'function') {
               console.log("[GodDashboard] فراخوانی onUpdatePlayer برای:", up.name, up.id, updates);
               onUpdatePlayer(up.id, updates);
@@ -663,6 +666,17 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             }
           });
         }
+        // اطلاع‌رسانی محرمانه به شهروند جذب‌شده در مذاکره
+        if (report?.negotiationSuccessful && report?.convertedPlayerId) {
+          const convertedTarget = players.find(p => p.id === report.convertedPlayerId);
+          if (convertedTarget && network && typeof network.sendNightResultToPlayer === 'function') {
+            network.sendNightResultToPlayer(
+              convertedTarget.id,
+              "🤝 شما دیشب توسط مذاکره‌کننده جذب شدید! از این لحظه ساید شما «مافیا» است و باید در جهت پیروزی مافیا تلاش کنید."
+            );
+          }
+        }
+
         if (report.silencedId) {
           const sp = players.find((p) => p.id === report.silencedId);
           if (sp) {
@@ -1860,7 +1874,40 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     )}
 
                   
-                    {/* دکمه بیدارباش کشیش در میز شب */}
+                                          {/* دکمه بیدارباش مشروط مذاکره‌کننده */}
+                      {alivePlayers.some(p => p.roleId === "negotiator") && (() => {
+                        const deadMafiaCount = players.filter(p => !p.isAlive && p.roleId && (
+                          ["godfather", "dr_lecter", "natasha", "bomber", "simple_mafia", "negotiator", "hostage_taker", "joker"].includes(p.roleId)
+                        )).length;
+                        const isUnlocked = deadMafiaCount >= 1;
+
+                        return (
+                          <button
+                            type="button"
+                            disabled={!isUnlocked}
+                            onClick={() => {
+                              if (!isUnlocked) return;
+                              const isCurrent = currentActiveNightStep === "negotiator";
+                              const next = isCurrent ? null : "negotiator";
+                              setCurrentActiveNightStep(next);
+                              network.setNightStep(next, roomCode);
+                              if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                            }}
+                            title={isUnlocked ? "فعال برای یارگیری" : "قفل: نیازمند حذف حداقل ۱ عضو مافیا"}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                              !isUnlocked
+                                ? "bg-slate-900/60 text-slate-500 border border-slate-800 cursor-not-allowed opacity-60"
+                                : currentActiveNightStep === "negotiator"
+                                ? "bg-purple-600 text-white shadow-lg ring-2 ring-purple-400"
+                                : "bg-purple-950/60 text-purple-300 border border-purple-900/70 hover:bg-purple-900/80"
+                            }`}
+                          >
+                            🤝 بیدارباش مذاکره‌کننده {!isUnlocked && "🔒"}
+                          </button>
+                        );
+                      })()}
+
+                      {/* دکمه بیدارباش کشیش در میز شب */}
                     {alivePlayers.some(p => p.roleId === "priest") && (
 <button
                       type="button"
@@ -2076,7 +2123,26 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                       تایید کشیک دیده‌بان 👁️
                                     </button>
                                   </div>
-                                 ) : item.roleId === "priest" ? (
+                                 ) : item.roleId === "negotiator" ? (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[10px] text-purple-300 font-bold ml-1">
+                                        پیشنهاد مذاکره با: {item.targetName}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setNightActions(prev => ({ ...prev, negotiatorTargetId: item.targetId }));
+                                          setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                          network.sendNightResultToPlayer(item.playerId, `پیشنهاد مذاکره با «${item.targetName}» با موفقیت ثبت شد 🤝`);
+                                          network.setNightStep(null, roomCode);
+                                          setCurrentActiveNightStep(null);
+                                        }}
+                                        className="px-2.5 py-1 rounded-lg bg-purple-950 border border-purple-700 text-purple-200 text-[10px] font-bold hover:bg-purple-900 cursor-pointer shadow-md"
+                                      >
+                                        تایید پیشنهاد مذاکره 🤝
+                                      </button>
+                                    </div>
+ ) : item.roleId === "priest" ? (
                                    <div className="flex items-center gap-1.5 flex-wrap">
                                      <span className="text-[10px] text-amber-300 font-bold ml-1">
                                        شکستن سکوت: {item.targetName}
