@@ -477,7 +477,13 @@ io.on('connection', (socket) => {
           room.guardTargetId = data.targetId;
           room.guardPlayerId = data.playerId;
           console.log(`[🛡️ سرور] کشیک دیده‌بان «${player?.name}» روی «${target?.name || data.targetId}» ثبت شد.`);
-        }
+        } else if (data.roleId === "priest") {
+      room.priestTargetId = data.targetId;
+      console.log(`[🕊️ سرور] دعای کشیش «${player?.name}» روی «${target?.name || data.targetId}» ثبت شد.`);
+    } else if (data.roleId === "natasha" || data.roleId === "silencer") {
+           room.silencerTargetId = data.targetId;
+           console.log(`[🤫 سرور] سکوت ناتاشا «${player?.name}» روی «${target?.name || data.targetId}» ثبت شد.`);
+         }
 
       io.to(room.godSocketId).emit('night_target_received', {
         playerId: data.playerId,

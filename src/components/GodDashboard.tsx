@@ -456,10 +456,21 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       '⚖️ نتیجه دادگاه:\n\n«' + condemned.name + '» با ' + condemned.votes + ' رأی (حد نصاب: ' + quorum + ') باید از بازی اخراج شود.\n\nآیا اخراج قطعی این بازیکن را تأیید می‌کنید؟'
     );
 
-    if (isConfirmed) {
-      onUpdatePlayer(condemned.id, { isAlive: false, eliminationReason: 'court_vote' });
-      handleResetDayVoting();
-    }
+     if (isConfirmed) {
+       const condemnedPlayer = players.find((p) => p.id === condemned.id);
+       const isArmored = condemnedPlayer && (condemnedPlayer.roleId === "armored" || condemnedPlayer.hasArmor) && condemnedPlayer.hasArmor !== false;
+       
+       if (isArmored && condemnedPlayer) {
+         alert(`🛡️ زره‌پوش نجات یافت!\n\n«${condemnedPlayer.name}» دارای کارت زره‌پوش است.\nزره او شکست و در بازی باقی می‌ماند!`);
+         onUpdatePlayer(condemned.id, { hasArmor: false });
+         if (network && typeof (network as any).sendLog === 'function') {
+           (network as any).sendLog(`🛡️ رأی خروج دادگاه به «${condemnedPlayer.name}» اصابت کرد اما زره او مانع از خروج شد. زره او افتاد و در بازی می‌نشیند!`, 'warning');
+         }
+       } else {
+         onUpdatePlayer(condemned.id, { isAlive: false, eliminationReason: 'court_vote' });
+       }
+       handleResetDayVoting();
+     }
   };
 
   const handleExitVoteChange = (playerId: string, delta: number) => {
@@ -791,7 +802,28 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     {roomCode}
                   </span>
                 </div>
-                <button
+                {/* دکمه بیدارباش کشیش */}
+                    {alivePlayers.some(p => p.roleId === "priest") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const isCurrent = currentActiveNightStep === "priest";
+                          const next = isCurrent ? null : "priest";
+                          setCurrentActiveNightStep(next);
+                          network.setNightStep(next, roomCode);
+                          if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          currentActiveNightStep === "priest"
+                            ? "bg-amber-600 text-white shadow-lg ring-2 ring-amber-400"
+                            : "bg-amber-950/50 text-amber-300 border border-amber-900/60 hover:bg-amber-900/70"
+                        }`}
+                      >
+                        🕊️ بیدارباش کشیش
+                      </button>
+                    )}
+
+                    <button
                   type="button"
                   onClick={onOpenQr}
                   className="p-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-850 text-neutral-300 hover:text-white transition-colors"
@@ -1872,7 +1904,26 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       </button>
                     )}
 
-                  <button
+                  
+                    {/* دکمه بیدارباش کشیش در میز شب */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = currentActiveNightStep === "priest" ? null : "priest";
+                        setCurrentActiveNightStep(next);
+                        network.setNightStep(next, roomCode);
+                        if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        currentActiveNightStep === "priest"
+                          ? "bg-amber-600 text-white shadow-lg ring-2 ring-amber-400"
+                          : "bg-amber-950/50 text-amber-300 border border-amber-900/60 hover:bg-amber-900/70"
+                      }`}
+                    >
+                      🕊️ بیدارباش کشیش
+                    </button>
+
+                    <button
                     type="button"
                     onClick={() => {
                       setCurrentActiveNightStep(null);
@@ -2049,7 +2100,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                   تایید نجات 💉
                                 </button>
                               </div>
-) : (item.roleId === "watcher") ? (
+) : item.roleId === "watcher" ? (
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-[10px] text-amber-400 font-bold ml-1">
                                       کشیک دیده‌بان: {item.targetName}
@@ -2068,7 +2119,26 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                       تایید کشیک دیده‌بان 👁️
                                     </button>
                                   </div>
-                                ) : (item.roleId === "bodyguard" || item.roleId === "guard") ? (
+                                 ) : item.roleId === "priest" ? (
+                                   <div className="flex items-center gap-1.5 flex-wrap">
+                                     <span className="text-[10px] text-amber-300 font-bold ml-1">
+                                       شکستن سکوت: {item.targetName}
+                                     </span>
+                                     <button
+                                       type="button"
+                                       onClick={() => {
+                                         setNightActions(prev => ({ ...prev, priestTargetId: item.targetId }));
+                                         setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                         network.sendNightResultToPlayer(item.playerId, `دعای شما برای شکستن سکوت «${item.targetName}» تایید شد 🕊️`);
+                                         network.setNightStep(null, roomCode);
+                                         setCurrentActiveNightStep(null);
+                                       }}
+                                       className="px-2.5 py-1 rounded-lg bg-amber-950 border border-amber-700 text-amber-200 text-[10px] font-bold hover:bg-amber-900 cursor-pointer shadow-md"
+                                     >
+                                       تایید دعای کشیش 🕊️
+                                     </button>
+                                   </div>
+                                 ) : (item.roleId === "bodyguard" || item.roleId === "guard") ? (
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-[10px] text-blue-400 font-bold ml-1">
                                       محافظت از: {item.targetName}

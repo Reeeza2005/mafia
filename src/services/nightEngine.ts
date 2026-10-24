@@ -46,7 +46,7 @@ export function resolveNight(
   const updatedArmors = { ...armorStates };
   const updatedQuotas: QuotaTracker = JSON.parse(JSON.stringify(quotas));
 
-  const playerMap = new Map<string, Player>(players.map((p) => [p.id, { ...p }]));
+  const playerMap = new Map<string, Player>(players.map((p) => [p.id, { ...p, isSilenced: false }]));
 
   // ----------------------------------------------------
   // ----------------------------------------------------
@@ -226,7 +226,7 @@ export function resolveNight(
         logs.push(`شلیک مافیا به روئین‌تن (${target.name}) اصابت کرد اما او مصونیت دائم شبانه دارد.`);
       } else if (target.roleId === "armored" && updatedArmors[target.id] !== false) {
         updatedArmors[target.id] = false;
-        logs.push(`شلیک مافیا به زره‌پوش (${target.name}) اصابت کرد و جلیقه محافظتی او از بین رفت.`);
+        logs.push(`[شبانه - محرمانه] شلیک مافیا به زره (${target.name}) اصابت کرد و جلیقه جذب شد.`);
       } else {
         target.isAlive = false;
         target.eliminationReason = "mafia_shot";
