@@ -904,12 +904,12 @@ io.on('connection', (socket) => {
       io.to(rCode.toString().toUpperCase()).emit('night_phase_state', { active: data.active });
 
       // مخابره گزارش دیده‌بان (نگهبان) با شروع فاز روز
-      if (!data.active && room.guardPlayerId && room.guardTargetId) {
-        const guardPlayer = room.players[room.guardPlayerId];
-        const targetPlayer = room.players[room.guardTargetId];
-        if (guardPlayer && room.guardTargetId !== "skip") {
-          const allVisitors = room.nightVisits?.[room.guardTargetId] || [];
-          const visitors = allVisitors.filter((name: string) => name !== guardPlayer.name);
+      if (!data.active && room.watcherPlayerId && room.watcherTargetId) {
+        const watcherPlayer = room.players[room.watcherPlayerId];
+        const targetPlayer = room.players[room.watcherTargetId];
+        if (watcherPlayer && room.watcherTargetId !== "skip") {
+          const allVisitors = room.nightVisits?.[room.watcherTargetId] || [];
+          const visitors = allVisitors.filter((name: string) => name !== watcherPlayer.name);
           const targetName = targetPlayer?.name || "هدف شما";
 
           const reportMessage = visitors.length > 0
