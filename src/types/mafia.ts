@@ -4,7 +4,7 @@ export type EliminationReason =
   | 'vote'
   | 'mafia_shot'
   | 'sniper_shot'
-  | 'sheriff_shot'
+  
   | 'bomber'
   
   | 'jester_revenge'

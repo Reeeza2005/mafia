@@ -1,7 +1,6 @@
 import { armored } from "./armored";
 import { bodyguard } from "./bodyguard";
 import { bomber } from "./bomber";
-import { bulletproof } from "./bulletproof";
 import { detective } from "./detective";
 import { doctor } from "./doctor";
 import { dr_lecter } from "./dr_lecter";
@@ -15,13 +14,11 @@ import { informant_mafia } from "./informant_mafia";
 import { joker } from "./joker";
 import { journalist } from "./journalist";
 import { judge } from "./judge";
-import { mayor } from "./mayor";
 import { mistress } from "./mistress";
 import { natasha } from "./natasha";
 import { negotiator } from "./negotiator";
 import { priest } from "./priest";
 import { shadow_mafia } from "./shadow_mafia";
-import { sheriff } from "./sheriff";
 import { simple_citizen } from "./simple_citizen";
 import { simple_mafia } from "./simple_mafia";
 import { sniper } from "./sniper";
@@ -35,8 +32,7 @@ export const ROLES_REGISTRY: Record<string, RoleContract> = {
   armored,
   bodyguard,
   bomber,
-  bulletproof,
-  detective,
+    detective,
   doctor,
   dr_lecter,
   godfather,
@@ -49,14 +45,12 @@ export const ROLES_REGISTRY: Record<string, RoleContract> = {
   joker,
   journalist,
   judge,
-  mayor,
-  mistress,
+    mistress,
   natasha,
   negotiator,
   priest,
   shadow_mafia,
-  sheriff,
-  simple_citizen,
+    simple_citizen,
   simple_mafia,
   sniper,
   terrorist,
@@ -69,7 +63,6 @@ export const getRoleDefinition = (roleId: string): RoleContract | undefined => R
 export * from "./armored";
 export * from "./bodyguard";
 export * from "./bomber";
-export * from "./bulletproof";
 export * from "./detective";
 export * from "./doctor";
 export * from "./dr_lecter";
@@ -83,13 +76,11 @@ export * from "./informant_mafia";
 export * from "./joker";
 export * from "./journalist";
 export * from "./judge";
-export * from "./mayor";
 export * from "./mistress";
 export * from "./natasha";
 export * from "./negotiator";
 export * from "./priest";
 export * from "./shadow_mafia";
-export * from "./sheriff";
 export * from "./simple_citizen";
 export * from "./simple_mafia";
 export * from "./sniper";

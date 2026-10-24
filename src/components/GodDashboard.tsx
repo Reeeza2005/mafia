@@ -1,5 +1,5 @@
 import { getFinalTrialConfig } from "../core/rules/trialEngine";
-import { resolveSheriffShot, resolveJudgeExecution, resolveMayorVeto, resolveFinalTrialOutcome } from "../services/dayEngine";
+import { resolveJudgeExecution, resolveFinalTrialOutcome } from "../services/dayEngine";
 import { getSniperBulletQuota } from "../utils/sniperQuota";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Player, GameTimer, GameLog, EliminationReason, SecretVoteState, NightActions } from '../types/mafia';
@@ -487,17 +487,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   };
 
 // ================= DAY ACTION HANDLERS =================
-  const handleSheriffShotAction = (sheriffId: string, targetId: string) => {
-    const outcome = resolveSheriffShot(players, sheriffId, targetId);
-    alert(outcome.log);
-    if (outcome.eliminatedPlayerId) {
-      onUpdatePlayer(outcome.eliminatedPlayerId, {
-        isAlive: false,
-        eliminationReason: outcome.eliminationReason || "sheriff_shot",
-      });
-      audio.playShot();
-    }
-  };
+  // sheriff action removed
 
   const handleJudgeVerdictAction = (judgeId: string, targetId: string) => {
     const outcome = resolveJudgeExecution(players, judgeId, targetId);
@@ -515,12 +505,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     }
   };
 
-  const handleMayorVetoAction = (mayorId: string, condemnedId: string) => {
-    const outcome = resolveMayorVeto(players, mayorId, condemnedId);
-    alert(outcome.log);
-    audio.playFlip();
-    handleResetDayVoting();
-  };
+  // mayor action removed
 
   const handleResetDayVoting = () => {
     setActiveSecretVote(null);
@@ -1163,23 +1148,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     <span className="text-[10px] text-neutral-400">نقش‌های ویژه زنده در بازی</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {sheriff && (
-                      <button
-                        onClick={() => {
-                          const targets = alivePlayers.filter((p) => p.id !== sheriff.id);
-                          const promptMsg = `🚨 شلیک کلانتر (${sheriff.name}):\nنام یا شماره هدف را وارد کنید:\n\n` +
-                            targets.map((p, i) => `${i + 1}. ${p.name}`).join("\n");
-                          const input = prompt(promptMsg);
-                          if (!input) return;
-                          const found = targets.find((p, i) => String(i + 1) === input.trim() || p.name === input.trim() || p.id === input.trim());
-                          if (found) handleSheriffShotAction(sheriff.id, found.id);
-                          else alert("بازیکن نامعتبر است.");
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-rose-950 border border-rose-800 text-rose-200 text-xs font-bold hover:bg-rose-900 transition-all shadow-sm active:scale-95"
-                      >
-                        🔫 شلیک مستقیم کلانتر ({sheriff.name})
-                      </button>
-                    )}
+                    {/* sheriff button removed */}
 
                     {judge && (
                       <button
@@ -1199,21 +1168,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       </button>
                     )}
 
-                    {mayor && (
-                      <button
-                        onClick={() => {
-                          if (courtDefendants.length === 0) {
-                            alert("در حال حاضر دادگاهی برای اعمال وتو وجود ندارد.");
-                            return;
-                          }
-                          const isSure = confirm(`🏛️ آیا وتوی شهردار (${mayor.name}) اعمال شده و دادگاه جاری بدون خروج منحل شود؟`);
-                          if (isSure) handleMayorVetoAction(mayor.id, courtDefendants[0]);
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-amber-950 border border-amber-800 text-amber-200 text-xs font-bold hover:bg-amber-900 transition-all shadow-sm active:scale-95"
-                      >
-                        🏛️ وتوی دادگاه توسط شهردار ({mayor.name})
-                      </button>
-                    )}
+                    {/* mayor button removed */}
                   </div>
                 </div>
               );
@@ -1550,7 +1505,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             )}
 
             {/* پنل وضعیت تفنگ‌های اهدا شده در فاز روز */}
-          {dayGuns.length > 0 && (
+          {false && dayGuns.length > 0 && (
             <div className="bg-amber-950/30 border border-amber-800/60 rounded-3xl p-4 shadow-xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
@@ -1906,7 +1861,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
                   
                     {/* دکمه بیدارباش کشیش در میز شب */}
-                    <button
+                    {alivePlayers.some(p => p.roleId === "priest") && (
+<button
                       type="button"
                       onClick={() => {
                         const next = currentActiveNightStep === "priest" ? null : "priest";
@@ -1922,6 +1878,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     >
                       🕊️ بیدارباش کشیش
                     </button>
+)}
 
                     <button
                     type="button"
@@ -2032,7 +1989,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                  >
                                    {item.isSkip || item.targetId === "skip" ? "تایید انصراف بمب‌گذار ✓" : "تایید کارگذاری بمب 💣"}
                                  </button>
-                                ) : item.roleId === "gunsmith" ? (
+                                ) : false && item.roleId === "gunsmith" ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -2435,7 +2392,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 )}
 
                 {/* ۷. تفنگدار (اهدای سلاح) */}
-                {activeNightRoleIds.has("gunsmith") && (
+                {false && activeNightRoleIds.has("gunsmith") && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-amber-950 space-y-2">
                     <span className="font-bold text-amber-400 flex items-center gap-1">
                       🛠️ اهدای سلاح تفنگدار:

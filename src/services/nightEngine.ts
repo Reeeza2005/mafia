@@ -218,7 +218,7 @@ export function resolveNight(
       if (!target) continue;
 
       const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
-      const isBulletproof = target.roleId === "bulletproof" || (targetRoleDef as any)?.isPermanentNightImmune;
+      const isBulletproof = (targetRoleDef as any)?.isPermanentNightImmune;
 
       if (doctorSaved.has(target.id) || lecterSaved.has(target.id) || (guardedSavedFromMafia && target.id === guardTargetId)) {
         logs.push(`شلیک مافیا به ${target.name} با مراقبت و مداوا بی‌اثر شد.`);

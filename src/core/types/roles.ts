@@ -7,7 +7,7 @@ export const CANONICAL_ROLES = [
   // شهروند (۱۵ نقش)
   "simple_citizen", "doctor", "detective", "sniper", "bodyguard",
   "priest", "watcher", "hacker", "gunsmith", "journalist",
-  "armored", "bulletproof", "mayor", "judge", "sheriff",
+  "armored", "judge", ,
 
   // مستقل (۱ نقش)
   "independent_jester"

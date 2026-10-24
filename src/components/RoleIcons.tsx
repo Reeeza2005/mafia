@@ -326,25 +326,7 @@ const FallbackSvgIcon: React.FC<IconProps & { roleId: string }> = ({ roleId, cla
         </svg>
       );
 
-    case 'mayor':
-      return (
-        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
-          <circle cx="50" cy="50" r="46" fill="#1c1606" stroke="#eab308" strokeWidth="2.5" />
-          {/* Mayoral Top Hat */}
-          <ellipse cx="50" cy="38" rx="26" ry="5" fill="#422006" stroke="#fde047" strokeWidth="1.5" />
-          <rect x="34" y="18" width="32" height="20" rx="2" fill="#713f12" stroke="#fde047" strokeWidth="1.5" />
-          <rect x="34" y="32" width="32" height="4" fill="#eab308" />
-          {/* Golden Key to the City */}
-          <circle cx="42" cy="62" r="8" fill="#854d0e" stroke="#facc15" strokeWidth="2" />
-          <circle cx="42" cy="62" r="4" fill="#1c1606" />
-          <line x1="50" y1="62" x2="72" y2="62" stroke="#facc15" strokeWidth="4" strokeLinecap="round" />
-          <line x1="64" y1="62" x2="64" y2="70" stroke="#facc15" strokeWidth="3" strokeLinecap="round" />
-          <line x1="70" y1="62" x2="70" y2="68" stroke="#facc15" strokeWidth="3" strokeLinecap="round" />
-          {/* Mayoral Sash Ribbon */}
-          <path d="M26 80 L74 80 L68 72 L32 72 Z" fill="#b45309" stroke="#fde047" strokeWidth="1" />
-        </svg>
-      );
-
+    
     case 'hacker':
       return (
         <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
@@ -519,27 +501,8 @@ const FallbackSvgIcon: React.FC<IconProps & { roleId: string }> = ({ roleId, cla
         </svg>
       );
 
-    case 'bulletproof':
-      return (
-        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
-          <circle cx="50" cy="50" r="46" fill="#03162b" stroke="#0284c7" strokeWidth="2.5" />
-          <path d="M30 26 H42 L46 36 H54 L58 26 H70 L76 46 L70 78 H30 L24 46 Z" fill="#075985" stroke="#38bdf8" strokeWidth="2" />
-          <circle cx="44" cy="54" r="4" fill="#03162b" stroke="#facc15" strokeWidth="1.5" />
-          <path d="M48 50 L58 42 M48 58 L58 64" stroke="#facc15" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      );
-
-    case 'sheriff':
-      return (
-        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
-          <circle cx="50" cy="50" r="46" fill="#041528" stroke="#0284c7" strokeWidth="2.5" />
-          <polygon points="50,22 54,34 66,34 56,42 60,54 50,46 40,54 44,42 34,34 46,34" fill="#ca8a04" stroke="#fde047" strokeWidth="1.8" />
-          <circle cx="50" cy="38" r="4" fill="#713f12" />
-          <path d="M32 68 C38 62 62 62 68 68" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="50" y1="62" x2="50" y2="78" stroke="#38bdf8" strokeWidth="2.5" />
-        </svg>
-      );
-
+    
+    
     case 'watcher':
       return (
         <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>

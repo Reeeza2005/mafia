@@ -809,7 +809,7 @@ sock.on('game_reset', () => {
               جلیقه‌دار 🛡️
             </span>
           )}
-          {activePlayer?.gunGiven && (
+          {false && activePlayer?.gunGiven && (
             <span className="px-2 py-0.5 rounded-md bg-rose-950 border border-rose-800 text-[10px] text-rose-300 font-bold animate-pulse">
               مسلح 🔫
             </span>
@@ -996,15 +996,7 @@ sock.on('game_reset', () => {
              />
           )}
 
-          {player.roleId === "gunsmith" && currentNightRole === "gunsmith" && (
-          <GunsmithAction 
-            socket={network.getSocket()} 
-            roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""} 
-            currentPlayerId={player.id} 
-            players={Object.fromEntries(players.map(p => [p.id, p]))} 
-            onActionCompleted={() => setNightActionDone(true)} 
-          />
-        )}
+          {/* GunsmithAction disabled */}
         
         {/* مخفی کردن منوی پیش‌فرض برای این دو نقش */}
         {((player.roleId !== "bomber" && player.roleId !== "gunsmith" && player.roleId !== "bodyguard" && player.roleId !== "guard") || (currentNightRole === "mafia" && isMafia(player.roleId))) && player.isAlive && !nightActionDone && Boolean(player.roleId) && (
@@ -1081,7 +1073,7 @@ sock.on('game_reset', () => {
 </div>
 
             {/* انتخاب‌های اختصاصی تفنگدار: دو کادر همزمان جنگی و مشقی */}
-            {player.roleId === "gunsmith" && (
+            {false && player.roleId === "gunsmith" && (
               <div className="space-y-3 pb-2 border-b border-purple-900/40 mb-3">
                 <span className="text-[11px] text-purple-300 font-bold block">
                   توزیع همزمان اسلحه‌ها (جنگی و مشقی):
@@ -1284,7 +1276,7 @@ sock.on('game_reset', () => {
         )}
 
         {/* Gunsmith Action Box for Player Card in Day Phase */}
-      {activePlayer?.isAlive && activePlayer?.gunGiven && (
+      {false && activePlayer?.isAlive && activePlayer?.gunGiven && (
         <div className="rounded-2xl border-2 border-rose-600/70 bg-rose-950/40 p-3.5 shadow-xl space-y-2.5 animate-in fade-in">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">

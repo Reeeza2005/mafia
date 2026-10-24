@@ -409,6 +409,18 @@ io.on('connection', (socket) => {
       io.to(room.godSocketId).emit("day_gun_shot_alert", data);
     });
 
+        socket.on("day_gun_shot_rejected", (data: { roomCode?: string; shooterId: string }) => {
+      const candidateCode = (data?.roomCode && data.roomCode.trim()) || Array.from(socket.rooms).find(r => r !== socket.id);
+      if (candidateCode) {
+        const room = rooms[candidateCode.toString().toUpperCase()];
+        if (room) {
+          io.to(room.code).emit("day_gun_shot_rejected", { shooterId: data?.shooterId });
+          return;
+        }
+      }
+      io.emit("day_gun_shot_rejected", { shooterId: data?.shooterId });
+    });
+
     socket.on("day_gun_shot_broadcast", (data: { roomCode?: string; shooterName: string; targetName: string; isReal: boolean; targetId: string }) => {
       const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
       if (!rCode) return;
@@ -417,37 +429,50 @@ io.on('connection', (socket) => {
       io.to(room.code).emit("day_gun_shot_result", data);
     });
 
-    socket.on("gunsmith_targets_submit", (data: { roomCode?: string; playerId: string; warTargetId?: string; blankTargetId?: string }) => {
+    socket.on("gunsmith_targets_submit", (data: any) => {
       const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
       if (!rCode) return;
       const room = rooms[rCode.toString().toUpperCase()];
-      if (!room || !room.godSocketId) return;
+      if (!room) return;
 
-      const player = room.players[data.playerId];
-      const warTarget = data.warTargetId ? room.players[data.warTargetId] : null;
-      const blankTarget = data.blankTargetId ? room.players[data.blankTargetId] : null;
+      const player = room.players?.[data.playerId] || (Object.values(room.players || {}) as any[]).find(p => p.id === data.playerId);
+      const targetGod = room.godSocketId ? io.to(room.godSocketId) : io.to(room.code);
 
-      if (warTarget && data.warTargetId) {
-        io.to(room.godSocketId).emit("night_target_received", {
+      // حالت پاس / انصراف شبانه
+      if (data.isPass) {
+        targetGod.emit("night_target_received", {
           playerId: data.playerId,
-          playerName: player?.name || "اسلحه‌ساز",
+          playerName: player?.name || "تفنگ‌دار",
           roleId: "gunsmith",
-          targetId: data.warTargetId,
-          targetName: warTarget.name,
-          extraType: "war",
+          targetId: "pass",
+          targetName: "انصراف از اهدا در این شب",
+          extraType: "pass",
         });
+        return;
       }
 
-      if (blankTarget && data.blankTargetId) {
-        io.to(room.godSocketId).emit("night_target_received", {
-          playerId: data.playerId,
-          playerName: player?.name || "اسلحه‌ساز",
-          roleId: "gunsmith",
-          targetId: data.blankTargetId,
-          targetName: blankTarget.name,
-          extraType: "blank",
+      // استخراج لیست اسلحه‌ها از ساختار جدید guns یا فیلدهای مستقیم
+      const gunsToDistribute: Array<{ targetId: string; type: "war" | "blank" }> = [];
+      if (Array.isArray(data.guns) && data.guns.length > 0) {
+        data.guns.forEach((g: any) => {
+          if (g && g.targetId) gunsToDistribute.push({ targetId: g.targetId, type: g.type || "blank" });
         });
+      } else {
+        if (data.warTargetId) gunsToDistribute.push({ targetId: data.warTargetId, type: "war" });
+        if (data.blankTargetId) gunsToDistribute.push({ targetId: data.blankTargetId, type: "blank" });
       }
+
+      gunsToDistribute.forEach(gun => {
+        const targetP = room.players?.[gun.targetId] || (Object.values(room.players || {}) as any[]).find(p => p.id === gun.targetId);
+        targetGod.emit("night_target_received", {
+          playerId: data.playerId,
+          playerName: player?.name || "تفنگ‌دار",
+          roleId: "gunsmith",
+          targetId: gun.targetId,
+          targetName: targetP ? targetP.name : "بازیکن هدف",
+          extraType: gun.type,
+        });
+      });
     });
 
     socket.on('night_target_submit', (data: { roomCode?: string; playerId: string; roleId: string; targetId: string; extraType?: string }) => {

@@ -382,31 +382,6 @@ export const ROLES_RULES_MATRIX: Record<string, RoleRuleDefinition> = {
     resolutionEffect: "اولین شلیک شب جلیقه او را می‌شکند ولی مرگ ثبت نمی‌شود.",
     passiveFeatures: ["۱ بار جلیقه در برابر شلیک شب مافیا"]
   },
-  bulletproof: {
-    id: "bulletproof",
-    name: "روئین‌تن",
-    team: "citizen",
-    phase: "passive",
-    hasNightAction: false,
-    hasDayAction: false,
-    defaultQuota: {},
-    targetFilter: "none",
-    description: "مصون در برابر شلیک شب مافیا؛ فقط با رأی دادگاه روز یا تیر جنگی خارج می‌شود.",
-    resolutionEffect: "تیر شب مافیا هیچ اثری روی او ندارد.",
-    passiveFeatures: ["مصونیت دائم در برابر شلیک شب"]
-  },
-  mayor: {
-    id: "mayor",
-    name: "شهردار",
-    team: "citizen",
-    phase: "day",
-    hasNightAction: false,
-    hasDayAction: true,
-    defaultQuota: { maxTotalUses: 1 },
-    targetFilter: "all_alive",
-    description: "حق وتوی رأی‌گیری دادگاه و لغو حکم خروج؛ ارزش رأی مضاعف در دفاعیه.",
-    resolutionEffect: "حکم اعدام دادگاه لغو شده و روز بدون خروج به پایان می‌رسد."
-  },
   judge: {
     id: "judge",
     name: "قاضی",
@@ -418,18 +393,6 @@ export const ROLES_RULES_MATRIX: Record<string, RoleRuleDefinition> = {
     targetFilter: "all_alive",
     description: "صدور حکم قطعی خروج برای متهم در فاز روز بدون نیاز به شمارش آرا.",
     resolutionEffect: "متهم انتخابی مستقیماً با حکم قاضی از بازی خارج می‌شود."
-  },
-  sheriff: {
-    id: "sheriff",
-    name: "کلانتر (مارشال)",
-    team: "citizen",
-    phase: "day",
-    hasNightAction: false,
-    hasDayAction: true,
-    defaultQuota: { maxTotalUses: 1 },
-    targetFilter: "all_alive_except_self",
-    description: "شلیک مستقیم در فاز روز؛ اصابت به مافیا حذف مافیا و به شهروند حذف خود کلانتر.",
-    resolutionEffect: "در روز شلیک می‌کند و نتیجه بلافاصله در شهر اعمال می‌گردد."
   },
   simple_citizen: {
     id: "simple_citizen",

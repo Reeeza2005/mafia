@@ -15,45 +15,6 @@ export interface DayActionOutcome {
   log: string;
 }
 
-/**
- * پردازش شلیک مستقیم کلانتر در فاز روز:
- * - اگر هدف مافیا باشد: هدف حذف می‌شود.
- * - اگر هدف شهروند باشد: خود کلانتر به عنوان مجازات حذف می‌شود.
- */
-export function resolveSheriffShot(
-  players: Player[],
-  sheriffId: string,
-  targetId: string
-): DayActionOutcome {
-  const playerMap = new Map(players.map((p) => [p.id, { ...p }]));
-  const sheriff = playerMap.get(sheriffId);
-  const target = playerMap.get(targetId);
-
-  if (!sheriff || !target || !sheriff.isAlive || !target.isAlive) {
-    return { updatedPlayers: players, log: "عملیات شلیک کلانتر به دلیل وضعیت نامعتبر بازیکنان لغو شد." };
-  }
-
-  const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
-  const isTargetMafia = targetRoleDef?.team === "mafia";
-
-  if (isTargetMafia) {
-    target.isAlive = false;
-    return {
-      updatedPlayers: Array.from(playerMap.values()),
-      eliminatedPlayerId: target.id,
-      eliminationReason: "شلیک مستقیم کلانتر",
-      log: `🚨 کلانتر (${sheriff.name}) در روز شلیک کرد و مافیا (${target.name}) از پای درآمد.`,
-    };
-  } else {
-    sheriff.isAlive = false;
-    return {
-      updatedPlayers: Array.from(playerMap.values()),
-      eliminatedPlayerId: sheriff.id,
-      eliminationReason: "مجازات شلیک اشتباه کلانتر به شهروند",
-      log: `⚠️ شلیک کلانتر (${sheriff.name}) به شهروند بی‌گناه (${target.name}) اصابت کرد و خود کلانتر حذف گردید.`,
-    };
-  }
-}
 
 /**
  * پردازش حکم مستقیم قاضی (بدون نیاز به شمارش آرای دادگاه)
@@ -80,23 +41,6 @@ export function resolveJudgeExecution(
     eliminationReason: "حکم مستقیم قاضی دادگاه",
     isJesterWin: isJester,
     log: `⚖️ قاضی (${judge.name}) با استفاده از حق قضاوت مستقیم، حکم خروج فوری «${target.name}» را صادر کرد.${isJester ? " 🎭 دلقک با اعدام در دادگاه برنده بازی شد!" : ""}`,
-  };
-}
-
-/**
- * پردازش وتوی شهردار برای لغو نتیجه دادگاه
- */
-export function resolveMayorVeto(
-  players: Player[],
-  mayorId: string,
-  condemnedTargetId: string
-): DayActionOutcome {
-  const mayor = players.find((p) => p.id === mayorId);
-  const target = players.find((p) => p.id === condemnedTargetId);
-
-  return {
-    updatedPlayers: players,
-    log: `🏛️ شهردار (${mayor ? mayor.name : "شهردار"}) با استفاده از حق وتوی خود، حکم اعدام دادگاه علیه «${target ? target.name : "متهم"}» را لغو کرد.`,
   };
 }
 
