@@ -119,6 +119,7 @@ interface Player {
   name: string;
   roleId?: string;
   isAlive: boolean;
+  hasPlantedBomb?: boolean;
   isSilenced: boolean;
   hasArmor: boolean;
   eliminationReason?: string;
@@ -183,11 +184,20 @@ interface GameRoom {
   nightActions?: NightActions;
   mafiaChatActive?: boolean;
   mafiaChatMessages?: MafiaChatMessage[];
-  logs: { id: string; time: string; text: string; type: 'info' | 'danger' | 'action' | 'challenge' }[];
+  logs: { id: string; time: string; text: string; type: 'info' | 'danger' | 'action' | 'challenge' | 'system' }[];
+  dayState?: any;
+  isNight?: boolean;
+  nightStep?: number;
+  nightCount?: number;
+  dayCount?: number;
   nightVisits?: Record<string, string[]>;
-  bodyguardTargetId?: string;
-  guardTargetId?: string;
-  guardPlayerId?: string;
+  watcherPlayerId?: string | null;
+  watcherTargetId?: string | null;
+  guardPlayerId?: string | null;
+  guardTargetId?: string | null;
+  bodyguardTargetId?: string | null;
+  priestTargetId?: string | null;
+  silencerTargetId?: string | null;
 }
 
 const rooms: Record<string, GameRoom> = {};
@@ -773,10 +783,13 @@ io.on('connection', (socket) => {
           delete p.lastGuardedId;
         delete p.plantedBomb;
       });
-    const activePlayers = Object.values(room.players).filter((p) => p.connected);
+    // در نظر گرفتن تمام بازیکنان اتاق (مشابه فرانت‌اند) تا رفرش یا قطعی موقت مانع توزیع کارت نشود
+    const allRoomPlayers = Object.values(room.players);
+    const activePlayers = allRoomPlayers.length > 0 ? allRoomPlayers : Object.values(room.players).filter((p) => p.connected);
 
     if (selectedRoleIds.length !== activePlayers.length) {
-      socket.emit('error_message', 'تعداد نقش‌های انتخاب‌شده با تعداد بازیکنان متصل برابر نیست!');
+      console.warn(`[distribute_roles mismatch] roles: ${selectedRoleIds.length}, players: ${activePlayers.length}`);
+      socket.emit('error_message', `تعداد نقش‌های انتخاب‌شده (${selectedRoleIds.length}) با تعداد بازیکنان (${activePlayers.length}) برابر نیست!`);
       return;
     }
 
@@ -959,8 +972,8 @@ io.on('connection', (socket) => {
             time: new Date().toLocaleTimeString("fa-IR")
           };
 
-          console.log(`[🛡️ سرور] مخابره گزارش دیده‌بان به «${guardPlayer.name}»: ${visitors.join(', ') || 'هیچ‌کس'}`);
-          io.to(guardPlayer.socketId || guardPlayer.id).emit("night_result_received", payload);
+          console.log(`[🛡️ سرور] مخابره گزارش دیده‌بان به «${watcherPlayer.name}»: ${visitors.join(', ') || 'هیچ‌کس'}`);
+          io.to(watcherPlayer.socketId || watcherPlayer.id).emit("night_result_received", payload);
         }
         room.guardTargetId = null;
         room.nightVisits = {};

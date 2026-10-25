@@ -1,6 +1,7 @@
 export interface PlayerQuotaState {
   totalUses: number;
   selfUses: number;
+  guardArmorUsed?: number;
   bulletsLeft?: number;
   warBulletsLeft?: number;
   blankBulletsLeft?: number;

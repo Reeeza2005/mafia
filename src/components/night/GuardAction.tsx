@@ -47,7 +47,7 @@ export const GuardAction: React.FC<GuardActionProps> = ({
     if (activeSocket) {
       activeSocket.emit("night_target_submit", payload);
     } else {
-      network.sendNightTarget(targetId || "skip", "bodyguard");
+      network.sendNightTarget(myPlayerId, "bodyguard", targetId || "skip");
     }
 
     setIsSubmitted(true);

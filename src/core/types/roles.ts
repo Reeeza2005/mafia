@@ -16,6 +16,8 @@ export type Team = "mafia" | "citizen" | "independent";
 export type ActionCategory = "block" | "save" | "kill" | "inquire" | "status";
 
 export interface RoleContract {
+  image?: string;
+  side?: string;
   id: CanonicalRoleId;
   name: string;
   team: Team;

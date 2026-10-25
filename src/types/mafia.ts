@@ -14,6 +14,10 @@ export type EliminationReason =
   | string;
 
 export interface Role {
+  nightPriority?: number;
+  hasNightAction?: boolean;
+  image?: string;
+  side?: string;
   id: string;
   name: string;
   englishName: string;
@@ -29,6 +33,8 @@ export interface Role {
 }
 
 export interface Player {
+  team?: string;
+  hasPlantedBomb?: boolean;
   id: string;
   name: string;
   socketId?: string;
@@ -40,8 +46,9 @@ export interface Player {
   notes?: string;
   connected: boolean;
   joinedAt?: number;
-  gunGiven?: 'war' | 'blank';
+  gunGiven?: 'war' | 'blank' | null;
   usedDailyChallenge?: boolean;
+  wasNegotiated?: boolean;
 }
 
 export interface GameLog {
@@ -87,6 +94,7 @@ export interface NightActions {
   informantGuess?: { targetId: string; guessedRoleId: string };
   infiltratorTargetId?: string;
   negotiatorTargetId?: string;
+  journalistTargetId?: string;
 
   // شهروند
   doctorSaveId?: string;
@@ -114,6 +122,7 @@ export interface NightResolutionReport {
   negotiationSuccessful?: boolean;
   convertedPlayerId?: string;
   negotiatorFailedReason?: string;
+  journalistReport?: { targetId: string; targetName: string; isNegotiated: boolean };
   logs: string[];
 }
 

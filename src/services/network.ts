@@ -5,7 +5,8 @@ export type EventCallback = (data: any) => void;
 
 class NetworkService {
   private mode: NetworkMode = 'socket';
-  private socket: Socket | null = null;
+  public socket: Socket | null = null;
+  public getSocket(): Socket | null { return this.socket; }
   private listeners: Map<string, Set<EventCallback>> = new Map();
 
   private roomCode: string = '';
@@ -210,10 +211,11 @@ this.socket.on('connect_error', (err: any) => {
   }
 
   // God actions
-  public distributeRoles(selectedRoleIds: string[]) {
+  public distributeRoles(selectedRoleIds: string[], roomCode?: string) {
     if (this.socket && this.socket.connected) {
+      const codeToSend = roomCode || this.roomCode;
       this.socket.emit('distribute_roles', {
-        roomCode: this.roomCode,
+        roomCode: codeToSend,
         selectedRoleIds,
       });
     }

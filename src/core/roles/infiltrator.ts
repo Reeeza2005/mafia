@@ -1,6 +1,7 @@
 import { RoleContract } from "../types/roles";
 
 export interface InfiltratorRole extends RoleContract {
+  isInquiryImmune?: boolean;
   appearsAsCitizenToInquiry: boolean; // استعلام کارآگاه برای او منفی (شهروندی) است
   isPassive: boolean;                 // نقش پسیو شبانه
 }
