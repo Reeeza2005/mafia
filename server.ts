@@ -275,6 +275,7 @@ app.post('/api/room/:code/join', (req, res) => {
     if (Object.keys(room.players).length >= 50) {
       return res.status(400).json({ error: 'ظرفیت اتاق تکمیل است (حداکثر ۵۰ بازیکن).' });
     }
+    socket.join(id);
     room.players[id] = {
       id,
       name: cleanName,

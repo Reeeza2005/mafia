@@ -342,11 +342,16 @@ export function resolveNight(
         negotiatorFailedReason = "سهمیه ۱ باره مذاکره در این بازی قبلاً استفاده شده است.";
         logs.push(`⚠️ تلاش برای مذاکره رد شد: ${negotiatorFailedReason}`);
       } else {
-        const deadMafiaCount = Array.from(playerMap.values()).filter((p) => {
-          if (p.isAlive) return false;
-          const roleDef = p.roleId ? getRoleDefinition(p.roleId) : undefined;
-          return roleDef?.team === "mafia";
-        }).length;
+        const mafiaRoleIds = new Set([
+            "godfather", "dr_lecter", "natasha", "bomber", "simple_mafia",
+            "negotiator", "hostage_taker", "joker", "mistress", "informant_mafia"
+          ]);
+          const deadMafiaCount = Array.from(playerMap.values()).filter((p) => {
+            if (p.isAlive) return false;
+            if (!p.roleId) return false;
+            const roleDef = getRoleDefinition(p.roleId);
+            return roleDef?.team === "mafia" || mafiaRoleIds.has(p.roleId.toLowerCase());
+          }).length;
 
         if (deadMafiaCount < 1) {
           negotiatorFailedReason = "تا زمانی که حداقل یک عضو مافیا کشته نشده باشد، مذاکره مجاز نیست.";
