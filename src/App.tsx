@@ -55,7 +55,13 @@ export default function App() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
   // God state
-  const [selectedRoleCounts, setSelectedRoleCounts] = useState<Record<string, number>>((PRESETS?.[1] as any)?.roles || (PRESETS?.[1] as any)?.roleIds || (PRESETS?.[0] as any)?.roles || (PRESETS?.[0] as any)?.roleIds || {});
+  const [selectedRoleCounts, setSelectedRoleCounts] = useState<Record<string, number>>(() => {
+    const defaultIds = PRESETS?.[1]?.roleIds || PRESETS?.[0]?.roleIds || [];
+    return defaultIds.reduce((acc: Record<string, number>, id: string) => {
+      acc[id] = (acc[id] || 0) + 1;
+      return acc;
+    }, {});
+  });
   const [players, setPlayers] = useState<Player[]>([]);
   const [rolesInGame, setRolesInGame] = useState<string[]>([]);
   const [cardsDistributed, setCardsDistributed] = useState<boolean>(false);
@@ -349,7 +355,7 @@ export default function App() {
         list.push(roleId);
       }
     });
-    network.distributeRoles(list, roomCode);
+    network.distributeRoles(list);
   };
 
   // Timer Control (God)
@@ -614,7 +620,6 @@ export default function App() {
               errorMessage={errorMessage}
               isJoining={isJoining}
               onJoin={handleJoinAsPlayer}
-              
               onBack={() => setClientType(null)}
             />
           ) : (

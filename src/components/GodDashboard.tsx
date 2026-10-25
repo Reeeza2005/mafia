@@ -1885,7 +1885,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                         const deadMafiaCount = players.filter(p => !p.isAlive && p.roleId && (
                           ["godfather", "dr_lecter", "natasha", "bomber", "simple_mafia", "negotiator", "hostage_taker"].includes(p.roleId)
                         )).length;
-                        const isUnlocked = deadMafiaCount >= 1;
+                        const hasAlreadyNegotiated = players.some(p => p.wasNegotiated);
+                        const isUnlocked = deadMafiaCount >= 1 && !hasAlreadyNegotiated;
 
                         return (
                           <button
@@ -1899,7 +1900,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                               network.setNightStep(next, roomCode);
                               if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
                             }}
-                            title={isUnlocked ? "فعال برای یارگیری" : "قفل: نیازمند حذف حداقل ۱ عضو مافیا"}
+                            title={hasAlreadyNegotiated ? "قفل: مذاکره قبلاً انجام شده است" : isUnlocked ? "فعال برای یارگیری" : "قفل: نیازمند حذف حداقل ۱ عضو مافیا"}
                             className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                               !isUnlocked
                                 ? "bg-slate-900/60 text-slate-500 border border-slate-800 cursor-not-allowed opacity-60"
@@ -1908,7 +1909,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                 : "bg-purple-950/60 text-purple-300 border border-purple-900/70 hover:bg-purple-900/80"
                             }`}
                           >
-                            🤝 بیدارباش مذاکره‌کننده {!isUnlocked && "🔒"}
+                            🤝 بیدارباش مذاکره‌کننده {(!isUnlocked || hasAlreadyNegotiated) && "🔒"}
                           </button>
                         );
                       })()}

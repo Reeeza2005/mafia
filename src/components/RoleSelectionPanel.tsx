@@ -371,7 +371,11 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
               <button
                 key={preset.name}
                 onClick={() => {
-                  onSetPreset((preset as any).roles || preset.roleIds);
+                  const counts: Record<string, number> = {};
+                    (preset.roleIds || (preset as any).roles || []).forEach((id: string) => {
+                      counts[id] = (counts[id] || 0) + 1;
+                    });
+                    onSetPreset(counts);
                   audio.playFlip();
                 }}
                 disabled={disabled}
@@ -404,43 +408,47 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
             )}
           </div>
 
-                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto justify-end">
-              <div className="text-right sm:text-left flex items-center gap-2">
-                <div className="text-xs font-semibold flex items-center gap-1.5 bg-neutral-950 px-3 py-1.5 rounded-xl border border-neutral-800">
-                  <Users className="w-4 h-4 text-amber-400" />
-                  <span className="text-neutral-300">انتخاب‌شده:</span>
-                  <span className="font-mono font-bold text-amber-400">{totalSelectedCount}</span>
-                  <span className="text-neutral-500">/</span>
-                  <span className="font-mono font-bold text-white">{connectedPlayersCount} نفر</span>
-                </div>
-                {totalSelectedCount < connectedPlayersCount && (
-                  <button
-                    type="button"
-                    onClick={handleAutoFillWithCitizens}
-                    className="text-[11px] bg-sky-950/80 text-sky-300 border border-sky-800/60 px-2.5 py-1.5 rounded-xl hover:bg-sky-900 transition-all cursor-pointer"
-                  >
-                    + شهروند ساده ({connectedPlayersCount - totalSelectedCount})
-                  </button>
-                )}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="text-right">
+              <div className="text-xs font-semibold flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-neutral-400" />
+                <span>کارت‌ها: </span>
+                <span className={`font-mono font-bold ${isCountMatching ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {totalSelectedCount}
+                </span>
+                <span className="text-neutral-500">از</span>
+                <span className="font-mono font-bold text-white">{connectedPlayersCount} بازیکن</span>
               </div>
+              {totalSelectedCount < connectedPlayersCount && connectedPlayersCount > 0 && (
+                <button
+                  onClick={handleAutoFillWithCitizens}
+                  className="text-[10px] text-sky-400 hover:text-sky-300 underline mt-0.5 block cursor-pointer"
+                >
+                  تکمیل خودکار با شهروند ساده (+{connectedPlayersCount - totalSelectedCount})
+                </button>
+              )}
+            </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (totalSelectedCount === 0) {
-                    alert('لطفاً حداقل ۱ نقش انتخاب کنید.');
-                    return;
-                  }
+            {/* Always-visible Solo Test Button */}
+            
+            <button
+              onClick={() => {
+                if (isCountMatching) {
                   audio.playGavel();
                   onDistribute();
-                }}
-                disabled={disabled || totalSelectedCount === 0}
-                className="px-6 py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 transition-all shadow-xl bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Sparkles className="w-4 h-4" />
-                توزیع تصادفی کارت‌ها
-              </button>
-            </div>
+                }
+              }}
+              disabled={!isCountMatching || disabled}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-lg ${
+                isCountMatching && !disabled
+                  ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 text-white cursor-pointer animate-pulse'
+                  : 'bg-neutral-800 text-neutral-500 border border-neutral-700/50 cursor-not-allowed opacity-60'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              توزیع تصادفی کارت‌ها
+            </button>
+          </div>
         </div>
       </div>
 
