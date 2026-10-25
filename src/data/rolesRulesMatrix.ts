@@ -133,20 +133,7 @@ export const ROLES_RULES_MATRIX: Record<string, RoleRuleDefinition> = {
     description: "کار گذاشتن بمب ساعتی روی یک بازیکن.",
     resolutionEffect: "بمب روی هدف فعال شده و در صورت عدم خنثی‌سازی روز بعد منفجر می‌شود."
   },
-  joker: {
-    id: "joker",
-    name: "جوکر",
-    team: "mafia",
-    phase: "night",
-    nightOrder: 7,
-    wakeUpText: "جوکر برای فریب استعلام کارآگاه بیدار شود.",
-    hasNightAction: true,
-    hasDayAction: false,
-    defaultQuota: { maxTotalUses: 2 },
-    targetFilter: "all_alive",
-    description: "معکوس کردن نتیجه استعلام کارآگاه روی هدف برای همان شب.",
-    resolutionEffect: "اگر کارآگاه از این فرد استعلام بگیرد پاسخ برعکس می‌شود."
-  },
+  
   informant_mafia: {
     id: "informant_mafia",
     name: "خبرچین مافیا",
@@ -451,7 +438,6 @@ export function getMafiaShooter(players: Player[]): Player | null {
     ["bomber"],
     ["thief", "burglar"],
     ["negotiator"],
-    ["joker"],
     ["shadow_mafia", "ghost_mafia", "ghost"],
     ["informant_mafia", "informant"],
     ["infiltrator"],

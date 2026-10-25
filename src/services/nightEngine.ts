@@ -283,10 +283,6 @@ export function resolveNight(
         const givesNegative = (targetRoleDef as any)?.givesNegativeInvestigation || target.roleId === 'godfather' || target.roleId === 'infiltrator';
         let isPositive = targetRoleDef?.team === 'mafia' && !givesNegative;
 
-        if (actions.jokerTargetId === target.id) {
-          isPositive = !isPositive;
-          logs.push(`جوکر نتیجه استعلام کارآگاه روی ${target.name} را دستکاری و معکوس کرد.`);
-        }
 
         detectiveReport = { targetId: target.id, isPositive };
         logs.push(`استعلام کارآگاه برای ${target.name}: ${isPositive ? 'مثبت (مافیا)' : 'منفی (شهروند)'}`);
@@ -345,7 +341,7 @@ export function resolveNight(
       } else {
         const mafiaRoleIds = new Set([
             "godfather", "dr_lecter", "natasha", "bomber", "simple_mafia",
-            "negotiator", "hostage_taker", "joker", "mistress", "informant_mafia"
+            "negotiator", "hostage_taker",  "mistress", "informant_mafia"
           ]);
           const deadMafiaCount = Array.from(playerMap.values()).filter((p) => {
             if (p.isAlive) return false;

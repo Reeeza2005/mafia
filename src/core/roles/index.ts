@@ -11,7 +11,6 @@ import { hostage_taker } from "./hostage_taker";
 import { independent_jester } from "./independent_jester";
 import { infiltrator } from "./infiltrator";
 import { informant_mafia } from "./informant_mafia";
-import { joker } from "./joker";
 import { journalist } from "./journalist";
 import { judge } from "./judge";
 import { mistress } from "./mistress";
@@ -42,8 +41,7 @@ export const ROLES_REGISTRY: Record<string, RoleContract> = {
   independent_jester,
   infiltrator,
   informant_mafia,
-  joker,
-  journalist,
+    journalist,
   judge,
     mistress,
   natasha,
@@ -73,7 +71,6 @@ export * from "./hostage_taker";
 export * from "./independent_jester";
 export * from "./infiltrator";
 export * from "./informant_mafia";
-export * from "./joker";
 export * from "./journalist";
 export * from "./judge";
 export * from "./mistress";

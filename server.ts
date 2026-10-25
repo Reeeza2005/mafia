@@ -184,6 +184,10 @@ interface GameRoom {
   mafiaChatActive?: boolean;
   mafiaChatMessages?: MafiaChatMessage[];
   logs: { id: string; time: string; text: string; type: 'info' | 'danger' | 'action' | 'challenge' }[];
+  nightVisits?: Record<string, string[]>;
+  bodyguardTargetId?: string;
+  guardTargetId?: string;
+  guardPlayerId?: string;
 }
 
 const rooms: Record<string, GameRoom> = {};
@@ -275,7 +279,6 @@ app.post('/api/room/:code/join', (req, res) => {
     if (Object.keys(room.players).length >= 50) {
       return res.status(400).json({ error: 'ظرفیت اتاق تکمیل است (حداکثر ۵۰ بازیکن).' });
     }
-    socket.join(id);
     room.players[id] = {
       id,
       name: cleanName,
@@ -323,7 +326,7 @@ const MAFIA_ROLES = new Set([
 
 function isMafiaRole(roleId?: string): boolean {
   if (!roleId) return false;
-  return ["simple_mafia", "godfather", "dr_lecter", "natasha", "hostage_taker", "bomber", "joker", "negotiator", "mistress"].includes(roleId);
+  return ["simple_mafia", "godfather", "dr_lecter", "natasha", "hostage_taker", "bomber",  "negotiator", "mistress"].includes(roleId);
 }
 
 function broadcastMafiaChatUpdate(io: any, room: GameRoom) {

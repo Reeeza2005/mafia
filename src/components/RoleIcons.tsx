@@ -113,27 +113,7 @@ const FallbackSvgIcon: React.FC<IconProps & { roleId: string }> = ({ roleId, cla
         </svg>
       );
 
-    case 'joker':
-      return (
-        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} width={size} height={size}>
-          <circle cx="50" cy="50" r="46" fill="#14061a" stroke="#d946ef" strokeWidth="2.5" />
-          {/* Jester Hat */}
-          <path d="M30 40 C20 30 16 16 32 20 C42 22 40 38 40 38" fill="#701a75" stroke="#f472b6" strokeWidth="1.5" />
-          <path d="M70 40 C80 30 84 16 68 20 C58 22 60 38 60 38" fill="#581c87" stroke="#c084fc" strokeWidth="1.5" />
-          <path d="M40 38 C46 22 54 22 60 38 Z" fill="#be185d" stroke="#f43f5e" strokeWidth="1.5" />
-          <circle cx="20" cy="20" r="3.5" fill="#facc15" stroke="#ca8a04" strokeWidth="1" />
-          <circle cx="80" cy="20" r="3.5" fill="#facc15" stroke="#ca8a04" strokeWidth="1" />
-          {/* Sinister Grinning Face */}
-          <circle cx="50" cy="54" r="20" fill="#2e1065" stroke="#e879f9" strokeWidth="1.8" />
-          {/* Playing Card Diamonds/Eyes */}
-          <path d="M42 46 L45 50 L42 54 L39 50 Z" fill="#f43f5e" />
-          <path d="M58 46 L61 50 L58 54 L55 50 Z" fill="#d946ef" />
-          {/* Evil Wide Grin */}
-          <path d="M36 60 C42 74 58 74 64 60 C58 66 42 66 36 60 Z" fill="#881337" stroke="#f43f5e" strokeWidth="1.8" />
-          {/* Sharp Teeth */}
-          <path d="M40 62 L42 66 L44 62 L46 66 L48 62 L50 66 L52 62 L54 66 L56 62 L58 66 L60 62" stroke="#ffffff" strokeWidth="1.2" />
-        </svg>
-      );
+    
 
     case 'simple_mafia':
       return (

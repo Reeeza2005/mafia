@@ -546,8 +546,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     let result: 'positive' | 'negative' = 'negative';
     if (targetPlayer.roleId === 'godfather') {
       result = 'negative';
-    } else if (targetPlayer.roleId === 'joker') {
-      result = 'negative';
     } else {
       const role = (targetPlayer?.roleId ? (ROLE_MAP as any)[targetPlayer.roleId] : undefined);
       result = role?.team === 'mafia' ? 'positive' : 'negative';
@@ -1885,7 +1883,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                           {/* دکمه بیدارباش مشروط مذاکره‌کننده */}
                       {alivePlayers.some(p => p.roleId === "negotiator") && (() => {
                         const deadMafiaCount = players.filter(p => !p.isAlive && p.roleId && (
-                          ["godfather", "dr_lecter", "natasha", "bomber", "simple_mafia", "negotiator", "hostage_taker", "joker"].includes(p.roleId)
+                          ["godfather", "dr_lecter", "natasha", "bomber", "simple_mafia", "negotiator", "hostage_taker"].includes(p.roleId)
                         )).length;
                         const isUnlocked = deadMafiaCount >= 1;
 

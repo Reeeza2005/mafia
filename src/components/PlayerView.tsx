@@ -44,10 +44,10 @@ interface PlayerViewProps {
 const MAFIA_ROLE_IDS = new Set([
   "godfather", "dr_lecter", "doctor_lecter", "saul_goodman", "simple_mafia", "mafia_simple", "mafia",
   "matador", "hostage_taker", "bomber", "natasha", "silencer", "mistress", "sweetheart",
-  "burglar", "negotiator", "joker", "ghost_mafia", "ghost", "informant",
+  "burglar", "negotiator",  "ghost_mafia", "ghost", "informant",
   
 ]);
-  const isMafia = (roleId?: string): boolean => Boolean(roleId && ["simple_mafia", "godfather", "dr_lecter", "natasha", "hostage_taker", "bomber", "joker", "negotiator", "mistress"].includes(roleId));
+  const isMafia = (roleId?: string): boolean => Boolean(roleId && ["simple_mafia", "godfather", "dr_lecter", "natasha", "hostage_taker", "bomber",  "negotiator", "mistress"].includes(roleId));
 
 export const PlayerView: React.FC<PlayerViewProps> = ({
 

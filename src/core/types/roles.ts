@@ -2,9 +2,7 @@ export const CANONICAL_ROLES = [
   // مافیا (۱۴ نقش)
   "godfather", "dr_lecter", "simple_mafia", "natasha", "thief",
   "hostage_taker", "bomber", "informant_mafia", "infiltrator",
-  "negotiator", "shadow_mafia", "terrorist", "mistress", "joker",
-
-  // شهروند (۱۵ نقش)
+  "negotiator", "shadow_mafia", "terrorist", "mistress", // شهروند (۱۵ نقش)
   "simple_citizen", "doctor", "detective", "sniper", "bodyguard",
   "priest", "watcher", "hacker", "gunsmith", "journalist",
   "armored", "judge", ,
