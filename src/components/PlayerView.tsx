@@ -1,3 +1,4 @@
+import { getDoctorMaxSelfSaves } from '../core/roles/doctor';
 import { getSniperBulletQuota } from "../utils/sniperQuota";
 import { MafiaChat, MafiaChatMessage } from "./MafiaChat";
 import { BomberAction } from "./night/BomberAction";
@@ -109,14 +110,16 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
     const handleBombExploded = (data: any) => {
       console.log("[💣 کلاینت] انفجار بمب دریافت شد:", data);
       setActiveBomb(null);
-      if (data?.victimId === player?.id || (player?.name && data?.victimName === player?.name)) {
-        player.isAlive = false;
-        player.eliminationReason = "انفجار بمب ساعتی (اتمام زمان)";
-        if (activePlayer) {
-          activePlayer.isAlive = false;
-          activePlayer.eliminationReason = "انفجار بمب ساعتی (اتمام زمان)";
-        }
-      }
+             if (data?.victimId === player?.id || (player?.name && data?.victimName === player?.name)) {
+         if (player) {
+           player.isAlive = false;
+           player.eliminationReason = "انفجار بمب ساعتی (اتمام زمان)";
+         }
+         if (activePlayer) {
+           activePlayer.isAlive = false;
+           activePlayer.eliminationReason = "انفجار بمب ساعتی (اتمام زمان)";
+         }
+       }
     };
 
     sock.on('bomb_status_updated', handleBombStatus);
@@ -181,7 +184,7 @@ sock.on('game_reset', () => {
   const [showShootModal, setShowShootModal] = useState<boolean>(false);
   const [selectedShootTargetId, setSelectedShootTargetId] = useState<string>("");
   const [gunShotPending, setGunShotPending] = useState<boolean>(false);
-  const activePlayer = (livePlayers && player) ? (livePlayers.find(p => p.id === player.id) || player) : player;
+  const activePlayer = (livePlayers && player) ? (livePlayers.find(p => p.id === player?.id) || player) : player;
 
   useEffect(() => {
     if (!activePlayer?.gunGiven) {
@@ -214,7 +217,7 @@ sock.on('game_reset', () => {
 
     const unNotif = network.on("player_notification", (data: any) => {
       console.log("[PlayerView] player_notification received:", data);
-      if (data && (!data.targetPlayerId || data.targetPlayerId === player.id)) {
+      if (data && (!data.targetPlayerId || data.targetPlayerId === player?.id)) {
         setNightResultMessage({
           message: data.message,
           resultType: data.resultType,
@@ -237,7 +240,7 @@ sock.on('game_reset', () => {
     
     const unDayGuns = network.on("day_guns_updated", (data: any) => {
       if (Array.isArray(data?.guns)) {
-        const found = data.guns.find((g: any) => g.targetId === player.id && !g.used);
+        const found = data.guns.find((g: any) => g.targetId === player?.id && !g.used);
         if (found) {
           setMyDayGun(found);
           setShowGunReceivedModal(true);
@@ -327,7 +330,7 @@ sock.on('game_reset', () => {
     });
 
     const unTimerEnded = network.on('timer_ended', (data: any) => {
-      if (!data.speakerId || (player && data.speakerId === player.id)) {
+      if (!data.speakerId || (player && data.speakerId === player?.id)) {
         audio.playWarningBeep();
         setBuzzAlert({
           message: '⏰ وقت شما به پایان رسید!',
@@ -344,7 +347,7 @@ sock.on('game_reset', () => {
 
     const unChallenges = network.on('challenges_updated', (data: any) => {
       if (Array.isArray(data) && player) {
-        setIsChallengeRequested(data.some((r: any) => r.playerId === player.id));
+        setIsChallengeRequested(data.some((r: any) => r.playerId === player?.id));
       }
     });
 
@@ -366,7 +369,7 @@ sock.on('game_reset', () => {
     });
 
     const unPlayerNotif = network.on("player_notification", (data: any) => {
-      if (player && data?.targetPlayerId === player.id) {
+      if (player && data?.targetPlayerId === player?.id) {
         setNightResultMessage(data);
         audio.playFlip();
       }
@@ -389,7 +392,7 @@ sock.on('game_reset', () => {
     });
 
     const unChallengeDismissed = network.on('challenge_dismissed', (data: any) => {
-      if (player && data?.playerId === player.id) {
+      if (player && data?.playerId === player?.id) {
         setIsChallengeRequested(false);
       }
     });
@@ -419,9 +422,9 @@ sock.on('game_reset', () => {
   };
 
   const handleRequestChallenge = () => {
-    if (!player || !player.isAlive || player.isSilenced || activePlayer?.isSilenced || player.usedDailyChallenge || isChallengeRequested) return;
+    if (!player || !player?.isAlive || player.isSilenced || activePlayer?.isSilenced || player.usedDailyChallenge || isChallengeRequested) return;
     audio.playFlip();
-    network.requestChallenge(player.id);
+    network.requestChallenge(player?.id);
     setIsChallengeRequested(true);
   };
 
@@ -436,7 +439,7 @@ sock.on('game_reset', () => {
 
   const handleSubmitVote = () => {
     if (!selectedCandidateId || !player) return;
-    network.submitSecretVote(player.id, selectedCandidateId, player.name);
+    network.submitSecretVote(player?.id, selectedCandidateId, player?.name);
     setHasVoted(true);
   };
 
@@ -451,7 +454,7 @@ sock.on('game_reset', () => {
             
         
 
-        {!nightPhaseActive && player.roleId === "bomber" && player.isAlive && activeBomb && activeBomb.status === "planted" && (
+        {!nightPhaseActive && (player as any)?.roleId === "bomber" && (player as any)?.isAlive && activeBomb && activeBomb.status === "planted" && (
           <div className="bg-red-950/40 border border-red-800/60 rounded-xl p-4 my-4 shadow-xl">
             <div className="flex items-center justify-between mb-3">
               <p className="text-red-400 text-sm font-bold flex items-center gap-2">
@@ -466,7 +469,7 @@ sock.on('game_reset', () => {
             </p>
             <button
               type="button"
-              onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode })}
+              onClick={() => network.getSocket()?.emit("bomb:trigger", { roomCode: (player as any)?.roomCode || "" })}
               className="w-full bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-lg shadow-lg transition-all text-xs flex items-center justify-center gap-2"
             >
               <span>💥</span> فعال‌سازی چاشنی بمب
@@ -544,7 +547,7 @@ sock.on('game_reset', () => {
     );
   }
 
-  const role = player.roleId ? ROLE_MAP[player.roleId] : null;
+  const role = player?.roleId ? ROLE_MAP[player?.roleId] : null;
 
   return (
     <div className="max-w-md mx-auto space-y-4 pb-8 dir-rtl text-right select-none">
@@ -769,7 +772,7 @@ sock.on('game_reset', () => {
       <div className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-center font-black text-white text-sm">
-            {player.name.slice(0, 1)}
+            {player?.name.slice(0, 1)}
           
         
 
@@ -778,9 +781,9 @@ sock.on('game_reset', () => {
       
 </div>
           <div>
-            <h3 className="text-sm font-bold text-white">{player.name}</h3>
+            <h3 className="text-sm font-bold text-white">{player?.name}</h3>
             <span className="text-[11px] text-neutral-200 font-medium">
-              {player.isAlive ? '🟢 در بازی (زنده)' : '🔴 حذف شده از بازی'}
+              {player?.isAlive ? '🟢 در بازی (زنده)' : '🔴 حذف شده از بازی'}
             </span>
           
         
@@ -837,11 +840,11 @@ sock.on('game_reset', () => {
 </div>
 
       {/* کارت وضعیت فاز شب برای شهروند ساده و نقش‌های فاقد اکشن شبانه */}
-        {player.isAlive && nightPhaseActive && (
-          player.roleId === "simple_citizen" || 
-          player.roleId === "citizen" || 
-          (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "hostage_taker", "sniper", "bodyguard", "guard", "bodyguard", "guard", "gunsmith", "silencer"].includes(player.roleId))
-        ) && !(currentNightRole && ((currentNightRole === player.roleId || ((currentNightRole === "bodyguard" || currentNightRole === "guard") && (player.roleId === "bodyguard" || player.roleId === "guard"))) || (currentNightRole === "mafia" && isMafia(player.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))))) && (
+        {player?.isAlive && nightPhaseActive && (
+          player?.roleId === "simple_citizen" || 
+          player?.roleId === "citizen" || 
+          (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "hostage_taker", "sniper", "bodyguard", "guard", "bodyguard", "guard", "gunsmith", "silencer"].includes(player?.roleId || ''))
+        ) && !(currentNightRole && ((currentNightRole === player?.roleId || ((currentNightRole === "bodyguard" || currentNightRole === "guard") && (player?.roleId === "bodyguard" || player?.roleId === "guard"))) || (currentNightRole === "mafia" && isMafia(player?.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player?.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))))) && (
           <div className="rounded-2xl border border-indigo-900/40 bg-gradient-to-b from-indigo-950/30 to-black/60 p-4 space-y-2 text-center shadow-lg">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 text-lg mb-1 animate-pulse">
               🌙
@@ -876,7 +879,7 @@ sock.on('game_reset', () => {
         )}
 
         {/* پیام راهنما برای اعضای مافیا که تیرانداز امشب نیستند */}
-        {player.isAlive && currentNightRole === "mafia" && isMafia(player.roleId) && getMafiaShooter(players)?.id !== player.id && (
+        {player?.isAlive && currentNightRole === "mafia" && isMafia(player?.roleId) && getMafiaShooter(players)?.id !== player?.id && (
           <div className="rounded-2xl border border-rose-950 bg-gradient-to-r from-rose-950/40 to-neutral-900/60 p-3.5 space-y-1.5 shadow-lg mb-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-rose-300 flex items-center gap-1.5">
@@ -905,7 +908,7 @@ sock.on('game_reset', () => {
         )}
 
       {/* --- پاپ‌آپ اخطار به بازیکن گروگان گرفته شده --- */}
-      {player.isAlive && nightPhaseActive && Boolean(currentNightRole) && Boolean((player as any)?.isHostaged) && (
+      {player?.isAlive && nightPhaseActive && Boolean(currentNightRole) && Boolean((player as any)?.isHostaged) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in">
           <div className="bg-gradient-to-b from-rose-950 to-neutral-950 border border-rose-600 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4">
             <div className="w-16 h-16 rounded-full bg-rose-900/60 border border-rose-500/80 mx-auto flex items-center justify-center text-3xl shadow-inner animate-pulse">
@@ -930,7 +933,7 @@ sock.on('game_reset', () => {
       )}
       
         {/* --- اکشن شلیک تفنگ در فاز روز (دادگاه) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player.isAlive && (
+        {!nightPhaseActive && myDayGun && !myDayGun.used && player?.isAlive && (
           <div className="bg-orange-950/60 border border-orange-500/80 p-4 rounded-2xl my-4 shadow-2xl animate-fade-in text-right">
             <div className="flex items-center justify-between border-b border-orange-800/60 pb-2 mb-3">
               <span className="text-xs font-black text-orange-200">شما دارای اسلحه هستید!</span>
@@ -945,7 +948,7 @@ sock.on('game_reset', () => {
                 className="flex-1 bg-black/80 border border-orange-800/80 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
               >
                 <option value="">-- انتخاب هدف شلیک --</option>
-                {players.filter(p => p.isAlive && p.id !== player.id).map(p => (
+                {players.filter(p => p.isAlive && p.id !== player?.id).map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
@@ -960,7 +963,7 @@ sock.on('game_reset', () => {
                   }
                   const sock = (network as any)?.getSocket?.() || (network as any)?.socket;
                   const rCode = (network as any)?.roomCode || (network as any)?.getRoomCode?.() || "";
-                  sock?.emit("gun:shoot", { roomCode: rCode, shooterId: player.id, targetId: tid });
+                  sock?.emit("gun:shoot", { roomCode: rCode, shooterId: player?.id, targetId: tid });
                   setMyDayGun(prev => prev ? { ...prev, used: true } : null);
                 }}
                 className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer text-center"
@@ -973,7 +976,7 @@ sock.on('game_reset', () => {
 
         {/* Night Action Selector & In-game Feedback for Player */}
       {/* --- اکشن‌های شب بمب‌گذار و تفنگ‌دار --- */}
-        {player.isAlive && player.roleId === "bomber" && nightPhaseActive && currentNightRole === "bomber" && !nightActionDone && (
+        {player?.isAlive && player?.roleId === "bomber" && nightPhaseActive && currentNightRole === "bomber" && !nightActionDone && (
           <BomberAction
             socket={network?.getSocket?.() || null}
             roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""}
@@ -985,11 +988,11 @@ sock.on('game_reset', () => {
           />
         )}
           {/* --- اکشن شب محافظ / جان‌فدا (بادیگارد) --- */}
-          {player.isAlive && (player.roleId === "bodyguard" || player.roleId === "guard") &&
+          {player?.isAlive && (player?.roleId === "bodyguard" || player?.roleId === "guard") &&
            (currentNightRole === "bodyguard" || currentNightRole === "guard") && (
              <GuardAction
                players={Array.isArray(livePlayers) && livePlayers.length > 0 ? livePlayers : Array.isArray(players) ? players : []}
-               myPlayerId={player.id}
+               myPlayerId={player?.id}
                roomCode={(network as any)?.getRoomCode?.() || (network as any)?.roomCode || ""}
                lastGuardedId={(player as any).lastGuardedId || null}
                onActionCompleted={() => setNightActionDone(true)}
@@ -999,33 +1002,33 @@ sock.on('game_reset', () => {
           {/* GunsmithAction disabled */}
         
         {/* مخفی کردن منوی پیش‌فرض برای این دو نقش */}
-        {((player.roleId !== "bomber" && player.roleId !== "gunsmith" && player.roleId !== "bodyguard" && player.roleId !== "guard") || (currentNightRole === "mafia" && isMafia(player.roleId))) && player.isAlive && !nightActionDone && Boolean(player.roleId) && (
-          (currentNightRole === "mafia" && isMafia(player.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))) ||
-          ((currentNightRole === "doctor_lecter" || currentNightRole === "dr_lecter") && (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")) ||
-          ((currentNightRole === "natasha" || currentNightRole === "silencer") && (player.roleId === "natasha" || player.roleId === "silencer")) || (currentNightRole && currentNightRole === player.roleId)
+        {((player?.roleId !== "bomber" && player?.roleId !== "gunsmith" && player?.roleId !== "bodyguard" && player?.roleId !== "guard") || (currentNightRole === "mafia" && isMafia(player?.roleId))) && player?.isAlive && !nightActionDone && Boolean(player?.roleId) && (
+          (currentNightRole === "mafia" && isMafia(player?.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player?.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))) ||
+          ((currentNightRole === "doctor_lecter" || currentNightRole === "dr_lecter") && (player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter")) ||
+          ((currentNightRole === "natasha" || currentNightRole === "silencer") && (player?.roleId === "natasha" || player?.roleId === "silencer")) || (currentNightRole && currentNightRole === player?.roleId)
         ) && (
           <div className="rounded-2xl border border-purple-900/60 bg-purple-950/30 p-3.5 space-y-3 shadow-xl">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
                 {currentNightRole === "mafia"
                   ? "💥 انتخاب هدف شلیک شبانه مافیا"
-                  : (player.roleId === "hostage_taker" || player.roleId === "hostage")
-                        ? livePlayers.filter(p => p.isAlive && p.id !== player.id).map(p => (
+                  : (player?.roleId === "hostage_taker" || player?.roleId === "hostage")
+                        ? livePlayers.filter(p => p.isAlive && p.id !== player?.id).map(p => (
                             <option key={p.id} value={p.id}>⛓️ {p.name}</option>
                           ))
-                        : (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
+                        : (player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter")
                   ? "🩺 نجات شبانه یار مافیا (دکتر لکتر)"
-                  : player.roleId === "godfather"
+                  : player?.roleId === "godfather"
                   ? "💥 انتخاب هدف شلیک مافیا (پدرخوانده)"
-                  : player.roleId === "detective"
+                  : player?.roleId === "detective"
                   ? "🔍 استعلام شبانه هویت (کارآگاه)"
-                  : player.roleId === "priest"
+                  : player?.roleId === "priest"
                     ? "🕊️ انتخاب بازیکن برای شکستن سکوت و شفا (کشیش)"
-                    : player.roleId === "sniper" 
+                    : player?.roleId === "sniper" 
                   ? "🎯 شلیک شبانه تک‌تیرانداز"
                   : "🌙 انتخاب هدف شبانه (ارسال مستقیم به گرداننده)"}
               </span>
-              {player.roleId === "sniper" && (
+              {player?.roleId === "sniper" && (
                 <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-900 border border-amber-500/40 text-[11px] font-bold text-amber-300">
                   <span>سهمیه فشنگ:</span>
                   <span className="tracking-widest">
@@ -1045,7 +1048,7 @@ sock.on('game_reset', () => {
 </div>
               )}
 
-              {(player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && (
+              {(player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter") && currentNightRole !== "mafia" && (
                 <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-900 border border-rose-500/40 text-[11px] font-bold text-rose-300">
                   <span>سهمیه نجات خود:</span>
                   <span className="tracking-wider">
@@ -1073,7 +1076,7 @@ sock.on('game_reset', () => {
 </div>
 
             {/* انتخاب‌های اختصاصی تفنگدار: دو کادر همزمان جنگی و مشقی */}
-            {false && player.roleId === "gunsmith" && (
+            {false && player?.roleId === "gunsmith" && (
               <div className="space-y-3 pb-2 border-b border-purple-900/40 mb-3">
                 <span className="text-[11px] text-purple-300 font-bold block">
                   توزیع همزمان اسلحه‌ها (جنگی و مشقی):
@@ -1088,8 +1091,8 @@ sock.on('game_reset', () => {
                     className="w-full bg-neutral-900 border border-neutral-700 text-white text-xs rounded-xl p-2 outline-none focus:border-rose-500"
                   >
                     <option value="">-- عدم اهدا یا انتخاب بازیکن --</option>
-                    {players?.filter(p => p.isAlive && p.id !== player.id && (currentNightRole === "mafia" ? !isMafia(p.roleId) : true)).map(p => (
-                      <option key={p.id} value={p.id}>{p.name}{p.id === player.id ? " (خودم)" : ""}</option>
+                    {players?.filter(p => p.isAlive && p.id !== player?.id && (currentNightRole === "mafia" ? !isMafia(p.roleId) : true)).map(p => (
+                      <option key={p.id} value={p.id}>{p.name}{p.id === player?.id ? " (خودم)" : ""}</option>
                     ))}
                   </select>
                 
@@ -1131,7 +1134,7 @@ sock.on('game_reset', () => {
             )}
 
             {/* وضعیت اتمام فشنگ اسنایپر */}
-            {player.roleId === "sniper" && (() => {
+            {player?.roleId === "sniper" && (() => {
               const totalB = getSniperBulletQuota(players && players.length ? players : livePlayers);
               const usedB = (activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0;
               return totalB - usedB <= 0;
@@ -1149,7 +1152,7 @@ sock.on('game_reset', () => {
             ) : null}
 
             {/* انتخاب هدف برای سایر نقش‌ها (کارآگاه، پزشک، مافیا و ...) */}
-            {player.roleId !== "gunsmith" && (
+            {player?.roleId !== "gunsmith" && (
               <div className="flex items-center gap-2">
                 <select
                   value={selectedNightTargetId}
@@ -1160,35 +1163,35 @@ sock.on('game_reset', () => {
                   className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-purple-600"
                 >
                   <option value="">-- انتخاب بازیکن هدف --</option>
-                    {player.roleId === "sniper" && (
+                    {player?.roleId === "sniper" && (
                       <option value="PASS_ACTION" className="text-amber-400 font-bold">⚪ امشب شلیک نمی‌کنم (انصراف و حفظ تیر)</option>
                     )}
                   {currentNightRole === "mafia"
                       ? livePlayers.filter(p => p.isAlive && !isMafia(p.roleId)).map(p => (
                           <option key={p.id} value={p.id}>🎯 {p.name} (هدف شلیک مافیا)</option>
                         ))
-                      : (player.roleId === "doctor_lecter" || player.roleId === "dr_lecter")
+                      : (player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter")
                       ? (() => {
                           const usedLecterSelf = (activePlayer as any)?.lecterSelfSavesUsed ?? lecterSelfSavesUsed;
                           const canSelfSave = usedLecterSelf < 1;
                           return livePlayers
-                            .filter(p => p.isAlive && ((isMafia(p.roleId) && p.id !== player.id) || (p.id === player.id && canSelfSave)))
+                            .filter(p => p.isAlive && ((isMafia(p.roleId) && p.id !== player?.id) || (p.id === player?.id && canSelfSave)))
                             .map(p => (
                               <option key={p.id} value={p.id}>
-                                {p.id === player.id ? `🛡️ ${p.name} (خودم - باقی‌مانده: ${1 - usedLecterSelf})` : `🛡️ ${p.name} (یار مافیا)`}
+                                {p.id === player?.id ? `🛡️ ${p.name} (خودم - باقی‌مانده: ${1 - usedLecterSelf})` : `🛡️ ${p.name} (یار مافیا)`}
                               </option>
                             ));
                         })()
                       : (() => {
                         const totalCount = livePlayers.length || players?.length || 10;
                         const maxSelf = (typeof getDoctorMaxSelfSaves === "function") ? getDoctorMaxSelfSaves(totalCount) : (totalCount >= 16 ? 3 : totalCount >= 11 ? 2 : 1);
-                        const canSelfSave = player.roleId === "doctor" && doctorSelfSavesUsed < maxSelf;
+                        const canSelfSave = player?.roleId === "doctor" && doctorSelfSavesUsed < maxSelf;
 
                         return livePlayers
-                          .filter(p => p.isAlive && (p.id !== player.id || canSelfSave))
+                          .filter(p => p.isAlive && (p.id !== player?.id || canSelfSave))
                           .map(p => (
                             <option key={p.id} value={p.id}>
-                              {p.id === player.id ? `🛡️ ${p.name} (خودم - باقی‌مانده: ${maxSelf - doctorSelfSavesUsed})` : p.name}
+                              {p.id === player?.id ? `🛡️ ${p.name} (خودم - باقی‌مانده: ${maxSelf - doctorSelfSavesUsed})` : p.name}
                             </option>
                           ));
                       })()}
@@ -1230,34 +1233,34 @@ sock.on('game_reset', () => {
             {/* دکمه ارسال اکشن شب */}
             <button
               type="button"
-              disabled={nightActionSent || (player.roleId === "sniper" && (getSniperBulletQuota(players && players.length ? players : livePlayers) - ((activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0) <= 0)) || (player.roleId === "gunsmith" ? (!selectedWarTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
+              disabled={nightActionSent || (player?.roleId === "sniper" && (getSniperBulletQuota(players && players.length ? players : livePlayers) - ((activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0) <= 0)) || (player?.roleId === "gunsmith" ? (!selectedWarTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
               onClick={() => {
-                if (player.roleId === "gunsmith") {
-                  network.sendGunsmithTargets(player.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
+                if (player?.roleId === "gunsmith") {
+                  network.sendGunsmithTargets(player?.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
                 } else {
                   if (!selectedNightTargetId) return;
-                  const actionRoleToSend = (currentNightRole === "negotiator" || player.roleId === "negotiator") ? "negotiator" : currentNightRole === "hostage_taker" || player.roleId === "hostage_taker" ? "hostage_taker" : (currentNightRole === "mafia" ? "mafia" : (player.roleId === "dr_lecter" ? "doctor_lecter" : ((player.roleId === "natasha" || player.roleId === "silencer") ? "natasha" : (player.roleId || ""))));
-                  if ((player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player.id) {
+                  const actionRoleToSend = (currentNightRole === "negotiator" || player?.roleId === "negotiator") ? "negotiator" : currentNightRole === "hostage_taker" || player?.roleId === "hostage_taker" ? "hostage_taker" : (currentNightRole === "mafia" ? "mafia" : (player?.roleId === "dr_lecter" ? "doctor_lecter" : ((player?.roleId === "natasha" || player?.roleId === "silencer") ? "natasha" : (player?.roleId || ""))));
+                  if ((player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player?.id) {
                       setLecterSelfSavesUsed(prev => {
                         const nextVal = prev + 1;
                         try { localStorage.setItem(`mafia_lecter_self_${player?.id}`, String(nextVal)); } catch {}
                         return nextVal;
                       });
                     }
-                    if (player.roleId === "doctor" && selectedNightTargetId === player.id) {
+                    if (player?.roleId === "doctor" && selectedNightTargetId === player?.id) {
                       setDoctorSelfSavesUsed(prev => prev + 1);
                     }
-                    if ((player.roleId === "doctor_lecter" || player.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player.id) {
+                    if ((player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player?.id) {
                       setLecterSelfSavesUsed(prev => {
                         const nextVal = prev + 1;
                         try { localStorage.setItem(`mafia_lecter_self_${player?.id}`, String(nextVal)); } catch {}
                         return nextVal;
                       });
                     }
-                    if (player.roleId === "doctor" && selectedNightTargetId === player.id) {
+                    if (player?.roleId === "doctor" && selectedNightTargetId === player?.id) {
                       setDoctorSelfSavesUsed(prev => prev + 1);
                     }
-                    network.sendNightTarget(player.id, actionRoleToSend, selectedNightTargetId, selectedNightTargetId2 || undefined);
+                    network.sendNightTarget(player?.id, actionRoleToSend, selectedNightTargetId, selectedNightTargetId2 || undefined);
                 }
                 setNightActionSent(true);
                 audio.playFlip();
@@ -1316,7 +1319,7 @@ sock.on('game_reset', () => {
               >
                 <option value="">-- انتخاب بازیکن هدف --</option>
                 {(livePlayers?.length ? livePlayers : players)
-                  .filter((p) => p.isAlive && p.id !== player.id)
+                  .filter((p) => p.isAlive && p.id !== player?.id)
                   .map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -1331,7 +1334,7 @@ sock.on('game_reset', () => {
                   const targetP = (livePlayers?.length ? livePlayers : players).find((p) => p.id === selectedShootTargetId);
                   if (!targetP) return;
                   if (confirm(`آیا از نشانه رفتن و شلیک به سمت «${targetP.name}» اطمینان دارید؟`)) {
-                    network.submitDayShotTarget(player.id, player.name, targetP.id, targetP.name);
+                    network.submitDayShotTarget(player?.id || '', player?.name || '', targetP.id, targetP.name);
                     setGunShotPending(true);
                     audio.playShot();
                   }
@@ -1370,7 +1373,7 @@ sock.on('game_reset', () => {
 
       {/* Synchronized Speech Timer Box for Mobile */}
       {(() => {
-        const isMyTurn = Boolean(timer.speakerId && player && timer.speakerId === player.id);
+        const isMyTurn = Boolean(timer.speakerId && player && timer.speakerId === player?.id);
         const timerTypeLabels: Record<string, string> = {
           speech: 'نوبت صحبت',
           challenge: 'چالش',
@@ -1524,7 +1527,7 @@ sock.on('game_reset', () => {
       })()}
 
       {/* Challenge Button Section */}
-      {gameStarted && player.isAlive && (
+      {gameStarted && player?.isAlive && (
         <div className="flex justify-center">
           {player.usedDailyChallenge ? (
             <div className="w-full py-2.5 px-4 rounded-xl bg-neutral-900/60 border border-neutral-800 text-center text-xs text-neutral-500 font-bold">
@@ -1565,7 +1568,7 @@ sock.on('game_reset', () => {
       )}
 
       {/* SECRET NIGHT VOTING PANEL (IF ACTIVE) */}
-      {secretVote && secretVote.isActive && player.isAlive && secretVote.targetDefendantId !== player.id && (
+      {secretVote && secretVote.isActive && player?.isAlive && secretVote.targetDefendantId !== player?.id && (
         <div className="bg-neutral-950 border-2 border-purple-700/80 rounded-3xl p-5 shadow-2xl space-y-4 animate-in fade-in duration-200 select-none">
           <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
             <div className="flex items-center gap-2">
@@ -1636,9 +1639,9 @@ sock.on('game_reset', () => {
                 <button
                   onClick={() => {
                     const cId = secretVote.candidates![0].id;
-                    console.log("[VOTE CLICKED] by:", player.name, "for candidate:", cId);
+                    console.log("[VOTE CLICKED] by:", player?.name, "for candidate:", cId);
                     setSelectedCandidateId(cId);
-                    network.submitSecretVote(player.id, cId, player.name);
+                    network.submitSecretVote(player?.id, cId, player?.name);
                     setHasVoted(true);
                   }}
                   className="w-full py-8 rounded-2xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-900 border-2 border-purple-600/60 text-white font-black text-sm shadow-inner transition-none cursor-pointer flex flex-col items-center justify-center gap-2"
@@ -1655,7 +1658,7 @@ sock.on('game_reset', () => {
                         key={candidate.id}
                         onClick={() => {
                           setSelectedCandidateId(candidate.id);
-                          network.submitSecretVote(player.id, candidate.id, player.name);
+                          network.submitSecretVote(player?.id, candidate.id, player?.name);
                           setHasVoted(true);
                         }}
                         className="p-3.5 rounded-xl border bg-neutral-900 text-white font-bold border-purple-700/50 hover:border-purple-500 text-xs cursor-pointer"
@@ -1774,8 +1777,8 @@ sock.on('game_reset', () => {
                     <h2 className="hidden">{role?.name || "نامشخص"}</h2>
                 </div>
                 <div>
-                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border shadow-lg backdrop-blur-md ${(role?.team === "mafia" || role?.side === "mafia" || isMafia(player.roleId)) ? "bg-red-950/80 border-red-800 text-red-300" : "bg-blue-950/80 border-blue-800 text-blue-300"}`}>
-                    {(role?.team === "mafia" || role?.side === "mafia" || isMafia(player.roleId)) ? "تیم مافیا" : "تیم شهروند"}
+                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border shadow-lg backdrop-blur-md ${(role?.team === "mafia" || role?.side === "mafia" || isMafia(player?.roleId)) ? "bg-red-950/80 border-red-800 text-red-300" : "bg-blue-950/80 border-blue-800 text-blue-300"}`}>
+                    {(role?.team === "mafia" || role?.side === "mafia" || isMafia(player?.roleId)) ? "تیم مافیا" : "تیم شهروند"}
                   </span>
                 </div>
               </div>
@@ -1943,8 +1946,8 @@ sock.on('game_reset', () => {
                 <MafiaChat
                   isActive={mafiaChatActive}
                   messages={mafiaChatMessages}
-                  currentUserId={player.id}
-                  onSendMessage={(msg) => network.sendMafiaMessage(player.id, msg)}
+                  currentUserId={player?.id}
+                  onSendMessage={(msg) => network.sendMafiaMessage(player?.id, msg)}
                 />
               </div>
             </div>

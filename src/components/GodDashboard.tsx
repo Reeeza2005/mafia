@@ -549,7 +549,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     } else if (targetPlayer.roleId === 'joker') {
       result = 'negative';
     } else {
-      const role = ROLE_MAP[targetPlayer.roleId];
+      const role = (targetPlayer?.roleId ? (ROLE_MAP as any)[targetPlayer.roleId] : undefined);
       result = role?.team === 'mafia' ? 'positive' : 'negative';
     }
 
@@ -616,6 +616,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
               if (orig.roleId !== up.roleId) {
                 updates.roleId = up.roleId;
               }
+              if (up.wasNegotiated && !orig.wasNegotiated) {
+                updates.wasNegotiated = true;
+              }
             if (Object.keys(updates).length > 0 && typeof onUpdatePlayer === 'function') {
               console.log("[GodDashboard] فراخوانی onUpdatePlayer برای:", up.name, up.id, updates);
               onUpdatePlayer(up.id, updates);
@@ -666,6 +669,17 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             }
           });
         }
+        // اطلاع‌رسانی محرمانه به خبرنگار درباره نتیجه استعلام
+        if (report?.journalistReport) {
+          const jourPlayer = players.find((p) => p.roleId?.toLowerCase() === "journalist" && p.isAlive);
+          if (jourPlayer && network && typeof (network as any).sendNightResultToPlayer === "function") {
+            const resText = report.journalistReport.isNegotiated
+              ? `📰 استعلام شما از «${report.journalistReport.targetName}»: این بازیکن «مذاکره‌شده» است (به مافیا پیوسته است 🔴).`
+              : `📰 استعلام شما از «${report.journalistReport.targetName}»: این بازیکن «مذاکره‌نشده» است (شهروند یا مافیای اصیل 🟢).`;
+            (network as any).sendNightResultToPlayer(jourPlayer.id, resText);
+          }
+        }
+
         // اطلاع‌رسانی محرمانه به شهروند جذب‌شده در مذاکره
         if (report?.negotiationSuccessful && report?.convertedPlayerId) {
           const convertedTarget = players.find(p => p.id === report.convertedPlayerId);
@@ -1150,7 +1164,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           {/* پانل عملیات ویژه نقش‌های روز (کلانتر، قاضی، شهردار) */}
             {(() => {
               const sheriff = alivePlayers.find((p) => p.roleId === "sheriff");
-              const judge = null;
+                const judge: Player | undefined = alivePlayers.find((p) => p.roleId === 'judge');
               const mayor = alivePlayers.find((p) => p.roleId === "mayor");
 
               if (!sheriff && !judge && !mayor) return null;
@@ -1473,12 +1487,12 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                 onUpdatePlayer(target.id, { hasArmor: false });
                                 network.updatePlayerStatus(target.id, { hasArmor: false });
                                 const msg = `🛡️ «${shot.shooterName}» به «${shot.targetName}» شلیک کرد و تیر جنگی بود! اما چون زره‌پوش بود، فقط زره او افتاد و در بازی ماند.`;
-                                  network.broadcastDayGunResult(shot.shooterName, shot.targetName, true, shot.targetId, roomCode);
+                                  network.broadcastDayGunResult(shot.shooterName, shot.targetName, isWar, shot.targetId, roomCode);
                                 setGodAnnouncementText(msg);
                               } else {
                                 // مرگ و خروج از بازی
-                                onUpdatePlayer(target.id, { isAlive: false, eliminationReason: "gun_shot" });
-                                network.updatePlayerStatus(target.id, { isAlive: false, eliminationReason: "gun_shot" });
+                                  if (target) onUpdatePlayer(target.id, { isAlive: false, eliminationReason: "gun_shot" });
+                                  if (target) network.updatePlayerStatus(target.id, { isAlive: false, eliminationReason: "gun_shot" });
 
                                 // باطل شدن تیر مشقی باقیمانده در دست دیگران
                                 players.forEach(p => {
@@ -1491,7 +1505,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                 network.syncDayGuns([], roomCode);
 
                                 const msg = `💥 «${shot.shooterName}» به «${shot.targetName}» شلیک کرد و تیر جنگی بود! «${shot.targetName}» با ساید [${targetSide}] از بازی خارج شد. (تیر مشقی باقیمانده نیز باطل شد 🔥)`;
-                                  network.broadcastDayGunResult(shot.shooterName, shot.targetName, true, shot.targetId, roomCode);
+                                  network.broadcastDayGunResult(shot.shooterName, shot.targetName, isWar, shot.targetId, roomCode);
                                 setGodAnnouncementText(msg);
                               }
                             } else {
@@ -1532,24 +1546,24 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 <div className="bg-rose-950/70 border-2 border-rose-500 rounded-2xl p-3 animate-pulse space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-black text-rose-200 flex items-center gap-1.5">
-                      ⚠️ «{pendingDayShot.shooterName}» به سمت «{pendingDayShot.targetName}» نشانه رفت!
+                      ⚠️ «{pendingDayShot?.shooterName}» به سمت «{pendingDayShot?.targetName}» نشانه رفت!
                     </span>
-                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${pendingDayShot.gunType === "war" ? "bg-rose-700 text-white" : "bg-sky-700 text-white"}`}>
-                      {pendingDayShot.gunType === "war" ? "💥 تیر جنگی (کشنده)" : "💨 تیر مشقی (بی‌اثر)"}
+                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${pendingDayShot?.gunType === "war" ? "bg-rose-700 text-white" : "bg-sky-700 text-white"}`}>
+                      {pendingDayShot?.gunType === "war" ? "💥 تیر جنگی (کشنده)" : "💨 تیر مشقی (بی‌اثر)"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => {
-                        const isReal = pendingDayShot.gunType === "war";
+                        const isReal = pendingDayShot?.gunType === "war";
                         audio.playShot();
                         if (isReal) {
-                          network.updatePlayerStatus(pendingDayShot.targetId, { isAlive: false, eliminationReason: "mafia_shot" });
+                          network.updatePlayerStatus(pendingDayShot?.targetId, { isAlive: false, eliminationReason: "mafia_shot" });
                         }
-                        network.broadcastDayGunResult(pendingDayShot.shooterName, pendingDayShot.targetName, isReal, pendingDayShot.targetId, roomCode);
+                          network.broadcastDayGunResult(pendingDayShot?.shooterName || '', pendingDayShot?.targetName || '', isReal, pendingDayShot?.targetId || '', roomCode);
                         setDayGuns(prev => {
-                          const updated = prev.map(g => g.targetId === pendingDayShot.shooterId ? { ...g, used: true } : g);
+                          const updated = prev.map(g => g.targetId === pendingDayShot?.shooterId ? { ...g, used: true } : g);
                           network.syncDayGuns(updated, roomCode);
                           return updated;
                         });
@@ -1821,13 +1835,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                           ? "bg-amber-600 text-white shadow-lg ring-2 ring-amber-400"
                           : "bg-amber-950/50 text-amber-300 border border-amber-900/60 hover:bg-amber-900/70"
                       }`}
-                    onClick={() => {
-                      const next = currentActiveNightStep === "gunsmith" ? null : "gunsmith";
-                      setCurrentActiveNightStep(next);
-                      network.setNightStep(next, roomCode);
-                      if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
-                    }}
-                    >
+                                        >
                       🔫 بیدارباش تفنگدار
                     </button>
                   )}
@@ -1903,6 +1911,35 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             }`}
                           >
                             🤝 بیدارباش مذاکره‌کننده {!isUnlocked && "🔒"}
+                          </button>
+                        );
+                      })()}
+
+                      {/* دکمه بیدارباش مشروط خبرنگار */}
+                      {alivePlayers.some(p => p.roleId === "journalist") && (() => {
+                        const isUnlocked = players.some(p => p.wasNegotiated);
+                        const isCurrent = currentActiveNightStep === "journalist";
+                        return (
+                          <button
+                            type="button"
+                            disabled={!isUnlocked}
+                            onClick={() => {
+                              if (!isUnlocked) return;
+                              const next = isCurrent ? null : "journalist";
+                              setCurrentActiveNightStep(next);
+                              network.setNightStep(next, roomCode);
+                              if (currentActiveNightStep === "mafia") network.toggleMafiaChat(false);
+                            }}
+                            title={isUnlocked ? "فعال برای استعلام مذاکره" : "قفل: نیازمند وقوع مذاکره موفق در بازی"}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                              !isUnlocked
+                                ? "bg-slate-900/60 text-slate-500 border border-slate-800 cursor-not-allowed opacity-60"
+                                : isCurrent
+                                ? "bg-cyan-600 text-white shadow-lg ring-2 ring-cyan-400"
+                                : "bg-cyan-950/60 text-cyan-300 border border-cyan-900/70 hover:bg-cyan-900/80"
+                            }`}
+                          >
+                            📰 بیدارباش خبرنگار {!isUnlocked && "🔒"}
                           </button>
                         );
                       })()}
@@ -2021,12 +2058,12 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                  <button
                                    type="button"
                                    onClick={() => {
-                                     const isSkip = item.isSkip || item.targetId === "skip";
+                                     const isSkip = (item as any).isSkip || item.targetId === "skip";
                                      (network.socket || (network as any).getSocket?.())?.emit("bomb:god_confirm", {
                                        roomCode,
                                        bomberId: item.playerId,
                                        targetId: item.targetId,
-                                       wires: item.wires,
+                                       wires: (item as any).wires,
                                        isSkip
                                      });
                                      setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
@@ -2034,7 +2071,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                    }}
                                    className="px-2.5 py-1 rounded-lg bg-red-950 border border-red-700 text-red-200 text-[10px] font-bold hover:bg-red-900 cursor-pointer shadow-lg shadow-red-950/40"
                                  >
-                                   {item.isSkip || item.targetId === "skip" ? "تایید انصراف بمب‌گذار ✓" : "تایید کارگذاری بمب 💣"}
+                                   {(item as any).isSkip || item.targetId === "skip" ? "تایید انصراف بمب‌گذار ✓" : "تایید کارگذاری بمب 💣"}
                                  </button>
                                 ) : false && item.roleId === "gunsmith" ? (
                             <button
@@ -2203,7 +2240,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                       setIncomingNightTargets(prev => prev.filter((_, i) => i !== idx && prev[i]?.playerId !== item.playerId));
 
                                       const targetPlayer = players.find(p => p.id === item.targetId);
-                                      const isTargetMafia = targetPlayer && (ROLE_MAP[targetPlayer.roleId]?.team === "mafia" || isMafiaRoleId(targetPlayer.roleId) || targetPlayer.roleId === "dr_lecter" || targetPlayer.roleId === "doctor_lecter");
+                                      const isTargetMafia = targetPlayer && ((targetPlayer?.roleId ? (ROLE_MAP as any)[targetPlayer.roleId] : undefined)?.team === "mafia" || isMafiaRoleId(targetPlayer.roleId) || targetPlayer.roleId === "dr_lecter" || targetPlayer.roleId === "doctor_lecter");
                                       const isTargetGodfather = targetPlayer?.roleId === "godfather";
                                       const isSavedByLecter = nightActions.doctorLecterSaveId === item.targetId;
 
@@ -2439,7 +2476,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 )}
 
                 {/* ۶. سکوت ناتاشا */}
-                {(activeNightRoleIds.has("natasha") || activeNightRoleIds.has("silencer")) && (
+                {(activeNightRoleIds.has("natasha") || (activeNightRoleIds as any).has("silencer")) && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-fuchsia-950 space-y-2">
                     <span className="font-bold text-fuchsia-400 flex items-center gap-1">
                       🤫 سکوت ناتاشا:

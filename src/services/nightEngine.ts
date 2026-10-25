@@ -17,7 +17,7 @@ export function getActiveNightRoles(players: Player[]) {
 
   return Object.values(ROLES_REGISTRY)
     .filter((role) => {
-      const isAlive = aliveRoleIds.has(role.id.toLowerCase());
+      const isAlive = Boolean(role.id && aliveRoleIds.has(role.id.toLowerCase()));
       const hasAction = (role as any).hasNightAction !== false && role.nightPriority !== undefined;
       return isAlive && hasAction;
     })
@@ -240,6 +240,7 @@ export function resolveNight(
   // ۴. اولویت چهارم (استعلام‌ها و فریب): کارآگاه و جوکر
   // ----------------------------------------------------
   let detectiveReport: { targetId: string; isPositive: boolean } | undefined;
+  let journalistReport: { targetId: string; targetName: string; isNegotiated: boolean } | undefined;
     // --- پردازش شلیک اسنایپر و تعامل با سیو دکتر لکتر ---
     if (actions.sniperShotId) {
       const sniperPlayer = Array.from(playerMap.values()).find((p) => p.roleId === "sniper");
@@ -369,6 +370,7 @@ export function resolveNight(
             logs.push(`⚠️ مذاکره ناکام ماند: ${negotiatorFailedReason}`);
           } else if (target.roleId === "simple_citizen") {
             target.roleId = "simple_mafia";
+            target.wasNegotiated = true;
             negotiationSuccessful = true;
             convertedPlayerId = target.id;
             logs.push(`🤝 مذاکره موفقیت‌آمیز بود: شهروند ساده (${target.name}) به تیم مافیا پیوست.`);
@@ -378,6 +380,49 @@ export function resolveNight(
           }
         }
       }
+    }
+  }
+
+  
+  // ۷. اولویت هفتم: پردازش استعلام خبرنگار (تشخیص یارگیری مافیا)
+  if (actions.journalistTargetId && actions.journalistTargetId !== "skip") {
+    const journalistPlayer = Array.from(playerMap.values()).find(
+      (p) => p.isAlive && p.roleId?.toLowerCase() === "journalist"
+    );
+
+    if (journalistPlayer && !blockedIds.has(journalistPlayer.id)) {
+      const jourId = journalistPlayer.id;
+      if (!updatedQuotas[jourId]) {
+        updatedQuotas[jourId] = { totalUses: 0, selfUses: 0 };
+      }
+
+      const usedUses = updatedQuotas[jourId].totalUses || 0;
+      if (usedUses >= 2) {
+        logs.push(`⚠️ استعلام خبرنگار انجام نشد: سهمیه ۲ باره در این بازی به اتمام رسیده است.`);
+      } else {
+        const target = playerMap.get(actions.journalistTargetId);
+        if (target && target.isAlive) {
+          updatedQuotas[jourId].totalUses = usedUses + 1;
+          updatedQuotas[jourId].lastTargetId = target.id;
+
+          const isNegotiated = Boolean(target.wasNegotiated || (convertedPlayerId && target.id === convertedPlayerId));
+          journalistReport = {
+            targetId: target.id,
+            targetName: target.name,
+            isNegotiated,
+          };
+
+          logs.push(
+            `📰 استعلام خبرنگار از «${target.name}»: ${
+              isNegotiated ? "مذاکره‌شده (یارگیری مافیا 🔴)" : "مذاکره‌نشده (مافیای اصیل یا شهروند 🟢)"
+            } (استعلام مصرف‌شده: ${usedUses + 1}/2)`
+          );
+        } else {
+          logs.push(`⚠️ استعلام خبرنگار به دلیل نامعتبر بودن یا مرگ هدف انجام نشد.`);
+        }
+      }
+    } else if (journalistPlayer && blockedIds.has(journalistPlayer.id)) {
+      logs.push(`🔒 خبرنگار گروگان گرفته شده بود و نتوانست استعلام بگیرد.`);
     }
   }
 
@@ -407,6 +452,7 @@ export function resolveNight(
       negotiationSuccessful,
       convertedPlayerId,
       negotiatorFailedReason,
+      journalistReport,
       logs,
     },
     updatedQuotas,
