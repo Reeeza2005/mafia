@@ -667,28 +667,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             }
           });
         }
-        // اطلاع‌رسانی محرمانه به خبرنگار درباره نتیجه استعلام
-        if (report?.journalistReport) {
-          const jourPlayer = players.find((p) => p.roleId?.toLowerCase() === "journalist" && p.isAlive);
-          if (jourPlayer && network && typeof (network as any).sendNightResultToPlayer === "function") {
-            const resText = report.journalistReport.isNegotiated
-              ? `📰 استعلام شما از «${report.journalistReport.targetName}»: این بازیکن «مذاکره‌شده» است (به مافیا پیوسته است 🔴).`
-              : `📰 استعلام شما از «${report.journalistReport.targetName}»: این بازیکن «مذاکره‌نشده» است (شهروند یا مافیای اصیل 🟢).`;
-            (network as any).sendNightResultToPlayer(jourPlayer.id, resText);
-          }
-        }
-
-        // اطلاع‌رسانی محرمانه به شهروند جذب‌شده در مذاکره
-        if (report?.negotiationSuccessful && report?.convertedPlayerId) {
-          const convertedTarget = players.find(p => p.id === report.convertedPlayerId);
-          if (convertedTarget && network && typeof network.sendNightResultToPlayer === 'function') {
-            network.sendNightResultToPlayer(
-              convertedTarget.id,
-              "🤝 شما دیشب توسط مذاکره‌کننده جذب شدید! از این لحظه ساید شما «مافیا» است و باید در جهت پیروزی مافیا تلاش کنید."
-            );
-          }
-        }
-
         if (report.silencedId) {
           const sp = players.find((p) => p.id === report.silencedId);
           if (sp) {
@@ -696,6 +674,30 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           }
         }
       }
+
+      // اطلاع‌رسانی محرمانه به خبرنگار درباره نتیجه استعلام (مستقل از وجود کشته در شب)
+      if (report?.journalistReport) {
+        const jourPlayer = players.find((p) => p.roleId?.toLowerCase() === "journalist" && p.isAlive);
+        if (jourPlayer && network && typeof (network as any).sendNightResultToPlayer === "function") {
+          const resText = report.journalistReport.isNegotiated
+            ? `📰 استعلام شما از «${report.journalistReport.targetName}»: این بازیکن «مذاکره‌شده» است (به مافیا پیوسته است 🔴).`
+            : `📰 استعلام شما از «${report.journalistReport.targetName}»: این بازیکن «مذاکره‌نشده» است (شهروند یا مافیای اصیل 🟢).`;
+          (network as any).sendNightResultToPlayer(jourPlayer.id, resText, report.journalistReport.isNegotiated ? "positive" : "negative");
+        }
+      }
+
+      // اطلاع‌رسانی محرمانه به شهروند جذب‌شده در مذاکره (مستقل از وجود کشته در شب)
+      if (report?.negotiationSuccessful && report?.convertedPlayerId) {
+        const convertedTarget = players.find(p => p.id === report.convertedPlayerId);
+        if (convertedTarget && network && typeof network.sendNightResultToPlayer === "function") {
+          network.sendNightResultToPlayer(
+            convertedTarget.id,
+            "🤝 شما دیشب توسط مذاکره‌کننده جذب شدید! از این لحظه ساید شما «مافیا» است و باید در جهت پیروزی مافیا تلاش کنید.",
+            "negative"
+          );
+        }
+      }
+
 
       // ۵. ثبت قطعی استیت‌ها و نمایش پاپ‌آپ گزارش در صفحه اصلی
       setMorningReportText(reportAnnouncement);
@@ -2326,7 +2328,60 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             >
                               تایید گروگان ⛓️
                             </button>
-                          ) : (
+                            ) : item.roleId === "journalist" ? (() => {
+                              const targetPlayer = players.find(p => p.id === item.targetId);
+                              const isNegotiated = Boolean(
+                                targetPlayer?.wasNegotiated || 
+                                (nightActions.negotiatorTargetId && targetPlayer?.id === nightActions.negotiatorTargetId)
+                              );
+                              const resType = isNegotiated ? "positive" : "negative";
+                              const statusText = isNegotiated ? "مذاکره‌شده 🔴 (پیوسته به مافیا)" : "مذاکره‌نشده 🟢 (شهروند یا مافیای اصیل)";
+                              const defaultMsg = `📰 استعلام شما از «${item.targetName}»: این بازیکن «${isNegotiated ? "مذاکره‌شده" : "مذاکره‌نشده"}» است (${isNegotiated ? "به مافیا پیوسته است 🔴" : "شهروند یا مافیای اصیل 🟢"}).`;
+
+                              return (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] text-neutral-400 font-bold ml-1">
+                                    سیستم: <strong className={isNegotiated ? "text-rose-400" : "text-emerald-400"}>{statusText}</strong>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      network.sendNightResultToPlayer(item.playerId, defaultMsg, resType);
+                                      setNightActions(prev => ({
+                                        ...prev,
+                                        journalistTargetId: item.targetId,
+                                      }));
+                                      setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                      network.setNightStep(null, roomCode);
+                                      setCurrentActiveNightStep(null);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-black cursor-pointer shadow-lg"
+                                  >
+                                    تایید و ارسال استعلام خبرنگار ✓
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="ارسال برعکس به صورت دستی"
+                                    onClick={() => {
+                                      const altNegotiated = !isNegotiated;
+                                      const altType = altNegotiated ? "positive" : "negative";
+                                      const altMsg = `📰 استعلام شما از «${item.targetName}»: این بازیکن «${altNegotiated ? "مذاکره‌شده" : "مذاکره‌نشده"}» است (${altNegotiated ? "به مافیا پیوسته است 🔴" : "شهروند یا مافیای اصیل 🟢"}).`;
+                                      network.sendNightResultToPlayer(item.playerId, altMsg, altType);
+                                      setNightActions(prev => ({
+                                        ...prev,
+                                        journalistTargetId: item.targetId,
+                                      }));
+                                      setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
+                                      network.setNightStep(null, roomCode);
+                                      setCurrentActiveNightStep(null);
+                                    }}
+                                    className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[10px] cursor-pointer"
+                                  >
+                                    تغییر دستی ⇄
+                                  </button>
+                                </div>
+                              );
+                            })() : (
                             <button
                               type="button"
                               onClick={() => {
@@ -2436,7 +2491,26 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   </div>
                 )}
 
-                {/* ۴. استعلام کارآگاه */}
+                                  {/* ۴.۱. استعلام خبرنگار */}
+                  {alivePlayers.some((p) => p.roleId === "journalist") && (
+                    <div className="bg-neutral-950 p-3.5 rounded-2xl border border-cyan-950 space-y-2">
+                      <span className="font-bold text-cyan-400 flex items-center gap-1">
+                        📰 استعلام خبرنگار:
+                      </span>
+                      <select
+                        value={nightActions.journalistTargetId || ""}
+                        onChange={(e) => setNightActions((prev) => ({ ...prev, journalistTargetId: e.target.value || undefined }))}
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white"
+                      >
+                        <option value="">-- بدون استعلام --</option>
+                        {alivePlayers.filter((p) => p.roleId !== "journalist").map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* ۴. استعلام کارآگاه */}
                 {activeNightRoleIds.has("detective") && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-emerald-950 space-y-2">
                     <span className="font-bold text-emerald-400 flex items-center gap-1">
