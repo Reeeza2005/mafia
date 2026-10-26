@@ -648,7 +648,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
        const newGunsToAdd: Array<{ targetId: string; targetName: string; type: 'war' | 'blank'; used: boolean }> = [];
        gunsmithRecipients.forEach((rec) => {
          // تفنگ فقط در صورتی به روز منتقل می‌شود که گیرنده در طول شب کشته نشده باشد
-         if (!deadList.includes(rec.targetId)) {
+         const nightKilledIds = (report?.deaths || []).map((d: any) => d.victimId || d.id || d.playerId);
+          if (!nightKilledIds.includes(rec.targetId)) {
            const targetP = players.find((p) => p.id === rec.targetId);
            if (targetP) {
              newGunsToAdd.push({

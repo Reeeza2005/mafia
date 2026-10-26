@@ -1086,7 +1086,7 @@ sock.on('game_reset', () => {
 
             {/* انتخاب‌های اختصاصی تفنگدار: دو کادر همزمان جنگی و مشقی */}
             {player?.roleId === "gunsmith" && (
-                <div className="space-y-4 pb-3 border-b border-purple-900/40 mb-3 bg-purple-950/20 p-3 rounded-2xl border">
+                <div className="space-y-4 pb-3 border-b border-purple-900/40 mb-3 bg-purple-950/20 p-3 rounded-2xl border border-purple-800/40">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-purple-200 font-extrabold flex items-center gap-1.5">
                       🔫 سهمیه اهدای شبانه تفنگدار (۲ تفنگ)
@@ -1105,12 +1105,12 @@ sock.on('game_reset', () => {
                           type="button"
                           onClick={() => {
                             setGunType("bullet");
-                            // اگر بازیکن هدف فعلی خود تفنگدار است، پاک شود چون جنگی به خود ممنوع است
+                            setGun2Type("blank");
                             if (selectedNightTargetId === player?.id) {
                               setSelectedNightTargetId("");
                             }
                           }}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
                             gunType === "bullet"
                               ? "bg-rose-600 text-white shadow-md shadow-rose-900/40"
                               : "bg-neutral-800 text-neutral-400 hover:text-white"
@@ -1121,7 +1121,7 @@ sock.on('game_reset', () => {
                         <button
                           type="button"
                           onClick={() => setGunType("blank")}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
                             gunType === "blank"
                               ? "bg-sky-600 text-white shadow-md shadow-sky-900/40"
                               : "bg-neutral-800 text-neutral-400 hover:text-white"
@@ -1142,8 +1142,8 @@ sock.on('game_reset', () => {
                       <option value="">-- انتخاب بازیکن برای تفنگ ۱ --</option>
                       {players?.filter(p => {
                         if (!p.isAlive) return false;
-                        if (gunType === "bullet" && p.id === player?.id) return false; // تفنگدار نمی‌تواند به خود تیر جنگی بدهد
-                        if (p.id === selectedBlankTargetId) return false; // جلوگیری از انتخاب تکراری با تفنگ ۲
+                        if (gunType === "bullet" && p.id === player?.id) return false;
+                        if (p.id === selectedBlankTargetId) return false;
                         return true;
                       }).map(p => (
                         <option key={p.id} value={p.id}>
@@ -1160,24 +1160,29 @@ sock.on('game_reset', () => {
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          disabled={gunType === "bullet"} // اگر تفنگ اول جنگی بود، تفنگ دوم جنگی نمی‌تواند باشد
                           onClick={() => {
-                            if (gunType !== "bullet") {
-                              // تغییر وضعیت
+                            setGun2Type("bullet");
+                            setGunType("blank");
+                            if (selectedBlankTargetId === player?.id) {
+                              setSelectedBlankTargetId("");
                             }
                           }}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
-                            gunType !== "bullet"
-                              ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
-                              : "opacity-40 cursor-not-allowed bg-neutral-800 text-neutral-600"
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
+                            gun2Type === "bullet"
+                              ? "bg-rose-600 text-white shadow-md shadow-rose-900/40"
+                              : "bg-neutral-800 text-neutral-400 hover:text-white"
                           }`}
-                          title={gunType === "bullet" ? "تنها یک تیر جنگی در هر شب مجاز است" : ""}
                         >
                           💥 جنگی
                         </button>
                         <button
                           type="button"
-                          className="px-2 py-1 rounded-lg text-[10px] font-black bg-sky-600 text-white shadow-md shadow-sky-900/40"
+                          onClick={() => setGun2Type("blank")}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
+                            gun2Type === "blank"
+                              ? "bg-sky-600 text-white shadow-md shadow-sky-900/40"
+                              : "bg-neutral-800 text-neutral-400 hover:text-white"
+                          }`}
                         >
                           ⚪ مشقی
                         </button>
@@ -1191,14 +1196,15 @@ sock.on('game_reset', () => {
                       }}
                       className="w-full bg-neutral-950 border border-neutral-700 text-white text-xs rounded-xl p-2.5 outline-none focus:border-purple-500"
                     >
-                      <option value="">-- انتخاب بازیکن برای تفنگ ۲ (مشقی) --</option>
+                      <option value="">-- انتخاب بازیکن برای تفنگ ۲ --</option>
                       {players?.filter(p => {
                         if (!p.isAlive) return false;
-                        if (p.id === selectedNightTargetId) return false; // جلوگیری از انتخاب تکراری با تفنگ ۱
+                        if (gun2Type === "bullet" && p.id === player?.id) return false;
+                        if (p.id === selectedNightTargetId) return false;
                         return true;
                       }).map(p => (
                         <option key={p.id} value={p.id}>
-                          {p.name} {p.id === player?.id ? " (خودم)" : ""}
+                          {p.name} {p.id === player?.id ? " (خودم - فقط مشقی)" : ""}
                         </option>
                       ))}
                     </select>
