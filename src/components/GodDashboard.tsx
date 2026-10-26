@@ -466,7 +466,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
      if (isConfirmed) {
        const condemnedPlayer = players.find((p) => p.id === condemned.id);
-       const isArmored = condemnedPlayer && (condemnedPlayer.roleId === "armored" || condemnedPlayer.hasArmor) && condemnedPlayer.hasArmor !== false;
+       const isArmored = condemnedPlayer && condemnedPlayer.roleId === "armored" && condemnedPlayer.hasArmor !== false;
        
        if (isArmored && condemnedPlayer) {
          alert(`🛡️ زره‌پوش نجات یافت!\n\n«${condemnedPlayer.name}» دارای کارت زره‌پوش است.\nزره او شکست و در بازی باقی می‌ماند!`);
@@ -722,6 +722,14 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             "🤝 شما دیشب توسط مذاکره‌کننده جذب شدید! از این لحظه ساید شما «مافیا» است و باید در جهت پیروزی مافیا تلاش کنید.",
             "negative"
           );
+          if (convertedTarget) {
+            if (typeof onUpdatePlayer === "function") {
+              onUpdatePlayer(convertedTarget.id, { roleId: "simple_mafia", wasNegotiated: true });
+            }
+            if (network && typeof (network as any).updatePlayerStatus === "function") {
+              (network as any).updatePlayerStatus(convertedTarget.id, { roleId: "simple_mafia", wasNegotiated: true });
+            }
+          }
         }
       }
 
@@ -2828,7 +2836,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                           {role ? role.name : 'نقش تعیین‌نشده'}
                         </span>
 
-                        {player.hasArmor && (
+                          {player.hasArmor && player.roleId === 'armored' && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-sky-950 text-sky-300 border border-sky-800 font-bold">
                             جلیقه 🛡️
                           </span>
@@ -2926,7 +2934,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             ? 'bg-sky-600 text-white border-sky-500'
                             : 'bg-neutral-900 text-neutral-500 border-neutral-800'
                         }`}
-                        title={player.hasArmor ? 'شکستن جلیقه' : 'ترمیم جلیقه'}
+                        title={player.roleId === 'godfather' ? (player.hasArmor ? 'سپر شب فعال' : 'سپر شب شکسته') : (player.hasArmor ? 'شکستن زره' : 'ترمیم زره')}
                       >
                         {player.hasArmor ? <Shield className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
                       </button>
