@@ -444,39 +444,40 @@ io.on('connection', (socket) => {
     });
 
     socket.on("gunsmith_targets_submit", (data: any) => {
-      const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
-      if (!rCode) return;
-      const room = rooms[rCode.toString().toUpperCase()];
-      if (!room) return;
+        const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
+        if (!rCode) return;
+        const room = rooms[rCode.toString().toUpperCase()];
+        if (!room) return;
 
-      const player = room.players?.[data.playerId] || (Object.values(room.players || {}) as any[]).find(p => p.id === data.playerId);
-      const targetGod = room.godSocketId ? io.to(room.godSocketId) : io.to(room.code);
+        const effectivePlayerId = data.playerId || data.gunsmithId;
+        const player = room.players?.[effectivePlayerId] || (Object.values(room.players || {}) as any[]).find(p => p.id === effectivePlayerId);
+        const targetGod = room.godSocketId ? io.to(room.godSocketId) : io.to(room.code);
 
-      // حالت پاس / انصراف شبانه
-      if (data.isPass) {
-        targetGod.emit("night_target_received", {
-          playerId: data.playerId,
-          playerName: player?.name || "تفنگ‌دار",
-          roleId: "gunsmith",
-          targetId: "pass",
-          targetName: "انصراف از اهدا در این شب",
-          extraType: "pass",
-        });
-        return;
-      }
+        if (data.isPass) {
+          targetGod.emit("night_target_received", {
+            playerId: effectivePlayerId,
+            playerName: player?.name || "تفنگ‌دار",
+            roleId: "gunsmith",
+            targetId: "pass",
+            targetName: "انصراف از اهدا در این شب",
+            extraType: "pass",
+          });
+          return;
+        }
 
-      // استخراج لیست اسلحه‌ها از ساختار جدید guns یا فیلدهای مستقیم
-      const gunsToDistribute: Array<{ targetId: string; type: "war" | "blank" }> = [];
-      if (Array.isArray(data.guns) && data.guns.length > 0) {
-        data.guns.forEach((g: any) => {
-          if (g && g.targetId) gunsToDistribute.push({ targetId: g.targetId, type: g.type || "blank" });
-        });
-      } else {
-        if (data.warTargetId) gunsToDistribute.push({ targetId: data.warTargetId, type: "war" });
-        if (data.blankTargetId) gunsToDistribute.push({ targetId: data.blankTargetId, type: "blank" });
-      }
+        const gunsToDistribute: Array<{ targetId: string; type: "war" | "blank" }> = [];
+        if (Array.isArray(data.guns) && data.guns.length > 0) {
+          data.guns.forEach((g: any) => {
+            if (g && g.targetId) gunsToDistribute.push({ targetId: g.targetId, type: g.type || "blank" });
+          });
+        } else {
+          if (data.target1Id) gunsToDistribute.push({ targetId: data.target1Id, type: data.gunType1 || "war" });
+          if (data.target2Id) gunsToDistribute.push({ targetId: data.target2Id, type: data.gunType2 || "blank" });
+          if (data.warTargetId) gunsToDistribute.push({ targetId: data.warTargetId, type: "war" });
+          if (data.blankTargetId) gunsToDistribute.push({ targetId: data.blankTargetId, type: "blank" });
+        }
 
-      gunsToDistribute.forEach(gun => {
+        gunsToDistribute.forEach(gun => {
         const targetP = room.players?.[gun.targetId] || (Object.values(room.players || {}) as any[]).find(p => p.id === gun.targetId);
         targetGod.emit("night_target_received", {
           playerId: data.playerId,

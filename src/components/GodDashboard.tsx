@@ -2106,28 +2106,38 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                               type="button"
                               onClick={() => {
                                 const isReal = item.extraType !== "blank";
-                                setNightActions(prev => ({
-                                  ...prev,
-                                  gunsmithTargetId: item.targetId,
-                                  gunsmithGunType: isReal ? "war" : "blank",
-                                }));
-                                setDayGuns(prev => [
-                                  ...prev.filter(g => g.targetId !== item.targetId),
-                                  {
-                                    targetId: item.targetId,
-                                    targetName: item.targetName,
-                                    type: isReal ? "war" : "blank",
-                                    used: false,
-                                  }
-                                ]);
-                                setIncomingNightTargets(prev => prev.filter(t => !(t.playerId === item.playerId && t.targetId === item.targetId)));
-                                onUpdatePlayer(item.targetId, { gunGiven: isReal ? "war" : "blank" });
-                                network.updatePlayerStatus(item.targetId, { gunGiven: isReal ? "war" : "blank" });
-                                network.sendNightResultToPlayer(
-                                  item.playerId,
-                                  `اسلحه (${isReal ? "جنگی 💥" : "مشقی ⚪"}) با موفقیت به «${item.targetName}» تحویل داده شد ✓`
-                                );
-                                network.setNightStep(null, roomCode);
+                                  const gunTypeVal: 'war' | 'blank' = isReal ? "war" : "blank";
+                                  setNightActions(prev => {
+                                    if (!prev.gunsmithTarget1Id) {
+                                      return { ...prev, gunsmithTarget1Id: item.targetId, gunsmithGunType1: gunTypeVal };
+                                    } else if (!prev.gunsmithTarget2Id && prev.gunsmithTarget1Id !== item.targetId) {
+                                      return { ...prev, gunsmithTarget2Id: item.targetId, gunsmithGunType2: gunTypeVal };
+                                    }
+                                    return { ...prev, gunsmithTarget1Id: item.targetId, gunsmithGunType1: gunTypeVal };
+                                  });
+                                  setDayGuns(prev => [
+                                    ...prev.filter(g => g.targetId !== item.targetId),
+                                    {
+                                      targetId: item.targetId,
+                                      targetName: item.targetName,
+                                      type: gunTypeVal,
+                                      used: false,
+                                    }
+                                  ]);
+                                  setIncomingNightTargets(prev => {
+                                    const next = prev.filter(t => !(t.playerId === item.playerId && t.targetId === item.targetId));
+                                    const remainingGunCards = next.filter(t => t.playerId === item.playerId && t.roleId === "gunsmith");
+                                    if (remainingGunCards.length === 0) {
+                                      network.setNightStep(null, roomCode);
+                                    }
+                                    return next;
+                                  });
+                                  onUpdatePlayer(item.targetId, { gunGiven: gunTypeVal });
+                                  network.updatePlayerStatus(item.targetId, { gunGiven: gunTypeVal });
+                                  network.sendNightResultToPlayer(
+                                    item.playerId,
+                                    `اسلحه (${isReal ? "جنگی 💥" : "مشقی ⚪"}) با موفقیت به «${item.targetName}» تحویل داده شد ✓`
+                                  );
                                 setCurrentActiveNightStep(null);
                               }}
                               className="px-2.5 py-1 rounded-lg bg-amber-950 border border-amber-700 text-amber-200 text-[10px] font-bold hover:bg-amber-900 cursor-pointer"
