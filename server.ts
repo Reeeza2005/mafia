@@ -1264,15 +1264,27 @@ io.on('connection', (socket) => {
       }];
 
       // ریست وضعیت تمام بازیکنان داخل اتاق
-      for (const pId in room.players) {
-        const p = room.players[pId];
-        p.isAlive = true;
-        delete (p as any).roleId;
-        delete (p as any).side;
-        delete (p as any).eliminationReason;
-        delete (p as any).gunGiven;
-        delete (p as any).hasDayShot;
-      }
+        for (const pId in room.players) {
+          const p = room.players[pId];
+          p.isAlive = true;
+          delete (p as any).roleId;
+          delete (p as any).side;
+          delete (p as any).eliminationReason;
+          delete (p as any).gunGiven;
+          delete (p as any).hasDayShot;
+          delete (p as any).wasNegotiated;
+          delete (p as any).hasArmor;
+          delete (p as any).isHostaged;
+          delete (p as any).isSilenced;
+          delete (p as any).silencedDays;
+          delete (p as any).disarmed;
+          delete (p as any).isProtected;
+          delete (p as any).lastTargetId;
+          delete (p as any).gunType;
+        }
+        if ((room as any).dayGuns) {
+          (room as any).dayGuns = [];
+        }
 
       console.log(`[SERVER reset_game] Room ${room.code} reset successfully.`);
       io.to(room.code).emit("game_reset", {
