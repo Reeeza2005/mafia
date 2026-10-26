@@ -82,6 +82,7 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
   const [selectedWarTargetId, setSelectedWarTargetId] = useState("");
   const [selectedBlankTargetId, setSelectedBlankTargetId] = useState("");
   const [gunType, setGunType] = useState<"bullet" | "blank">("bullet");
+  const [gun2Type, setGun2Type] = useState<"bullet" | "blank">("blank");
   const [currentNightRole, setCurrentNightRole] = useState<string | null>(null);
   const [nightActionDone, setNightActionDone] = useState(false);
   const [nightActionSent, setNightActionSent] = useState(false);
@@ -812,7 +813,7 @@ sock.on('game_reset', () => {
               جلیقه‌دار 🛡️
             </span>
           )}
-          {false && activePlayer?.gunGiven && (
+          {(activePlayer?.gunGiven || myDayGun) && (
             <span className="px-2 py-0.5 rounded-md bg-rose-950 border border-rose-800 text-[10px] text-rose-300 font-bold animate-pulse">
               مسلح 🔫
             </span>
@@ -933,7 +934,7 @@ sock.on('game_reset', () => {
       )}
       
         {/* --- اکشن شلیک تفنگ در فاز روز (دادگاه) --- */}
-        {!nightPhaseActive && myDayGun && !myDayGun.used && player?.isAlive && (
+        {!nightPhaseActive && (myDayGun || activePlayer?.gunGiven) && (!myDayGun || !myDayGun.used) && player?.isAlive && (
           <div className="bg-orange-950/60 border border-orange-500/80 p-4 rounded-2xl my-4 shadow-2xl animate-fade-in text-right">
             <div className="flex items-center justify-between border-b border-orange-800/60 pb-2 mb-3">
               <span className="text-xs font-black text-orange-200">شما دارای اسلحه هستید!</span>
@@ -963,7 +964,15 @@ sock.on('game_reset', () => {
                   }
                   const sock = (network as any)?.getSocket?.() || (network as any)?.socket;
                   const rCode = (network as any)?.roomCode || (network as any)?.getRoomCode?.() || "";
-                  sock?.emit("gun:shoot", { roomCode: rCode, shooterId: player?.id, targetId: tid });
+                  const targetObj = players.find(p => p.id === tid);
+                    sock?.emit("gun:shoot", { roomCode: rCode, shooterId: player?.id, targetId: tid });
+                    sock?.emit("submit_day_shot_target", {
+                      roomCode: rCode,
+                      shooterId: player?.id,
+                      shooterName: player?.name,
+                      targetId: tid,
+                      targetName: targetObj?.name || "نامشخص",
+                    });
                   setMyDayGun(prev => prev ? { ...prev, used: true } : null);
                 }}
                 className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer text-center"
@@ -1324,7 +1333,22 @@ sock.on('game_reset', () => {
                     if (player?.roleId === "doctor" && selectedNightTargetId === player?.id) {
                       setDoctorSelfSavesUsed(prev => prev + 1);
                     }
-                    network.sendNightTarget(player?.id, actionRoleToSend, selectedNightTargetId, selectedNightTargetId2 || undefined);
+                    if (player?.roleId === "gunsmith") {
+                        const socket = network?.getSocket?.() || (network as any)?.socket;
+                        const roomCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || "";
+                        if (socket) {
+                          socket.emit("gunsmith_targets_submit", {
+                            roomCode,
+                            gunsmithId: player?.id,
+                            target1Id: selectedNightTargetId,
+                            gunType1: gunType === "bullet" ? "war" : "blank",
+                            target2Id: selectedBlankTargetId,
+                            gunType2: gun2Type === "bullet" ? "war" : "blank",
+                          });
+                        }
+                      } else {
+                        network.sendNightTarget(player?.id, actionRoleToSend, selectedNightTargetId, selectedNightTargetId2 || undefined);
+                      }
                 }
                 setNightActionSent(true);
                 audio.playFlip();
