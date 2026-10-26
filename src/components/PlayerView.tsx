@@ -1002,7 +1002,7 @@ sock.on('game_reset', () => {
           {/* GunsmithAction disabled */}
         
         {/* مخفی کردن منوی پیش‌فرض برای این دو نقش */}
-        {((player?.roleId !== "bomber" && player?.roleId !== "gunsmith" && player?.roleId !== "bodyguard" && player?.roleId !== "guard") || (currentNightRole === "mafia" && isMafia(player?.roleId))) && player?.isAlive && !nightActionDone && Boolean(player?.roleId) && (
+        {((player?.roleId !== "bomber" && player?.roleId !== "bodyguard" && player?.roleId !== "guard") || (currentNightRole === "mafia" && isMafia(player?.roleId))) && player?.isAlive && !nightActionDone && Boolean(player?.roleId) && (
           (currentNightRole === "mafia" && isMafia(player?.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player?.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))) ||
           ((currentNightRole === "doctor_lecter" || currentNightRole === "dr_lecter") && (player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter")) ||
           ((currentNightRole === "natasha" || currentNightRole === "silencer") && (player?.roleId === "natasha" || player?.roleId === "silencer")) || (currentNightRole && currentNightRole === player?.roleId)
