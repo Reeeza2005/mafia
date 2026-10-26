@@ -1077,63 +1077,127 @@ sock.on('game_reset', () => {
 
             {/* انتخاب‌های اختصاصی تفنگدار: دو کادر همزمان جنگی و مشقی */}
             {player?.roleId === "gunsmith" && (
-              <div className="space-y-3 pb-2 border-b border-purple-900/40 mb-3">
-                <span className="text-[11px] text-purple-300 font-bold block">
-                  توزیع همزمان اسلحه‌ها (جنگی و مشقی):
-                </span>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-rose-400 font-bold flex items-center gap-1">
-                    💥 دریافت‌کننده تیر جنگی:
-                  </label>
-                  <select
-                    value={selectedWarTargetId}
-                    onChange={(e) => setSelectedWarTargetId(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-700 text-white text-xs rounded-xl p-2 outline-none focus:border-rose-500"
-                  >
-                    <option value="">-- عدم اهدا یا انتخاب بازیکن --</option>
-                    {players?.filter(p => p.isAlive && p.id !== player?.id && (currentNightRole === "mafia" ? !isMafia(p.roleId) : true)).map(p => (
-                      <option key={p.id} value={p.id}>{p.name}{p.id === player?.id ? " (خودم)" : ""}</option>
-                    ))}
-                  </select>
-                
-        
+                <div className="space-y-4 pb-3 border-b border-purple-900/40 mb-3 bg-purple-950/20 p-3 rounded-2xl border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-purple-200 font-extrabold flex items-center gap-1.5">
+                      🔫 سهمیه اهدای شبانه تفنگدار (۲ تفنگ)
+                    </span>
+                    <span className="text-[10px] text-amber-300 font-bold bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-800/50">
+                      حداکثر ۱ تیر جنگی
+                    </span>
+                  </div>
 
-        
+                  {/* تفنگ اول */}
+                  <div className="space-y-1.5 p-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-neutral-300">تفنگ شماره ۱:</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGunType("bullet");
+                            // اگر بازیکن هدف فعلی خود تفنگدار است، پاک شود چون جنگی به خود ممنوع است
+                            if (selectedNightTargetId === player?.id) {
+                              setSelectedNightTargetId("");
+                            }
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                            gunType === "bullet"
+                              ? "bg-rose-600 text-white shadow-md shadow-rose-900/40"
+                              : "bg-neutral-800 text-neutral-400 hover:text-white"
+                          }`}
+                        >
+                          💥 جنگی
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGunType("blank")}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                            gunType === "blank"
+                              ? "bg-sky-600 text-white shadow-md shadow-sky-900/40"
+                              : "bg-neutral-800 text-neutral-400 hover:text-white"
+                          }`}
+                        >
+                          ⚪ مشقی
+                        </button>
+                      </div>
+                    </div>
+                    <select
+                      value={selectedNightTargetId}
+                      onChange={(e) => {
+                        setSelectedNightTargetId(e.target.value);
+                        setNightActionSent(false);
+                      }}
+                      className="w-full bg-neutral-950 border border-neutral-700 text-white text-xs rounded-xl p-2.5 outline-none focus:border-purple-500"
+                    >
+                      <option value="">-- انتخاب بازیکن برای تفنگ ۱ --</option>
+                      {players?.filter(p => {
+                        if (!p.isAlive) return false;
+                        if (gunType === "bullet" && p.id === player?.id) return false; // تفنگدار نمی‌تواند به خود تیر جنگی بدهد
+                        if (p.id === selectedBlankTargetId) return false; // جلوگیری از انتخاب تکراری با تفنگ ۲
+                        return true;
+                      }).map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} {p.id === player?.id ? " (خودم - فقط مشقی)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-      
-</div>
+                  {/* تفنگ دوم */}
+                  <div className="space-y-1.5 p-2.5 rounded-xl bg-neutral-900/90 border border-neutral-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-neutral-300">تفنگ شماره ۲:</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={gunType === "bullet"} // اگر تفنگ اول جنگی بود، تفنگ دوم جنگی نمی‌تواند باشد
+                          onClick={() => {
+                            if (gunType !== "bullet") {
+                              // تغییر وضعیت
+                            }
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                            gunType !== "bullet"
+                              ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
+                              : "opacity-40 cursor-not-allowed bg-neutral-800 text-neutral-600"
+                          }`}
+                          title={gunType === "bullet" ? "تنها یک تیر جنگی در هر شب مجاز است" : ""}
+                        >
+                          💥 جنگی
+                        </button>
+                        <button
+                          type="button"
+                          className="px-2 py-1 rounded-lg text-[10px] font-black bg-sky-600 text-white shadow-md shadow-sky-900/40"
+                        >
+                          ⚪ مشقی
+                        </button>
+                      </div>
+                    </div>
+                    <select
+                      value={selectedBlankTargetId}
+                      onChange={(e) => {
+                        setSelectedBlankTargetId(e.target.value);
+                        setNightActionSent(false);
+                      }}
+                      className="w-full bg-neutral-950 border border-neutral-700 text-white text-xs rounded-xl p-2.5 outline-none focus:border-purple-500"
+                    >
+                      <option value="">-- انتخاب بازیکن برای تفنگ ۲ (مشقی) --</option>
+                      {players?.filter(p => {
+                        if (!p.isAlive) return false;
+                        if (p.id === selectedNightTargetId) return false; // جلوگیری از انتخاب تکراری با تفنگ ۱
+                        return true;
+                      }).map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} {p.id === player?.id ? " (خودم)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
-                <div className="space-y-1">
-                  <label className="text-[10px] text-sky-400 font-bold flex items-center gap-1">
-                    💨 دریافت‌کننده تیر مشقی:
-                  </label>
-                  <select
-                    value={selectedBlankTargetId}
-                    onChange={(e) => setSelectedBlankTargetId(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-700 text-white text-xs rounded-xl p-2 outline-none focus:border-sky-500"
-                  >
-                    <option value="">-- عدم اهدا یا انتخاب بازیکن --</option>
-                    {players?.filter(p => p.isAlive && p.id !== selectedWarTargetId).map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                
-        
-
-        
-
-      
-</div>
-              
-        
-
-        
-
-      
-</div>
-            )}
-
-            {/* وضعیت اتمام فشنگ اسنایپر */}
+              {/* وضعیت اتمام فشنگ اسنایپر */}
             {player?.roleId === "sniper" && (() => {
               const totalB = getSniperBulletQuota(players && players.length ? players : livePlayers);
               const usedB = (activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0;
