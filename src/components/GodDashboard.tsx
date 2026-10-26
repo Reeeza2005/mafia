@@ -262,7 +262,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     const unNightTarget = network.on("night_target_received", (data: any) => {
       if (data && data.playerId) {
         setIncomingNightTargets((prev) => [
-          ...prev.filter((t) => !(t.playerId === data.playerId && (t.roleId !== "gunsmith" || t.extraType === data.extraType))),
+          ...prev.filter((t) => !(t.playerId === data.playerId && (t.roleId !== "gunsmith" ? true : t.targetId === data.targetId))),
           data,
         ]);
       }
