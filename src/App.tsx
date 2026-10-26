@@ -55,13 +55,7 @@ export default function App() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
   // God state
-  const [selectedRoleCounts, setSelectedRoleCounts] = useState<Record<string, number>>(() => {
-    const defaultIds = PRESETS?.[1]?.roleIds || PRESETS?.[0]?.roleIds || [];
-    return defaultIds.reduce((acc: Record<string, number>, id: string) => {
-      acc[id] = (acc[id] || 0) + 1;
-      return acc;
-    }, {});
-  });
+  const [selectedRoleCounts, setSelectedRoleCounts] = useState<Record<string, number>>({});
   const [players, setPlayers] = useState<Player[]>([]);
   const [rolesInGame, setRolesInGame] = useState<string[]>([]);
   const [cardsDistributed, setCardsDistributed] = useState<boolean>(false);

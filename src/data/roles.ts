@@ -452,33 +452,33 @@ export const ROLE_MAP: Record<string, Role> = ALL_ROLES.reduce((acc, role) => {
 // پریست‌های استاندارد سناریوهای بازی
 export const PRESETS: { id: string; name: string; description: string; roleIds: string[] }[] = [
   {
-    id: "classic_10",
-    name: "کلاسیک ۱۰ نفره",
-    description: "۳ مافیا (پدرخوانده، لکتور، مافیا ساده) در برابر ۷ شهروند (دکتر، کارآگاه، اسنایپر، زره‌پوش، ۳ شهروند ساده)",
-    roleIds: [
-      "godfather", "dr_lecter", "simple_mafia",
-      "detective", "doctor", "sniper", "armored",
-      "simple_citizen", "simple_citizen", "simple_citizen"
-    ]
-  },
-  {
-    id: "special_12",
-    name: "پیشرفته ۱۲ نفره (با ناتاشا و تفنگدار)",
-    description: "۴ مافیا در برابر ۸ شهروند با تعادل اکشن‌های روز و شب",
+    id: "night_of_mafia_12",
+    name: "شب‌های مافیا (۱۲ نفره)",
+    description: "۴ مافیا (پدرخوانده، لکتور، ناتاشا، مافیای ساده) در برابر ۸ شهروند (دکتر، کارآگاه، اسنایپر، تفنگدار، زره‌پوش، جان‌فدا/بادیگارد، ۲ شهروند ساده)",
     roleIds: [
       "godfather", "dr_lecter", "natasha", "simple_mafia",
-      "detective", "doctor", "sniper", "gunsmith", "bodyguard",
-      "simple_citizen", "simple_citizen", "simple_citizen"
+      "detective", "doctor", "sniper", "gunsmith", "armored", "bodyguard",
+      "simple_citizen", "simple_citizen"
     ]
   },
   {
-    id: "chaos_jester_14",
-    name: "آشوب ۱۴ نفره (با جوکر مستقل و شهردار)",
-    description: "۴ مافیا، ۱ مستقل (جوکر)، ۹ شهروند با حق وتوی شهردار",
+    id: "citizen_and_mafia_10",
+    name: "شهروند و مافیا (۱۰ نفره)",
+    description: "۳ مافیا (پدرخوانده، مذاکره‌کننده، مافیای ساده) در برابر ۷ شهروند (دکتر، کارآگاه، اسنایپر، زره‌پوش، خبرنگار، ۲ شهروند ساده)",
     roleIds: [
-      "godfather", "dr_lecter", "simple_mafia",
-      "detective", "doctor", "sniper", "mayor", "armored",
-      "simple_citizen", "simple_citizen", "simple_citizen"
+      "godfather", "negotiator", "simple_mafia",
+      "detective", "doctor", "sniper", "armored", "journalist",
+      "simple_citizen", "simple_citizen"
+    ]
+  },
+  {
+    id: "tactical_bombing_12",
+    name: "نبرد تاکتیکی و بمب‌گذاری (۱۲ نفره)",
+    description: "۴ مافیا (پدرخوانده، بمب‌گذار، گروگان‌گیر، مافیای ساده) در برابر ۸ شهروند (دکتر، کارآگاه، اسنایپر، تفنگدار، کشیش، دیده‌بان، ۲ شهروند ساده)",
+    roleIds: [
+      "godfather", "bomber", "hostage_taker", "simple_mafia",
+      "detective", "doctor", "sniper", "gunsmith", "priest", "watcher",
+      "simple_citizen", "simple_citizen"
     ]
   }
 ];

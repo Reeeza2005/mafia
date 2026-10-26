@@ -367,7 +367,19 @@ export const RoleSelectionPanel: React.FC<RoleSelectionPanelProps> = ({
 
           <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
             <span className="text-[11px] text-neutral-500 ml-1">سناریوها:</span>
-            {PRESETS.map((preset) => (
+                          <button
+                type="button"
+                onClick={() => {
+                  onSetPreset({});
+                  audio.playFlip();
+                }}
+                disabled={disabled}
+                className="text-xs px-2.5 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 cursor-pointer flex items-center gap-1 transition-colors"
+                title="پاکسازی تمام نقش‌های انتخاب‌شده"
+              >
+                <span>🧹 پاکسازی</span>
+              </button>
+              {PRESETS.map((preset) => (
               <button
                 key={preset.name}
                 onClick={() => {
