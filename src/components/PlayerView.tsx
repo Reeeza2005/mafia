@@ -181,6 +181,13 @@ sock.on('game_reset', () => {
   }, [activeBomb?.status, activeBomb?.victimId, player?.id]);
   const [livePlayers, setLivePlayers] = useState<Player[]>([]);
     const [myDayGun, setMyDayGun] = useState<{ type: string; used: boolean } | null>(null);
+
+  useEffect(() => {
+    const gunVal = (player as any)?.gunGiven;
+    if (gunVal) {
+      setMyDayGun({ type: gunVal, used: false });
+    }
+  }, [(player as any)?.gunGiven]);
   const [showGunReceivedModal, setShowGunReceivedModal] = useState<boolean>(false);
   const [showShootModal, setShowShootModal] = useState<boolean>(false);
   const [selectedShootTargetId, setSelectedShootTargetId] = useState<string>("");
@@ -1312,23 +1319,25 @@ sock.on('game_reset', () => {
             {/* دکمه ارسال اکشن شب */}
             <button
               type="button"
-              disabled={nightActionSent || (player?.roleId === "sniper" && (getSniperBulletQuota(players && players.length ? players : livePlayers) - ((activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0) <= 0)) || (player?.roleId === "gunsmith" ? (!selectedWarTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
+              disabled={nightActionSent || (player?.roleId === "sniper" && (getSniperBulletQuota(players && players.length ? players : livePlayers) - ((activePlayer as any)?.sniperBulletsUsed ?? sniperBulletsUsed ?? 0) <= 0)) || (player?.roleId === "gunsmith" ? (!selectedNightTargetId && !selectedBlankTargetId) : !selectedNightTargetId)}
               onClick={() => {
-                if (player?.roleId === "gunsmith") {
-                  network.sendGunsmithTargets(player?.id, selectedWarTargetId || undefined, selectedBlankTargetId || undefined);
-                } else {
-                  if (!selectedNightTargetId) return;
-                  const actionRoleToSend = (currentNightRole === "negotiator" || player?.roleId === "negotiator") ? "negotiator" : currentNightRole === "hostage_taker" || player?.roleId === "hostage_taker" ? "hostage_taker" : (currentNightRole === "mafia" ? "mafia" : (player?.roleId === "dr_lecter" ? "doctor_lecter" : ((player?.roleId === "natasha" || player?.roleId === "silencer") ? "natasha" : (player?.roleId || ""))));
-                  if ((player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player?.id) {
-                      setLecterSelfSavesUsed(prev => {
-                        const nextVal = prev + 1;
-                        try { localStorage.setItem(`mafia_lecter_self_${player?.id}`, String(nextVal)); } catch {}
-                        return nextVal;
+                  if (player?.roleId === "gunsmith") {
+                    const socket = network?.getSocket?.() || (network as any)?.socket;
+                    const rCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || "";
+                    if (socket) {
+                      socket.emit("gunsmith_targets_submit", {
+                        roomCode: rCode,
+                        playerId: player?.id,
+                        gunsmithId: player?.id,
+                        target1Id: selectedNightTargetId,
+                        gunType1: gunType === "bullet" ? "war" : "blank",
+                        target2Id: selectedBlankTargetId,
+                        gunType2: gun2Type === "bullet" ? "war" : "blank",
                       });
                     }
-                    if (player?.roleId === "doctor" && selectedNightTargetId === player?.id) {
-                      setDoctorSelfSavesUsed(prev => prev + 1);
-                    }
+                  } else {
+                    if (!selectedNightTargetId) return;
+                    const actionRoleToSend = (currentNightRole === "negotiator" || player?.roleId === "negotiator") ? "negotiator" : currentNightRole === "hostage_taker" || player?.roleId === "hostage_taker" ? "hostage_taker" : (currentNightRole === "mafia" ? "mafia" : (player?.roleId === "dr_lecter" ? "doctor_lecter" : ((player?.roleId === "natasha" || player?.roleId === "silencer") ? "natasha" : (player?.roleId || ""))));
                     if ((player?.roleId === "doctor_lecter" || player?.roleId === "dr_lecter") && currentNightRole !== "mafia" && selectedNightTargetId === player?.id) {
                       setLecterSelfSavesUsed(prev => {
                         const nextVal = prev + 1;
@@ -1339,29 +1348,14 @@ sock.on('game_reset', () => {
                     if (player?.roleId === "doctor" && selectedNightTargetId === player?.id) {
                       setDoctorSelfSavesUsed(prev => prev + 1);
                     }
-                    if (player?.roleId === "gunsmith") {
-                        const socket = network?.getSocket?.() || (network as any)?.socket;
-                        const roomCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || "";
-                        if (socket) {
-                          socket.emit("gunsmith_targets_submit", {
-                            roomCode,
-                            gunsmithId: player?.id,
-                            target1Id: selectedNightTargetId,
-                            gunType1: gunType === "bullet" ? "war" : "blank",
-                            target2Id: selectedBlankTargetId,
-                            gunType2: gun2Type === "bullet" ? "war" : "blank",
-                          });
-                        }
-                      } else {
-                        network.sendNightTarget(player?.id, actionRoleToSend, selectedNightTargetId, selectedNightTargetId2 || undefined);
-                      }
-                }
-                setNightActionSent(true);
-                audio.playFlip();
-              }}
-              className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer w-full"
-            >
-              {nightActionSent ? "درخواست ارسال شد (منتظر تایید گاد...) ⏳" : "ثبت و ارسال به گرداننده ✉️"}
+                    network.sendNightTarget(player?.id, actionRoleToSend, selectedNightTargetId, selectedNightTargetId2 || undefined);
+                  }
+                  setNightActionSent(true);
+                  audio.playFlip();
+                }}
+                className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer w-full"
+              >
+                {nightActionSent ? "درخواست ارسال شد (منتظر تایید گاد...) ⏳" : "ثبت و ارسال به گرداننده ✉️"}
             </button>
           
         

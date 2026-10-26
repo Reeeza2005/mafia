@@ -466,31 +466,45 @@ io.on('connection', (socket) => {
         }
 
         const gunsToDistribute: Array<{ targetId: string; type: "war" | "blank" }> = [];
-        if (Array.isArray(data.guns) && data.guns.length > 0) {
+        if (data.target1Id) gunsToDistribute.push({ targetId: data.target1Id, type: data.gunType1 || "war" });
+        if (data.target2Id) gunsToDistribute.push({ targetId: data.target2Id, type: data.gunType2 || "blank" });
+        if (gunsToDistribute.length === 0 && Array.isArray(data.guns)) {
           data.guns.forEach((g: any) => {
             if (g && g.targetId) gunsToDistribute.push({ targetId: g.targetId, type: g.type || "blank" });
           });
-        } else {
-          if (data.target1Id) gunsToDistribute.push({ targetId: data.target1Id, type: data.gunType1 || "war" });
-          if (data.target2Id) gunsToDistribute.push({ targetId: data.target2Id, type: data.gunType2 || "blank" });
-          if (data.warTargetId) gunsToDistribute.push({ targetId: data.warTargetId, type: "war" });
-          if (data.blankTargetId) gunsToDistribute.push({ targetId: data.blankTargetId, type: "blank" });
         }
 
+        if (!(room as any).dayGuns) (room as any).dayGuns = [];
         gunsToDistribute.forEach(gun => {
-        const targetP = room.players?.[gun.targetId] || (Object.values(room.players || {}) as any[]).find(p => p.id === gun.targetId);
-        targetGod.emit("night_target_received", {
-          playerId: data.playerId,
-          playerName: player?.name || "تفنگ‌دار",
-          roleId: "gunsmith",
-          targetId: gun.targetId,
-          targetName: targetP ? targetP.name : "بازیکن هدف",
-          extraType: gun.type,
-        });
-      });
-    });
+          const targetP = room.players?.[gun.targetId] || (Object.values(room.players || {}) as any[]).find(p => p.id === gun.targetId);
+          console.log(`[🔫 سرور تفنگدار] اهدا به «${targetP ? targetP.name : gun.targetId}» با تیر ${gun.type === 'war' ? 'جنگی 💥' : 'مشقی ⚪'}`);
+          
+          if (targetP) {
+            targetP.gunGiven = gun.type;
+          }
+          (room as any).dayGuns = (room as any).dayGuns.filter((g: any) => g.targetId !== gun.targetId);
+          (room as any).dayGuns.push({
+            targetId: gun.targetId,
+            targetName: targetP ? targetP.name : "بازیکن هدف",
+            type: gun.type,
+            used: false
+          });
 
-    socket.on('night_target_submit', (data: { roomCode?: string; playerId: string; roleId: string; targetId: string; extraType?: string }) => {
+          targetGod.emit("night_target_received", {
+            playerId: effectivePlayerId,
+            playerName: player?.name || "تفنگ‌دار",
+            roleId: "gunsmith",
+            targetId: gun.targetId,
+            targetName: targetP ? targetP.name : "بازیکن هدف",
+            extraType: gun.type,
+          });
+        });
+
+        // همگام‌سازی فوری وضعیت اتاق با همه کلاینت‌ها
+        io.to(room.code).emit("room_state_update", room);
+      });
+
+      socket.on('night_target_submit', (data: { roomCode?: string; playerId: string; roleId: string; targetId: string; extraType?: string }) => {
       const rCode = data?.roomCode || Array.from(socket.rooms).find(r => r !== socket.id);
       if (!rCode) return;
       const room = rooms[rCode.toString().toUpperCase()];
