@@ -107,6 +107,10 @@ export interface NightActions {
   hackerTargetIds?: [string, string];
   gunsmithTargetId?: string;
   gunsmithGunType?: 'war' | 'blank';
+  gunsmithTarget1Id?: string;
+  gunsmithGunType1?: 'war' | 'blank';
+  gunsmithTarget2Id?: string;
+  gunsmithGunType2?: 'war' | 'blank';
   journalistInquiry?: boolean;
 }
 

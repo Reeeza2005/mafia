@@ -246,8 +246,18 @@ export function resolveNight(
       const sniperPlayer = Array.from(playerMap.values()).find((p) => p.roleId === "sniper");
       const target = playerMap.get(actions.sniperShotId);
       if (target && (!sniperPlayer || !blockedIds.has(sniperPlayer.id))) {
-        const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
-        const isTargetMafia = targetRoleDef ? targetRoleDef.team === "mafia" : false;
+          const targetRoleDef = target.roleId ? getRoleDefinition(target.roleId) : undefined;
+          const mafiaRoleIds = [
+            "godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "natasha",
+            "thief", "hostage_taker", "bomber", "informant_mafia", "infiltrator",
+            "negotiator", "shadow_mafia", "terrorist", "mistress", "sweetheart"
+          ];
+          const isTargetMafia = Boolean(
+            (targetRoleDef && (targetRoleDef.team === "mafia" || (targetRoleDef as any).side === "mafia")) ||
+            ((target as any).side === "mafia") ||
+            (target.roleId && mafiaRoleIds.includes(target.roleId.toLowerCase())) ||
+            target.wasNegotiated
+          );
 
         if (isTargetMafia) {
           if (lecterSaved.has(target.id)) {

@@ -1076,7 +1076,7 @@ sock.on('game_reset', () => {
 </div>
 
             {/* انتخاب‌های اختصاصی تفنگدار: دو کادر همزمان جنگی و مشقی */}
-            {false && player?.roleId === "gunsmith" && (
+            {player?.roleId === "gunsmith" && (
               <div className="space-y-3 pb-2 border-b border-purple-900/40 mb-3">
                 <span className="text-[11px] text-purple-300 font-bold block">
                   توزیع همزمان اسلحه‌ها (جنگی و مشقی):

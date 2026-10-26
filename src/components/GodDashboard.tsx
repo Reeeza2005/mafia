@@ -237,19 +237,27 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       setIncomingDayShotTargets(prev => [...prev.filter(t => t.shooterId !== data.shooterId), data]);
     });
 
-    const unGameReset = network.on("game_reset", () => {
-      console.log("[گاد] پاکسازی صف درخواست‌های شب و بمب به علت ریست بازی");
-      setIncomingNightTargets([]);
-      setIncomingDayShotRequests([]);
-      setIncomingDayShotTargets([]);
-      setPendingDayShot(null);
-      setActiveBomb(null);
-      setNightActions({
-        mafiaShotId: undefined,
-        doctorSaveId: undefined,
-        doctorLecterSaveId: undefined,
+      const unGameReset = network.on("game_reset", () => {
+        console.log("[گاد] پاکسازی جامع صف درخواست‌ها، سهمیه‌ها و وضعیت کارت‌ها به علت ریست بازی");
+        setIncomingNightTargets([]);
+        setIncomingDayShotRequests([]);
+        setIncomingDayShotTargets([]);
+        setPendingDayShot(null);
+        setActiveBomb(null);
+        setDayGuns([]);
+        setQuotas({});
+        setCurrentActiveNightStep(null);
+        setShowMorningReportModal(false);
+        setNightActions({
+          bomberTargetId: undefined,
+          doctorLecterSaveId: undefined,
+          hostageTargetId: undefined,
+          mafiaShotId: undefined,
+          mafiaShotId2: undefined,
+          silencerTargetId: undefined,
+          thiefTargetId: undefined,
+        });
       });
-    });
 
     const unNightTarget = network.on("night_target_received", (data: any) => {
       if (data && data.playerId) {
@@ -625,30 +633,48 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
         });
       }
 
-      // ۳. مدیریت تفنگ‌های اهدا شده تفنگدار
-      if (nightActions.gunsmithTargetId && nightActions.gunsmithGunType) {
-        const targetP = players.find((p) => p.id === nightActions.gunsmithTargetId);
-        if (targetP) {
-          const newGun = {
-            targetId: targetP.id,
-            targetName: targetP.name,
-            type: nightActions.gunsmithGunType as "war" | "blank",
-            used: false,
-          };
-          setDayGuns((prev) => {
-            const updated = [...prev.filter((g) => g.targetId !== targetP.id), newGun];
-            if (network && typeof (network as any).syncDayGuns === 'function') {
-              (network as any).syncDayGuns(updated, roomCode);
-            }
-            return updated;
-          });
-          if (typeof onUpdatePlayer === 'function') {
-            onUpdatePlayer(targetP.id, { 
-              gunGiven: nightActions.gunsmithGunType as "war" | "blank",
-            });
-          }
-        }
-      }
+       // ۳. مدیریت تفنگ‌های اهدا شده تفنگدار (پشتیبانی از ۲ هدف همزمان)
+       const gunsmithRecipients: Array<{ targetId: string; gunType: 'war' | 'blank' }> = [];
+       if (nightActions.gunsmithTarget1Id && nightActions.gunsmithGunType1) {
+         gunsmithRecipients.push({ targetId: nightActions.gunsmithTarget1Id, gunType: nightActions.gunsmithGunType1 });
+       }
+       if (nightActions.gunsmithTarget2Id && nightActions.gunsmithGunType2) {
+         gunsmithRecipients.push({ targetId: nightActions.gunsmithTarget2Id, gunType: nightActions.gunsmithGunType2 });
+       }
+       if (gunsmithRecipients.length === 0 && nightActions.gunsmithTargetId && nightActions.gunsmithGunType) {
+         gunsmithRecipients.push({ targetId: nightActions.gunsmithTargetId, gunType: nightActions.gunsmithGunType });
+       }
+
+       const newGunsToAdd: Array<{ targetId: string; targetName: string; type: 'war' | 'blank'; used: boolean }> = [];
+       gunsmithRecipients.forEach((rec) => {
+         // تفنگ فقط در صورتی به روز منتقل می‌شود که گیرنده در طول شب کشته نشده باشد
+         if (!deadList.includes(rec.targetId)) {
+           const targetP = players.find((p) => p.id === rec.targetId);
+           if (targetP) {
+             newGunsToAdd.push({
+               targetId: targetP.id,
+               targetName: targetP.name,
+               type: rec.gunType,
+               used: false,
+             });
+             if (typeof onUpdatePlayer === 'function') {
+               onUpdatePlayer(targetP.id, { gunGiven: rec.gunType });
+             }
+           }
+         }
+       });
+
+       if (newGunsToAdd.length > 0) {
+         setDayGuns((prev) => {
+           const existingIds = new Set(newGunsToAdd.map((g) => g.targetId));
+           const updated = [...prev.filter((g) => !existingIds.has(g.targetId)), ...newGunsToAdd];
+           if (network && typeof (network as any).syncDayGuns === 'function') {
+             (network as any).syncDayGuns(updated, roomCode);
+           }
+           return updated;
+         });
+       }
+
 
       // ۴. آماده‌سازی متن شکیل، رسمی و ادبی گزارش صبحگاهی
       const reportAnnouncement: string[] = [];
@@ -2074,7 +2100,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                  >
                                    {(item as any).isSkip || item.targetId === "skip" ? "تایید انصراف بمب‌گذار ✓" : "تایید کارگذاری بمب 💣"}
                                  </button>
-                                ) : false && item.roleId === "gunsmith" ? (
+                                ) : item.roleId === "gunsmith" ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -2548,7 +2574,264 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   </div>
                 )}
 
-                {/* ۶. سکوت ناتاشا */}
+                {/* ۷. تفنگدار (اهدا ۲ تفنگ در شب) */}
+                 {activeNightRoleIds.has("gunsmith") && (
+                   <div className={`p-3.5 rounded-2xl border transition-all sm:col-span-2 space-y-3 ${currentActiveNightStep === "gunsmith" ? "bg-sky-950/40 border-sky-500 ring-2 ring-sky-500/50 shadow-lg" : "bg-neutral-950 border-sky-950"}`}>
+                     {currentActiveNightStep === "gunsmith" && (<div className="bg-sky-500 text-black text-[11px] font-black px-2.5 py-1 rounded-lg w-fit">🔔 تب فعال در شب (تفنگدار بیدار است)</div>)}
+                     <div className="flex items-center justify-between border-b border-sky-900/40 pb-2">
+                       <span className="font-bold text-sky-400 flex items-center gap-1.5 text-xs">
+                         🔫 تفنگدار (اهدا ۲ تفنگ در شب)
+                       </span>
+                       <span className="text-[10px] text-sky-300 bg-sky-950/60 px-2 py-0.5 rounded-lg border border-sky-800/40">
+                         {nightActions.gunsmithGunType1 === 'war' || nightActions.gunsmithGunType2 === 'war' ? "تیر جنگی انتخاب شده 💥" : "ظرفیت جنگی: ۱ عدد"}
+                       </span>
+                     </div>
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                       {/* تفنگ اول */}
+                       <div className="space-y-1.5 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800">
+                         <span className="text-[11px] font-bold text-neutral-300 block">دریافت‌کننده اول:</span>
+                         <select
+                           value={nightActions.gunsmithTarget1Id || ""}
+                           onChange={(e) => {
+                             const tid = e.target.value || undefined;
+                             const sniperP = alivePlayers.find(p => p.roleId === "gunsmith");
+                             // اگر خود تفنگدار انتخاب شد، نوع تفنگ اجباراً مشقی است
+                             const forceBlank = tid && sniperP && tid === sniperP.id;
+                             setNightActions(prev => ({
+                               ...prev,
+                               gunsmithTarget1Id: tid,
+                               gunsmithGunType1: forceBlank ? 'blank' : (prev.gunsmithGunType1 || 'blank'),
+                               // همگام‌سازی فیلد قدیمی
+                               gunsmithTargetId: tid,
+                               gunsmithGunType: forceBlank ? 'blank' : (prev.gunsmithGunType1 || 'blank')
+                             }));
+                           }}
+                           className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white text-xs"
+                         >
+                           <option value="">-- انتخاب بازیکن اول --</option>
+                           {alivePlayers
+                             .filter(p => p.id !== nightActions.gunsmithTarget2Id)
+                             .map(p => (
+                               <option key={p.id} value={p.id}>
+                                 {p.name} {p.roleId === "gunsmith" ? "(خود تفنگدار - فقط مشقی)" : ""}
+                               </option>
+                           ))}
+                         </select>
+
+                         <div className="flex gap-2 pt-1">
+                           <label className="flex items-center gap-1 text-[11px] text-neutral-300 cursor-pointer">
+                             <input
+                               type="radio"
+                               name="gunType1"
+                               checked={nightActions.gunsmithGunType1 !== "war"}
+                               onChange={() => setNightActions(prev => ({ ...prev, gunsmithGunType1: 'blank' }))}
+                             />
+                             مشقی ⚪
+                           </label>
+                           <label className={`flex items-center gap-1 text-[11px] cursor-pointer ${
+                             (alivePlayers.find(p => p.roleId === "gunsmith")?.id === nightActions.gunsmithTarget1Id || nightActions.gunsmithGunType2 === 'war')
+                               ? "opacity-40 cursor-not-allowed text-neutral-500"
+                               : "text-rose-400"
+                           }`}>
+                             <input
+                               type="radio"
+                               name="gunType1"
+                               disabled={alivePlayers.find(p => p.roleId === "gunsmith")?.id === nightActions.gunsmithTarget1Id || nightActions.gunsmithGunType2 === 'war'}
+                               checked={nightActions.gunsmithGunType1 === "war"}
+                               onChange={() => setNightActions(prev => ({ ...prev, gunsmithGunType1: 'war', gunsmithGunType2: 'blank' }))}
+                             />
+                             جنگی 💥
+                           </label>
+                         </div>
+                       </div>
+
+                       {/* تفنگ دوم */}
+                       <div className="space-y-1.5 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800">
+                         <span className="text-[11px] font-bold text-neutral-300 block">دریافت‌کننده دوم:</span>
+                         <select
+                           value={nightActions.gunsmithTarget2Id || ""}
+                           onChange={(e) => {
+                             const tid = e.target.value || undefined;
+                             const sniperP = alivePlayers.find(p => p.roleId === "gunsmith");
+                             const forceBlank = tid && sniperP && tid === sniperP.id;
+                             setNightActions(prev => ({
+                               ...prev,
+                               gunsmithTarget2Id: tid,
+                               gunsmithGunType2: forceBlank ? 'blank' : (prev.gunsmithGunType2 || 'blank')
+                             }));
+                           }}
+                           className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white text-xs"
+                         >
+                           <option value="">-- انتخاب بازیکن دوم --</option>
+                           {alivePlayers
+                             .filter(p => p.id !== nightActions.gunsmithTarget1Id)
+                             .map(p => (
+                               <option key={p.id} value={p.id}>
+                                 {p.name} {p.roleId === "gunsmith" ? "(خود تفنگدار - فقط مشقی)" : ""}
+                               </option>
+                           ))}
+                         </select>
+
+                         <div className="flex gap-2 pt-1">
+                           <label className="flex items-center gap-1 text-[11px] text-neutral-300 cursor-pointer">
+                             <input
+                               type="radio"
+                               name="gunType2"
+                               checked={nightActions.gunsmithGunType2 !== "war"}
+                               onChange={() => setNightActions(prev => ({ ...prev, gunsmithGunType2: 'blank' }))}
+                             />
+                             مشقی ⚪
+                           </label>
+                           <label className={`flex items-center gap-1 text-[11px] cursor-pointer ${
+                             (alivePlayers.find(p => p.roleId === "gunsmith")?.id === nightActions.gunsmithTarget2Id || nightActions.gunsmithGunType1 === 'war')
+                               ? "opacity-40 cursor-not-allowed text-neutral-500"
+                               : "text-rose-400"
+                           }`}>
+                             <input
+                               type="radio"
+                               name="gunType2"
+                               disabled={alivePlayers.find(p => p.roleId === "gunsmith")?.id === nightActions.gunsmithTarget2Id || nightActions.gunsmithGunType1 === 'war'}
+                               checked={nightActions.gunsmithGunType2 === "war"}
+                               onChange={() => setNightActions(prev => ({ ...prev, gunsmithGunType2: 'war', gunsmithGunType1: 'blank' }))}
+                             />
+                             جنگی 💥
+                           </label>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 )}
+
+                 {/* ۷. تفنگدار (اهدا ۲ تفنگ در شب) */}
+                 {activeNightRoleIds.has("gunsmith") && (
+                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-sky-950 space-y-3 sm:col-span-2">
+                     <div className="flex items-center justify-between border-b border-sky-900/40 pb-2">
+                       <span className="font-bold text-sky-400 flex items-center gap-1.5 text-xs">
+                         🔫 تفنگدار (اهدا ۲ تفنگ در شب)
+                       </span>
+                       <span className="text-[10px] text-sky-300 bg-sky-950/60 px-2 py-0.5 rounded-lg border border-sky-800/40">
+                         {nightActions.gunsmithGunType1 === 'war' || nightActions.gunsmithGunType2 === 'war' ? "تیر جنگی انتخاب شده 💥" : "ظرفیت جنگی: ۱ عدد"}
+                       </span>
+                     </div>
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                       {/* تفنگ اول */}
+                       <div className="space-y-1.5 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800">
+                         <span className="text-[11px] font-bold text-neutral-300 block">دریافت‌کننده اول:</span>
+                         <select
+                           value={nightActions.gunsmithTarget1Id || ""}
+                           onChange={(e) => {
+                             const tid = e.target.value || undefined;
+                             const sniperP = alivePlayers.find(p => p.roleId === "gunsmith");
+                             // اگر خود تفنگدار انتخاب شد، نوع تفنگ اجباراً مشقی است
+                             const forceBlank = tid && sniperP && tid === sniperP.id;
+                             setNightActions(prev => ({
+                               ...prev,
+                               gunsmithTarget1Id: tid,
+                               gunsmithGunType1: forceBlank ? 'blank' : (prev.gunsmithGunType1 || 'blank'),
+                               // همگام‌سازی فیلد قدیمی
+                               gunsmithTargetId: tid,
+                               gunsmithGunType: forceBlank ? 'blank' : (prev.gunsmithGunType1 || 'blank')
+                             }));
+                           }}
+                           className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white text-xs"
+                         >
+                           <option value="">-- انتخاب بازیکن اول --</option>
+                           {alivePlayers
+                             .filter(p => p.id !== nightActions.gunsmithTarget2Id)
+                             .map(p => (
+                               <option key={p.id} value={p.id}>
+                                 {p.name} {p.roleId === "gunsmith" ? "(خود تفنگدار - فقط مشقی)" : ""}
+                               </option>
+                           ))}
+                         </select>
+
+                         <div className="flex gap-2 pt-1">
+                           <label className="flex items-center gap-1 text-[11px] text-neutral-300 cursor-pointer">
+                             <input
+                               type="radio"
+                               name="gunType1"
+                               checked={nightActions.gunsmithGunType1 !== "war"}
+                               onChange={() => setNightActions(prev => ({ ...prev, gunsmithGunType1: 'blank' }))}
+                             />
+                             مشقی ⚪
+                           </label>
+                           <label className={`flex items-center gap-1 text-[11px] cursor-pointer ${
+                             (alivePlayers.find(p => p.roleId === "gunsmith")?.id === nightActions.gunsmithTarget1Id || nightActions.gunsmithGunType2 === 'war')
+                               ? "opacity-40 cursor-not-allowed text-neutral-500"
+                               : "text-rose-400"
+                           }`}>
+                             <input
+                               type="radio"
+                               name="gunType1"
+                               disabled={alivePlayers.find(p => p.roleId === "gunsmith")?.id === nightActions.gunsmithTarget1Id || nightActions.gunsmithGunType2 === 'war'}
+                               checked={nightActions.gunsmithGunType1 === "war"}
+                               onChange={() => setNightActions(prev => ({ ...prev, gunsmithGunType1: 'war', gunsmithGunType2: 'blank' }))}
+                             />
+                             جنگی 💥
+                           </label>
+                         </div>
+                       </div>
+
+                       {/* تفنگ دوم */}
+                       <div className="space-y-1.5 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800">
+                         <span className="text-[11px] font-bold text-neutral-300 block">دریافت‌کننده دوم:</span>
+                         <select
+                           value={nightActions.gunsmithTarget2Id || ""}
+                           onChange={(e) => {
+                             const tid = e.target.value || undefined;
+                             const sniperP = alivePlayers.find(p => p.roleId === "gunsmith");
+                             const forceBlank = tid && sniperP && tid === sniperP.id;
+                             setNightActions(prev => ({
+                               ...prev,
+                               gunsmithTarget2Id: tid,
+                               gunsmithGunType2: forceBlank ? 'blank' : (prev.gunsmithGunType2 || 'blank')
+                             }));
+                           }}
+                           className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2 text-white text-xs"
+                         >
+                           <option value="">-- انتخاب بازیکن دوم --</option>
+                           {alivePlayers
+                             .filter(p => p.id !== nightActions.gunsmithTarget1Id)
+                             .map(p => (
+                               <option key={p.id} value={p.id}>
+                                 {p.name} {p.roleId === "gunsmith" ? "(خود تفنگدار - فقط مشقی)" : ""}
+                               </option>
+                           ))}
+                         </select>
+
+                         <div className="flex gap-2 pt-1">
+                           <label className="flex items-center gap-1 text-[11px] text-neutral-300 cursor-pointer">
+                             <input
+                               type="radio"
+                               name="gunType2"
+                               checked={nightActions.gunsmithGunType2 !== "war"}
+                               onChange={() => setNightActions(prev => ({ ...prev, gunsmithGunType2: 'blank' }))}
+                             />
+                             مشقی ⚪
+                           </label>
+                           <label className={`flex items-center gap-1 text-[11px] cursor-pointer ${
+                             (alivePlayers.find(p => p.roleId === "gunsmith")?.id === nightActions.gunsmithTarget2Id || nightActions.gunsmithGunType1 === 'war')
+                               ? "opacity-40 cursor-not-allowed text-neutral-500"
+                               : "text-rose-400"
+                           }`}>
+                             <input
+                               type="radio"
+                               name="gunType2"
+                               disabled={alivePlayers.find(p => p.roleId === "gunsmith")?.id === nightActions.gunsmithTarget2Id || nightActions.gunsmithGunType1 === 'war'}
+                               checked={nightActions.gunsmithGunType2 === "war"}
+                               onChange={() => setNightActions(prev => ({ ...prev, gunsmithGunType2: 'war', gunsmithGunType1: 'blank' }))}
+                             />
+                             جنگی 💥
+                           </label>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 )}
+
+                 {/* ۶. سکوت ناتاشا */}
                 {(activeNightRoleIds.has("natasha") || (activeNightRoleIds as any).has("silencer")) && (
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-fuchsia-950 space-y-2">
                     <span className="font-bold text-fuchsia-400 flex items-center gap-1">
