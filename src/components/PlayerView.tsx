@@ -171,6 +171,9 @@ sock.on('game_reset', () => {
   // ⏱️ شمارش معکوس ۱۵ ثانیه‌ای خنثی‌سازی بمب
   useEffect(() => {
     if (activeBomb?.status === 'detonating') {
+      // 💥 پخش صدای ضامن و شمارش معکوس ۱۰ ثانیه برای همه بازیکنان
+      audio.playFuse();
+      audio.playCountdown10();
       setBombTimer(15);
       const interval = setInterval(() => {
         setBombTimer((prev) => {
@@ -624,7 +627,8 @@ sock.on('game_reset', () => {
                 const rCode = (network as any)?.getRoomCode?.() || (network as any)?.roomCode || '';
                 console.log('[💣 کلاینت] ارسال دستور چاشنی bomb:detonate_day به اتاق:', rCode);
                 const sock = network.socket || (network as any).getSocket?.();
-                sock?.emit('bomb:detonate_day', { roomCode: rCode });
+                audio.playFuse();
+                  sock?.emit('bomb:detonate_day', { roomCode: rCode });
               }}
               className="w-full py-3.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 text-white font-black text-sm rounded-xl shadow-lg shadow-red-900/60 cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-2 border border-red-400"
             >
