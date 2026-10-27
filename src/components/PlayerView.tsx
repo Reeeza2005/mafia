@@ -246,7 +246,14 @@ sock.on('game_reset', () => {
     });
 
     
-    const unDayGuns = network.on("day_guns_updated", (data: any) => {
+    const unCancelDayShot = network.on("day_shot_cancelled", (data: any) => {
+        if (!data?.playerId || data.playerId === player?.id) {
+          console.log("[PlayerView] شلیک روز توسط گاد لغو شد؛ بازگرداندن اسلحه به حالت آماده شلیک");
+          setMyDayGun(prev => prev ? { ...prev, used: false } : null);
+        }
+      });
+
+      const unDayGuns = network.on("day_guns_updated", (data: any) => {
       if (Array.isArray(data?.guns)) {
         const found = data.guns.find((g: any) => g.targetId === player?.id && !g.used);
         if (found) {
