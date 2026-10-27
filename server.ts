@@ -1,3 +1,4 @@
+import fs from "fs";
 import express from 'express';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -1787,3 +1788,42 @@ const cleanupAndExit = () => {
 
 process.on("SIGINT", cleanupAndExit);
 process.on("SIGTERM", cleanupAndExit);
+
+
+
+
+
+// --- API زنده مدیریت لیست و آپلود آهنگ‌های شب ---
+app.get("/api/night-tracks", (_req: any, res: any) => {
+  const nightDir = path.join(process.cwd(), "public", "voice", "night");
+  if (!fs.existsSync(nightDir)) {
+    fs.mkdirSync(nightDir, { recursive: true });
+  }
+  const files: string[] = fs.readdirSync(nightDir).filter((f: string) => f.toLowerCase().endsWith(".mp3"));
+  const tracks = files.map((fname: string, idx: number) => ({
+    id: String(idx + 1),
+    title: fname.replace(/\.mp3$/i, "").replace(/[_-]/g, " "),
+    src: `/voice/night/${fname}`
+  }));
+  res.json(tracks);
+});
+
+app.post("/api/upload-night-track", express.json({ limit: "50mb" }), (req: any, res: any) => {
+  try {
+    const { filename, base64Data } = req.body;
+    if (!filename || !base64Data) {
+      return res.status(400).json({ error: "اطلاعات فایل ناقص است" });
+    }
+    const cleanName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const nightDir = path.join(process.cwd(), "public", "voice", "night");
+    if (!fs.existsSync(nightDir)) {
+      fs.mkdirSync(nightDir, { recursive: true });
+    }
+    const filePath = path.join(nightDir, cleanName);
+    const buffer = Buffer.from(base64Data, "base64");
+    fs.writeFileSync(filePath, buffer);
+    return res.json({ success: true, src: `/voice/night/${cleanName}` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});

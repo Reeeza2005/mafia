@@ -1,6 +1,5 @@
-// Clean Event-Driven Mafia Audio Engine with Dedicated Night Playlist Player
-
-export type SoundKey = "shot" | "morning" | "court" | "bell" | "countdown10" | "countdown3" | "night_ambient" | "flip" | "tick" | "alarm" | "gavel" | "gong" | "wake_buzz" | "warning_beep" | "victory";
+// Clean Event-Driven Mafia Audio Engine
+export type SoundKey = "shot" | "morning" | "court" | "bell" | "countdown10" | "countdown3" | "night_ambient" | "flip" | "tick" | "alarm" | "gavel" | "gong" | "wake_buzz" | "warning_beep" | "victory" | "explosion";
 
 export interface SoundDefinition {
   key: SoundKey;
@@ -17,7 +16,7 @@ export const SOUND_DEFINITIONS: SoundDefinition[] = [
   { key: "court", name: "چکش دادگاه", category: "دادگاه", defaultFile: "/voice/court.mp3", presets: [{ id: "classic", name: "چوب دادگاه" }] },
   { key: "countdown10", name: "شمارش ۱۰ ثانیه", category: "تایمر", defaultFile: "/voice/countdown10.mp3", presets: [{ id: "classic", name: "دیجیتال" }] },
   { key: "countdown3", name: "شمارش ۳ ثانیه", category: "تایمر", defaultFile: "/voice/countdown3.mp3", presets: [{ id: "classic", name: "کوتاه" }] },
-  { key: "night_ambient", name: "آمبیانس شب", category: "فازها", defaultFile: "/voice/night/ambient_01.mp3", presets: [{ id: "classic", name: "تاریک" }] }
+  { key: "explosion", name: "انفجار بمب", category: "بمب", defaultFile: "/voice/explosion.mp3", presets: [{ id: "classic", name: "انفجار" }] }
 ];
 
 export interface NightTrack {
@@ -32,24 +31,17 @@ export class AudioManager {
   private sfxVolume: number = 0.85;
 
   private nightAudio: HTMLAudioElement | null = null;
-  private nightTracks: NightTrack[] = [
-    { id: "1", title: "Habib - 02 - Khers Kuki", src: "/voice/night/Habib - 02 - Khers Kuki.mp3" },
-    { id: "2", title: "Habib - 03 - Shahlay Man", src: "/voice/night/Habib - 03 - Shahlay Man.mp3" },
-    { id: "3", title: "Habib - 05 - Mard", src: "/voice/night/Habib - 05 - Mard.mp3" },
-    { id: "4", title: "Habib - 06 - Yaran Man", src: "/voice/night/Habib - 06 - Yaran Man.mp3" },
-    { id: "5", title: "Ambient 01", src: "/voice/night/ambient_01.mp3" },
-    { id: "6", title: "Dragon-Studio-Dark-Horror-Ambient-05-425468", src: "/voice/night/dragon-studio-dark-horror-ambient-05-425468.mp3" },
-    { id: "7", title: "Dragon-Studio-Rooster-Crowing-364473", src: "/voice/night/dragon-studio-rooster-crowing-364473.mp3" },
-    { id: "8", title: "Intrepidmedia-Gavel-Of-Justice-124029", src: "/voice/night/intrepidmedia-gavel-of-justice-124029.mp3" },
-    { id: "9", title: "Mrfriends-Pistol-Shot-233473", src: "/voice/night/mrfriends-pistol-shot-233473.mp3" },
-  ];
+  private nightTracks: NightTrack[] = [];
   private currentTrackIndex: number = 0;
-  private isShuffle: boolean = true;
-  private nightTargetVolume: number = 0.35;
+  private isShuffle: boolean = false;
+  private nightTargetVolume: number = 0.4;
   private nightFadeInterval: any = null;
   private nightSavedTime: number = 0;
+  private lastMorningTime: number = 0;
 
-  private constructor() {}
+  private constructor() {
+    this.refreshNightTracks();
+  }
 
   public static getInstance(): AudioManager {
     if (!AudioManager.instance) {
@@ -65,12 +57,32 @@ export class AudioManager {
     }
   }
 
+  public refreshNightTracks(onLoaded?: (tracks: NightTrack[]) => void) {
+    if (typeof window === "undefined") return;
+    fetch("/api/night-tracks")
+      .then((r) => r.json())
+      .then((data: NightTrack[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          this.nightTracks = data;
+          if (this.currentTrackIndex >= data.length) {
+            this.currentTrackIndex = 0;
+          }
+          if (onLoaded) onLoaded(data);
+        }
+      })
+      .catch(() => {});
+  }
+
   public getNightTracks(): NightTrack[] {
     return this.nightTracks;
   }
 
   public getCurrentTrackIndex(): number {
     return this.currentTrackIndex;
+  }
+
+  public isNightPlaying(): boolean {
+    return !!(this.nightAudio && !this.nightAudio.paused);
   }
 
   public setNightVolume(vol: number) {
@@ -94,16 +106,21 @@ export class AudioManager {
 
   public selectTrack(index: number) {
     if (index >= 0 && index < this.nightTracks.length) {
+      const wasPlaying = this.isNightPlaying();
       if (this.currentTrackIndex !== index && this.nightAudio) {
         this.nightAudio.pause();
         this.nightAudio = null;
         this.nightSavedTime = 0;
       }
       this.currentTrackIndex = index;
+      if (wasPlaying) {
+        this.playNight(false);
+      }
     }
   }
 
   public nextTrack() {
+    if (this.nightTracks.length === 0) return;
     let nextIdx: number;
     if (this.isShuffle && this.nightTracks.length > 1) {
       do {
@@ -115,8 +132,12 @@ export class AudioManager {
     this.selectTrack(nextIdx);
   }
 
-  public startNight(fadeInDurationMs: number = 2000) {
-    if (this.isMuted || typeof window === "undefined") return;
+    public startNight(_durationMs?: number) {
+    this.playNight(true);
+  }
+
+  public playNight(fadeIn: boolean = false) {
+    if (this.isMuted || typeof window === "undefined" || this.nightTracks.length === 0) return;
 
     if (this.nightFadeInterval) {
       clearInterval(this.nightFadeInterval);
@@ -126,8 +147,8 @@ export class AudioManager {
     const track = this.nightTracks[this.currentTrackIndex] || this.nightTracks[0];
     if (!track) return;
 
-    if (!this.nightAudio || !this.nightAudio.src.includes(track.src)) {
-      this.nightAudio = new Audio(track.src);
+    if (!this.nightAudio || !this.nightAudio.src.includes(encodeURI(track.src))) {
+      this.nightAudio = new Audio(encodeURI(track.src));
       this.nightAudio.loop = true;
     }
 
@@ -137,14 +158,20 @@ export class AudioManager {
       } catch {}
     }
 
-    const targetVol = Math.max(0.1, this.nightTargetVolume || 0.35);
-    this.nightAudio.volume = 0.05;
+    const targetVol = this.nightTargetVolume;
 
+    if (!fadeIn) {
+      this.nightAudio.volume = targetVol;
+      this.nightAudio.play().catch(() => {});
+      return;
+    }
+
+    this.nightAudio.volume = 0.05;
     const playPromise = this.nightAudio.play();
     if (playPromise !== undefined) {
       playPromise.then(() => {
         const steps = 15;
-        const stepTime = Math.max(50, Math.floor(fadeInDurationMs / steps));
+        const stepTime = 100;
         let step = 1;
         this.nightFadeInterval = setInterval(() => {
           step++;
@@ -156,13 +183,30 @@ export class AudioManager {
             this.nightFadeInterval = null;
           }
         }, stepTime);
-      }).catch((e) => {
-        console.warn("[AudioManager] Night audio play blocked or error:", e);
-      });
+      }).catch(() => {});
     }
   }
 
-  public pauseNightWithFadeOut(onComplete?: () => void, fadeOutDurationMs: number = 1400) {
+  public pauseNight(_immediate?: boolean) {
+    if (this.nightFadeInterval) {
+      clearInterval(this.nightFadeInterval);
+      this.nightFadeInterval = null;
+    }
+    if (this.nightAudio) {
+      this.nightSavedTime = this.nightAudio.currentTime;
+      this.nightAudio.pause();
+    }
+  }
+
+  public stopNight() {
+    this.pauseNight();
+    this.nightSavedTime = 0;
+    if (this.nightAudio) {
+      this.nightAudio.currentTime = 0;
+    }
+  }
+
+  public pauseNightWithFadeOut(onComplete?: () => void, fadeOutDurationMs: number = 1500) {
     if (!this.nightAudio || this.nightAudio.paused) {
       if (onComplete) onComplete();
       return;
@@ -175,7 +219,7 @@ export class AudioManager {
 
     const startVol = this.nightAudio.volume;
     const steps = 15;
-    const stepTime = fadeOutDurationMs / steps;
+    const stepTime = Math.max(30, Math.floor(fadeOutDurationMs / steps));
     let step = 0;
 
     this.nightFadeInterval = setInterval(() => {
@@ -198,48 +242,23 @@ export class AudioManager {
     }, stepTime);
   }
 
-  public playNightAmbient(vol: number = 0.3) {
-    this.setNightVolume(vol);
-    this.startNight(1800);
-  }
-
-  public isNightPlaying(): boolean {
-    return !!(this.nightAudio && !this.nightAudio.paused);
-  }
-
-  public pauseNight(immediate: boolean = true) {
-    if (this.nightFadeInterval) {
-      clearInterval(this.nightFadeInterval);
-      this.nightFadeInterval = null;
-    }
-    if (this.nightAudio) {
-      this.nightSavedTime = this.nightAudio.currentTime;
-      this.nightAudio.pause();
-    }
-  }
-
-  public stopNight() {
-    this.pauseNight(true);
-    this.nightSavedTime = 0;
-    if (this.nightAudio) {
-      this.nightAudio.currentTime = 0;
-    }
-  }
-
-  public stopNightAmbient(fadeMs: number = 1200) {
-    this.pauseNightWithFadeOut(undefined, fadeMs);
+  public playMorning() {
+    const now = Date.now();
+    if (now - this.lastMorningTime < 4000) return;
+    this.lastMorningTime = now;
+    this.playFile("/voice/morning.mp3", 0.95);
   }
 
   public playShot() {
     this.playFile("/voice/shot.mp3", 0.95);
   }
 
-  public playMorning() {
-    this.playFile("/voice/morning.mp3", 0.9);
-  }
-
   public playCourt() {
     this.playFile("/voice/court.mp3", 0.9);
+  }
+
+  public playExplosion() {
+    this.playFile("/voice/explosion.mp3", 1.0);
   }
 
   public playCountdown10() {
@@ -257,7 +276,7 @@ export class AudioManager {
       case "court": case "gavel": this.playCourt(); break;
       case "countdown10": case "alarm": this.playCountdown10(); break;
       case "countdown3": case "tick": this.playCountdown3(); break;
-      case "night_ambient": this.playNightAmbient(); break;
+      case "explosion": this.playExplosion(); break;
       default: break;
     }
   }
@@ -271,10 +290,10 @@ export class AudioManager {
     } catch {}
   }
 
-  public getCustomSound(_key: string): string | null { return null; }
-  public setCustomSound(_key: string, _url: string | null) {}
-  public getPreset(_key: string): string { return "classic"; }
-  public setPreset(_key: string, _preset: string) {}
+  public getCustomSound(_k: string): string | null { return null; }
+  public setCustomSound(_k: string, _u: string | null) {}
+  public getPreset(_k: string): string { return "classic"; }
+  public setPreset(_k: string, _p: string) {}
 
   public playFlip() {}
   public playTick() {}
@@ -285,7 +304,7 @@ export class AudioManager {
   public playWarningBeep() {}
   public playVictory() {}
   public playBell() {}
-  public playCustomTrack(_path: string) {}
+  public playCustomTrack(_p: string) {}
   public triggerVibrate(_p: number[] = []) {}
 }
 

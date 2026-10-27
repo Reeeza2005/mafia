@@ -1698,12 +1698,11 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                   const nextState = !isNightDeskOpen;
                   setIsNightDeskOpen(nextState);
                   network.toggleNightPhase(nextState);
-                  if (nextState) {
-                    audio.startNight(2200);
-                  } else {
-                    audio.pauseNightWithFadeOut(undefined, 1000);
-                    setIsPlayingNight(false);
-                  }
+                                      // فاز شب بدون صدای خودکار باز می‌شود
+                    if (!nextState) {
+                      audio.pauseNight(true);
+                      setIsPlayingNight(false);
+                    }
                 }}
               className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
                 isNightDeskOpen
