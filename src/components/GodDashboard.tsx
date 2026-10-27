@@ -609,7 +609,6 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             (network as any).sendNightResultToPlayer(watcherPlayer.id, msg);
           }
         }
-        }
       const report = nightResult?.report || { deaths: [], healed: [], logs: [] };
       const updatedArmors = nightResult?.updatedArmors || currentArmors;
       const updatedQuotas = nightResult?.updatedQuotas;
