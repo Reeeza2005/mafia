@@ -294,7 +294,13 @@ sock.on('game_reset', () => {
     if (isVoteUnlocked) {
       setVoteCountdown(5);
       const timer = setInterval(() => {
-        setVoteCountdown(prev => (prev > 1 ? prev - 1 : 1));
+        setVoteCountdown(prev => {
+            const next = prev > 1 ? prev - 1 : 1;
+            if (next === 3) {
+              audio.playCountdown3();
+            }
+            return next;
+          });
       }, 1000);
       return () => clearInterval(timer);
     }
@@ -315,9 +321,11 @@ sock.on('game_reset', () => {
           if (prev <= 1) {
             return 0;
           }
-          if (prev <= 5) {
-            audio.playTick();
-          }
+          if (prev === 10) {
+              audio.playCountdown10();
+            } else if (prev <= 5 && prev > 0) {
+              audio.playTick();
+            }
           return prev - 1;
         });
       }, 1000);
@@ -378,12 +386,27 @@ sock.on('game_reset', () => {
     });
 
     const unNightPhase = network.on("night_phase_state", (data: any) => {
-      if (typeof data?.active === "boolean") setNightPhaseActive(data.active);
+      if (typeof data?.active === "boolean") {
+        setNightPhaseActive(data.active);
+        if (data.active) {
+          audio.playNightAmbient(0.25);
+        } else {
+          audio.stopNightAmbient(1200);
+          audio.playMorning();
+        }
+      }
     });
     const unNightToggled = network.on("night_phase_toggled", (data: any) => {
-      if (typeof data?.active === "boolean") setNightPhaseActive(data.active);
+      if (typeof data?.active === "boolean") {
+        setNightPhaseActive(data.active);
+        if (data.active) {
+          audio.playNightAmbient(0.25);
+        } else {
+          audio.stopNightAmbient(1200);
+          audio.playMorning();
+        }
+      }
     });
-
     const unPlayerNotif = network.on("player_notification", (data: any) => {
       if (player && data?.targetPlayerId === player?.id) {
         setNightResultMessage(data);
