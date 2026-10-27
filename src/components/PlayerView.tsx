@@ -363,6 +363,7 @@ sock.on('game_reset', () => {
       console.log("[PlayerView] دریافت وضعیت نوبت شب:", data, "| نقش من:", player?.roleId, "| شناسه من:", player?.id);
       setCurrentNightRole(data?.role || null);
       setNightActionDone(false);
+        setNightActionSent(false);
       setSelectedNightTargetId("");
       if (data?.role) {
         setNightPhaseActive(true);
@@ -385,7 +386,12 @@ sock.on('game_reset', () => {
     const unNightResult = network.on("night_result_received", (data: any) => {
       if (data?.message) {
         setNightResultMessage(data);
-        setNightActionDone(true);
+        if (typeof data?.message === "string" && (data.message.includes("لغو") || data.message.includes("انجام نشد"))) {
+          setNightActionSent(false);
+          setNightActionDone(false);
+        } else {
+          setNightActionDone(true);
+        }
         audio.playFlip();
       }
     });

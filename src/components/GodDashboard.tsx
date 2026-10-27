@@ -2124,7 +2124,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                    {(item as any).isSkip || item.targetId === "skip" ? "تایید انصراف بمب‌گذار ✓" : "تایید کارگذاری بمب 💣"}
                                  </button>
                                 ) : item.roleId === "gunsmith" ? (
-                            <button
+                            <div className="flex items-center gap-1.5">
+                              <button
                               type="button"
                               onClick={() => {
                                 const isReal = item.extraType !== "blank";
@@ -2166,6 +2167,23 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                             >
                               تایید اهدا اسلحه 🔫
                             </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // لغو درخواست و بازگرداندن فرم تفنگدار
+                                  setIncomingNightTargets(prev => prev.filter(t => !(t.playerId === item.playerId && t.targetId === item.targetId)));
+                                  if (network && typeof (network as any).sendNightResultToPlayer === 'function') {
+                                    (network as any).sendNightResultToPlayer(
+                                      item.playerId,
+                                      "درخواست اهدای اسلحه لغو شد؛ می‌توانید مجدداً انتخاب کنید ↺"
+                                    );
+                                  }
+                                }}
+                                className="px-2 py-1 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-400 hover:text-white text-[10px] font-bold cursor-pointer"
+                              >
+                                لغو ✕
+                              </button>
+                            </div>
                           ) : (item.roleId === "godfather" || item.roleId === "mafia") ? (
                             <button
                               type="button"
