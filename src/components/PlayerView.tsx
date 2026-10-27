@@ -162,7 +162,7 @@ sock.on('game_reset', () => {
 
   // ⏱️ شمارش معکوس ۱۵ ثانیه‌ای خنثی‌سازی بمب
   useEffect(() => {
-    if (activeBomb?.status === 'detonating' && activeBomb?.victimId === player?.id) {
+    if (activeBomb?.status === 'detonating') {
       setBombTimer(15);
       const interval = setInterval(() => {
         setBombTimer((prev) => {
@@ -604,7 +604,7 @@ sock.on('game_reset', () => {
       )}
 
         {/* 💣 دکمه چاشنی فاز روز برای بمب‌گذار */}
-        {player?.isAlive && (player?.roleId === 'bomber' || activePlayer?.roleId === 'bomber') && activeBomb && activeBomb.status === 'planted' && (
+        {!nightPhaseActive && player?.isAlive && (player?.roleId === 'bomber' || activePlayer?.roleId === 'bomber') && activeBomb && activeBomb.status === 'planted' && (
           <div className="bg-red-950/90 border-2 border-red-500 rounded-2xl p-4 my-3 text-center space-y-3 shadow-2xl shadow-red-950 animate-pulse">
             <div className="text-xs text-red-200 font-black flex items-center justify-center gap-1.5">
               <span>💣</span>
