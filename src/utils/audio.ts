@@ -242,6 +242,18 @@ export class AudioManager {
     }, stepTime);
   }
 
+    public playFuse() {
+    this.playFile("/voice/fuse.mp3", 0.9);
+  }
+
+  public playDefuse() {
+    this.playFile("/voice/defuse.mp3", 0.95);
+  }
+
+  public playExplosion() {
+    this.playFile("/voice/explosion.mp3", 1.0);
+  }
+
   public playMorning() {
     const now = Date.now();
     if (now - this.lastMorningTime < 4000) return;
@@ -257,9 +269,7 @@ export class AudioManager {
     this.playFile("/voice/court.mp3", 0.9);
   }
 
-  public playExplosion() {
-    this.playFile("/voice/explosion.mp3", 1.0);
-  }
+  
 
   public playCountdown10() {
     this.playFile("/voice/countdown10.mp3", 0.85);

@@ -106,9 +106,17 @@ export const PlayerView: React.FC<PlayerViewProps> = ({
       }
     };
 
-    const handleBombTriggered = (data: any) => setActiveBomb(data?.bomb || null);
-    const handleBombReset = () => setActiveBomb(null);
+    const handleBombTriggered = (data: any) => {
+        setActiveBomb(data?.bomb || null);
+        audio.playFuse();
+        audio.playCountdown10();
+      };
+    const handleBombReset = () => {
+        audio.playDefuse();
+        setActiveBomb(null);
+      };
     const handleBombExploded = (data: any) => {
+        audio.playExplosion();
       console.log("[💣 کلاینت] انفجار بمب دریافت شد:", data);
       setActiveBomb(null);
              if (data?.victimId === player?.id || (player?.name && data?.victimName === player?.name)) {
