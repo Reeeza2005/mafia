@@ -1344,10 +1344,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on("cancel_day_shot", ({ roomCode, playerId }) => {
-      const room = getOrCreateRoom(roomCode);
-      if (!room) return;
-      io.to(roomCode).emit("day_shot_cancelled", { playerId });
-    });
+        const room = getOrCreateRoom(roomCode);
+        if (!room) return;
+        if (room.dayState?.guns?.[playerId]) {
+          room.dayState.guns[playerId].isUsed = false;
+          room.dayState.guns[playerId].used = false;
+        }
+        if (Array.isArray((room as any).dayGuns)) {
+          (room as any).dayGuns = (room as any).dayGuns.map((g: any) =>
+            g.targetId === playerId ? { ...g, used: false } : g
+          );
+        }
+        io.to(roomCode).emit("day_shot_cancelled", { playerId });
+      });
     
     socket.on("request_challenge", (data) => {
     const pId = typeof data === "object" ? data.playerId : data;

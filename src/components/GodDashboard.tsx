@@ -1623,12 +1623,27 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       تایید شلیک نهایی 💥
                     </button>
                     <button
-                      type="button"
-                      onClick={() => setPendingDayShot(null)}
-                      className="px-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs py-1.5 rounded-xl transition-all cursor-pointer"
-                    >
-                      رد شلیک ❌
-                    </button>
+                        type="button"
+                        onClick={() => {
+                          const shooterId = pendingDayShot?.shooterId;
+                          if (shooterId) {
+                            (network.socket || (network as any).getSocket?.())?.emit?.("cancel_day_shot", {
+                              roomCode,
+                              playerId: shooterId
+                            });
+                            if (typeof (network as any).sendNightResultToPlayer === 'function') {
+                              (network as any).sendNightResultToPlayer(
+                                shooterId,
+                                "شلیک شما توسط گرداننده لغو شد و تفنگ شما فعال باقی ماند ⚪"
+                              );
+                            }
+                          }
+                          setPendingDayShot(null);
+                        }}
+                        className="px-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs py-1.5 rounded-xl transition-all cursor-pointer"
+                      >
+                        رد شلیک ❌
+                      </button>
                   </div>
                 </div>
               )}
