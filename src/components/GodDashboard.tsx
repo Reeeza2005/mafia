@@ -90,6 +90,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   const [isNightDeskOpen, setIsNightDeskOpen] = useState(false);
   const [nightVolume, setNightVolume] = useState(audio.getNightVolume() * 100);
   const [isShuffleNight, setIsShuffleNight] = useState(audio.getShuffle());
+  const [isPlayingNight, setIsPlayingNight] = useState(false);
   const [currentTrackName, setCurrentTrackName] = useState(() => {
     const tracks = audio.getNightTracks();
     const idx = audio.getCurrentTrackIndex();
@@ -1701,6 +1702,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                     audio.startNight(2200);
                   } else {
                     audio.pauseNightWithFadeOut(undefined, 1000);
+                    setIsPlayingNight(false);
                   }
                 }}
               className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
@@ -1750,6 +1752,41 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                       />
                       <span className="text-[10px] font-mono text-purple-300 w-6 text-left">{nightVolume}%</span>
                     </div>
+
+                    {/* دکمه پخش و پاز */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isPlayingNight) {
+                          audio.pauseNight(true);
+                          setIsPlayingNight(false);
+                        } else {
+                          audio.startNight(1000);
+                          setIsPlayingNight(true);
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                        isPlayingNight
+                          ? "bg-amber-950/80 border-amber-600 text-amber-200"
+                          : "bg-emerald-950/80 border-emerald-600 text-emerald-200"
+                      }`}
+                      title="پخش یا توقف موقت موزیک"
+                    >
+                      {isPlayingNight ? "⏸️ توقف" : "▶️ پخش"}
+                    </button>
+
+                    {/* دکمه استاپ کامل */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        audio.stopNight();
+                        setIsPlayingNight(false);
+                      }}
+                      className="px-2 py-1 rounded-xl text-[11px] font-bold bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 cursor-pointer"
+                      title="توقف کامل و بازگشت به ثانیه صفر"
+                    >
+                      ⏹️ ایست
+                    </button>
 
                     {/* دکمه شافل / رندم */}
                     <button

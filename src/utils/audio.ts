@@ -33,7 +33,15 @@ export class AudioManager {
 
   private nightAudio: HTMLAudioElement | null = null;
   private nightTracks: NightTrack[] = [
-    { id: "1", title: "تم شبانه ۱", src: "/voice/night/ambient_01.mp3" }
+    { id: "1", title: "Habib - 02 - Khers Kuki", src: "/voice/night/Habib - 02 - Khers Kuki.mp3" },
+    { id: "2", title: "Habib - 03 - Shahlay Man", src: "/voice/night/Habib - 03 - Shahlay Man.mp3" },
+    { id: "3", title: "Habib - 05 - Mard", src: "/voice/night/Habib - 05 - Mard.mp3" },
+    { id: "4", title: "Habib - 06 - Yaran Man", src: "/voice/night/Habib - 06 - Yaran Man.mp3" },
+    { id: "5", title: "Ambient 01", src: "/voice/night/ambient_01.mp3" },
+    { id: "6", title: "Dragon-Studio-Dark-Horror-Ambient-05-425468", src: "/voice/night/dragon-studio-dark-horror-ambient-05-425468.mp3" },
+    { id: "7", title: "Dragon-Studio-Rooster-Crowing-364473", src: "/voice/night/dragon-studio-rooster-crowing-364473.mp3" },
+    { id: "8", title: "Intrepidmedia-Gavel-Of-Justice-124029", src: "/voice/night/intrepidmedia-gavel-of-justice-124029.mp3" },
+    { id: "9", title: "Mrfriends-Pistol-Shot-233473", src: "/voice/night/mrfriends-pistol-shot-233473.mp3" },
   ];
   private currentTrackIndex: number = 0;
   private isShuffle: boolean = true;
@@ -193,6 +201,29 @@ export class AudioManager {
   public playNightAmbient(vol: number = 0.3) {
     this.setNightVolume(vol);
     this.startNight(1800);
+  }
+
+  public isNightPlaying(): boolean {
+    return !!(this.nightAudio && !this.nightAudio.paused);
+  }
+
+  public pauseNight(immediate: boolean = true) {
+    if (this.nightFadeInterval) {
+      clearInterval(this.nightFadeInterval);
+      this.nightFadeInterval = null;
+    }
+    if (this.nightAudio) {
+      this.nightSavedTime = this.nightAudio.currentTime;
+      this.nightAudio.pause();
+    }
+  }
+
+  public stopNight() {
+    this.pauseNight(true);
+    this.nightSavedTime = 0;
+    if (this.nightAudio) {
+      this.nightAudio.currentTime = 0;
+    }
   }
 
   public stopNightAmbient(fadeMs: number = 1200) {

@@ -389,10 +389,10 @@ sock.on('game_reset', () => {
       if (typeof data?.active === "boolean") {
         setNightPhaseActive(data.active);
         if (data.active) {
-          audio.playNightAmbient(0.25);
+          // ambient handled by god
         } else {
-          audio.stopNightAmbient(1200);
-          audio.playMorning();
+          // stopped
+          // morning handled by god
         }
       }
     });
@@ -400,10 +400,10 @@ sock.on('game_reset', () => {
       if (typeof data?.active === "boolean") {
         setNightPhaseActive(data.active);
         if (data.active) {
-          audio.playNightAmbient(0.25);
+          // ambient handled by god
         } else {
-          audio.stopNightAmbient(1200);
-          audio.playMorning();
+          // stopped
+          // morning handled by god
         }
       }
     });
