@@ -597,9 +597,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
       const updatedPlayers = nightResult?.updatedPlayers || players;
         // ارسال اختصاصی نتیجه کشیک شبانه به دیده‌بان
         const watcherPlayer = players.find(p => p.roleId === "watcher" && p.isAlive);
-        if (watcherPlayer && effectiveActions.watcherTargetId) {
+        if (watcherPlayer && nightActions.watcherTargetId) {
           const vCount = (nightResult?.report?.watcherVisitors || []).length;
-          const targetP = players.find(p => p.id === effectiveActions.watcherTargetId);
+          const targetP = players.find(p => p.id === nightActions.watcherTargetId);
           const targetName = targetP ? targetP.name : "هدف";
           const msg = `👁️ گزارش کشیک شبانه: در طول شب، ${vCount} ردپا (رفت‌وآمد) در اطراف خانه «${targetName}» رویت شد.`;
           if (network && typeof (network as any).sendNightResultToPlayer === 'function') {
