@@ -163,11 +163,13 @@ class AudioManager {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
   private customAudioCache: Map<SoundKey, HTMLAudioElement> = new Map();
+  private defaultAudioCache: Map<string, HTMLAudioElement> = new Map();
   private soundPresets: Record<string, string> = {};
   private customSounds: Record<string, string> = {};
 
   constructor() {
     this.loadSettings();
+    this.initDefaultSounds();
     this.initUserGestureUnlock();
   }
 
@@ -266,9 +268,16 @@ class AudioManager {
         customAudio.currentTime = 0;
         customAudio.play().catch(() => synthFallback());
         return;
-      } catch {
-        // Fall back to synth
-      }
+      } catch {}
+    }
+
+    const defaultAudio = this.defaultAudioCache.get(key);
+    if (defaultAudio) {
+      try {
+        defaultAudio.currentTime = 0;
+        defaultAudio.play().catch(() => synthFallback());
+        return;
+      } catch {}
     }
 
     synthFallback();
