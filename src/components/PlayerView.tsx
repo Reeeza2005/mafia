@@ -851,7 +851,7 @@ sock.on('game_reset', () => {
         {player?.isAlive && nightPhaseActive && (
           player?.roleId === "simple_citizen" || 
           player?.roleId === "citizen" || 
-          (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "hostage_taker", "sniper", "bodyguard", "guard", "bodyguard", "guard", "gunsmith", "silencer"].includes(player?.roleId || ''))
+          (!["godfather", "dr_lecter", "doctor_lecter", "simple_mafia", "mafia", "detective", "doctor", "hostage_taker", "sniper", "bodyguard", "guard", "bodyguard", "guard", "gunsmith", "silencer", "watcher"].includes(player?.roleId || ''))
         ) && !(currentNightRole && ((currentNightRole === player?.roleId || ((currentNightRole === "bodyguard" || currentNightRole === "guard") && (player?.roleId === "bodyguard" || player?.roleId === "guard"))) || (currentNightRole === "mafia" && isMafia(player?.roleId) && (getMafiaShooter(livePlayers.length ? livePlayers : players)?.id === player?.id || !getMafiaShooter(livePlayers.length ? livePlayers : players))))) && (
           <div className="rounded-2xl border border-indigo-900/40 bg-gradient-to-b from-indigo-950/30 to-black/60 p-4 space-y-2 text-center shadow-lg">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 text-lg mb-1 animate-pulse">
@@ -1036,7 +1036,9 @@ sock.on('game_reset', () => {
                   ? "🩺 نجات شبانه یار مافیا (دکتر لکتر)"
                   : player?.roleId === "godfather"
                   ? "💥 انتخاب هدف شلیک مافیا (پدرخوانده)"
-                  : player?.roleId === "detective"
+                  : player?.roleId === "watcher"
+                    ? "👁️ کشیک شبانه و رصد رفت‌وآمدها (دیده‌بان)"
+                    : player?.roleId === "detective"
                   ? "🔍 استعلام شبانه هویت (کارآگاه)"
                   : player?.roleId === "priest"
                     ? "🕊️ انتخاب بازیکن برای شکستن سکوت و شفا (کشیش)"
