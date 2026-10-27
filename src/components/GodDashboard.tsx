@@ -598,13 +598,17 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
         // ارسال اختصاصی نتیجه کشیک شبانه به دیده‌بان
         const watcherPlayer = players.find(p => p.roleId === "watcher" && p.isAlive);
         if (watcherPlayer && nightActions.watcherTargetId) {
-          const vCount = (nightResult?.report?.watcherVisitors || []).length;
+          const vList = nightResult?.report?.watcherVisitors || [];
+          const vCount = vList.length;
           const targetP = players.find(p => p.id === nightActions.watcherTargetId);
           const targetName = targetP ? targetP.name : "هدف";
-          const msg = `👁️ گزارش کشیک شبانه: در طول شب، ${vCount} ردپا (رفت‌وآمد) در اطراف خانه «${targetName}» رویت شد.`;
+          const msg = vCount > 0
+            ? `👁️ گزارش کشیک شبانه: در طول شب، ${vCount} نفر در اطراف خانه «${targetName}» رویت شدند: ${vList.join('، ')}`
+            : `👁️ گزارش کشیک شبانه: در طول شب هیچ رفت‌وآمدی در اطراف خانه «${targetName}» ثبت نشد (۰ ردپا).`;
           if (network && typeof (network as any).sendNightResultToPlayer === 'function') {
             (network as any).sendNightResultToPlayer(watcherPlayer.id, msg);
           }
+        }
         }
       const report = nightResult?.report || { deaths: [], healed: [], logs: [] };
       const updatedArmors = nightResult?.updatedArmors || currentArmors;

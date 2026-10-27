@@ -304,15 +304,68 @@ export function resolveNight(
   // ۵. اولویت پنجم (ردیابی و تحلیل شبکه): دیده‌بان و هکر
   // ----------------------------------------------------
   const watcherVisitors: string[] = [];
-  if (actions.watcherTargetId) {
-    const targetId = actions.watcherTargetId;
-    if (actions.mafiaShotId === targetId || actions.mafiaShotId2 === targetId) watcherVisitors.push('تیم شلیک مافیا');
-    if (actions.doctorSaveId === targetId) watcherVisitors.push('پزشک');
-    if (actions.detectiveInquiryId === targetId) watcherVisitors.push('کارآگاه');
-    if (actions.sniperShotId === targetId) watcherVisitors.push('اسنایپر');
-    if (actions.silencerTargetId === targetId) watcherVisitors.push('ناتاشا');
-    logs.push(`دیده‌بان ${watcherVisitors.length} ردپا در اطراف خانه هدف ثبت کرد.`);
-  }
+    if (actions.watcherTargetId) {
+      const targetId = actions.watcherTargetId;
+      const allPlayers = Array.from(playerMap.values());
+
+      // ۱. شلیک‌کننده مافیا
+      if (actions.mafiaShotId === targetId || actions.mafiaShotId2 === targetId) {
+        const shooter = (actions.mafiaShooterId ? playerMap.get(actions.mafiaShooterId) : null)
+          || allPlayers.find(p => p.roleId === 'godfather' && p.isAlive)
+          || allPlayers.find(p => (p.roleId === 'dr_lecter' || p.roleId === 'doctor_lecter') && p.isAlive)
+          || allPlayers.find(p => (p.team === 'mafia' || p.roleId?.includes('mafia')) && p.isAlive);
+        if (shooter) watcherVisitors.push(shooter.name);
+      }
+
+      // ۲. پزشک
+      if (actions.doctorSaveId === targetId) {
+        const doc = allPlayers.find(p => p.roleId === 'doctor' && p.isAlive);
+        if (doc) watcherVisitors.push(doc.name);
+      }
+
+      // ۳. کارآگاه
+      if (actions.detectiveInquiryId === targetId) {
+        const det = allPlayers.find(p => p.roleId === 'detective' && p.isAlive);
+        if (det) watcherVisitors.push(det.name);
+      }
+
+      // ۴. تک‌تیرانداز
+      if (actions.sniperShotId === targetId) {
+        const snp = allPlayers.find(p => p.roleId === 'sniper' && p.isAlive);
+        if (snp) watcherVisitors.push(snp.name);
+      }
+
+      // ۵. ناتاشا / سایلنسر
+      if (actions.silencerTargetId === targetId) {
+        const sil = allPlayers.find(p => (p.roleId === 'silencer' || p.roleId === 'natasha') && p.isAlive);
+        if (sil) watcherVisitors.push(sil.name);
+      }
+
+      // ۶. محافظ / بادیگارد
+      if ((actions as any).guardTargetId === targetId || (actions as any).bodyguardTargetId === targetId) {
+        const grd = allPlayers.find(p => (p.roleId === 'bodyguard' || p.roleId === 'guard') && p.isAlive);
+        if (grd) watcherVisitors.push(grd.name);
+      }
+
+      // ۷. تفنگدار
+      if ((actions as any).gunsmithTarget1Id === targetId || (actions as any).gunsmithTarget2Id === targetId || (actions as any).gunsmithTargetId === targetId) {
+        const gns = allPlayers.find(p => p.roleId === 'gunsmith' && p.isAlive);
+        if (gns) watcherVisitors.push(gns.name);
+      }
+
+      // ۸. کشیش
+      if ((actions as any).priestTargetId === targetId) {
+        const prst = allPlayers.find(p => p.roleId === 'priest' && p.isAlive);
+        if (prst) watcherVisitors.push(prst.name);
+      }
+
+      const uniqueVisitors = Array.from(new Set(watcherVisitors));
+      watcherVisitors.length = 0;
+      watcherVisitors.push(...uniqueVisitors);
+
+      const visitorsStr = watcherVisitors.length > 0 ? ` (شامل: ${watcherVisitors.join('، ')})` : '';
+      logs.push(`دیده‌بان ${watcherVisitors.length} ردپا در اطراف خانه هدف ثبت کرد${visitorsStr}.`);
+    }
 
   let hackerReport: { sameTeam: boolean } | undefined;
   if (actions.hackerTargetIds && actions.hackerTargetIds.length === 2) {
