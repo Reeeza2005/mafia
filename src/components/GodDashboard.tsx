@@ -88,6 +88,13 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   // Night Actions State
   // --- Night / Day Unified Engine States ---
   const [isNightDeskOpen, setIsNightDeskOpen] = useState(false);
+  const [nightVolume, setNightVolume] = useState(audio.getNightVolume() * 100);
+  const [isShuffleNight, setIsShuffleNight] = useState(audio.getShuffle());
+  const [currentTrackName, setCurrentTrackName] = useState(() => {
+    const tracks = audio.getNightTracks();
+    const idx = audio.getCurrentTrackIndex();
+    return tracks[idx]?.title || "تم تاریک ۱";
+  });
   const [currentActiveNightStep, setCurrentActiveNightStep] = useState<string | null>(null);
   const [godAnnouncementText, setGodAnnouncementText] = useState<string | null>(null);
   const [incomingDayShotRequests, setIncomingDayShotRequests] = useState<{ playerId: string; playerName: string }[]>([]);
@@ -573,6 +580,9 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     players.forEach(p => onUpdatePlayer(p.id, { isHostaged: false } as any));
     try {
       console.log("[GodDashboard] شروع انتقال به فاز روز...");
+      audio.pauseNightWithFadeOut(() => {
+        audio.playMorning();
+      }, 1500);
       console.log("[GodDashboard DEBUG] مقادیر nightActions در لحظه پردازش:", JSON.stringify(nightActions));
       console.log("[GodDashboard DEBUG] مقادیر incomingNightTargets موجود:", JSON.stringify(incomingNightTargets));
       const currentArmors: Record<string, boolean> = {};
@@ -1684,10 +1694,15 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
             
               <button
               onClick={() => {
-                const nextState = !isNightDeskOpen;
-                setIsNightDeskOpen(nextState);
-                network.toggleNightPhase(nextState);
-              }}
+                  const nextState = !isNightDeskOpen;
+                  setIsNightDeskOpen(nextState);
+                  network.toggleNightPhase(nextState);
+                  if (nextState) {
+                    audio.startNight(2200);
+                  } else {
+                    audio.pauseNightWithFadeOut(undefined, 1000);
+                  }
+                }}
               className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
                 isNightDeskOpen
                   ? "bg-purple-950 text-purple-300 border border-purple-700/80 hover:bg-purple-900"
@@ -1700,7 +1715,77 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
           {/* میز شبانه باز شونده هوشمند بر اساس کارت‌های زنده */}
           {isNightDeskOpen && (
-            <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+              <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-4 animate-in fade-in duration-200">
+                {/* 🎧 پنل اختصاصی پلیر موسیقی فاز شب */}
+                <div className="bg-gradient-to-r from-purple-950/60 to-neutral-950 border border-purple-800/40 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base animate-pulse">🎵</span>
+                    <div>
+                      <div className="font-black text-purple-200 flex items-center gap-2">
+                        <span>موسیقی شب:</span>
+                        <span className="text-amber-300 font-mono text-[11px] bg-purple-900/50 px-2 py-0.5 rounded-lg border border-purple-700/50">
+                          {currentTrackName}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-neutral-400">فید نرم خودکار هنگام طلوع صبح و ذخیره تایم آهنگ</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {/* کنترل ولوم شب */}
+                    <div className="flex items-center gap-1.5 bg-neutral-900/90 px-2.5 py-1 rounded-xl border border-neutral-800">
+                      <span className="text-[10px] text-neutral-400">🔊</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={nightVolume}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setNightVolume(val);
+                          audio.setNightVolume(val / 100);
+                        }}
+                        className="w-16 h-1 accent-purple-500 cursor-pointer"
+                        title="ولوم موسیقی شب"
+                      />
+                      <span className="text-[10px] font-mono text-purple-300 w-6 text-left">{nightVolume}%</span>
+                    </div>
+
+                    {/* دکمه شافل / رندم */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !isShuffleNight;
+                        setIsShuffleNight(next);
+                        audio.setShuffle(next);
+                      }}
+                      className={`px-2 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                        isShuffleNight
+                          ? "bg-purple-900/80 border-purple-500 text-purple-200"
+                          : "bg-neutral-900 border-neutral-700 text-neutral-500"
+                      }`}
+                      title="پخش تصادفی ترک‌های شب"
+                    >
+                      🔀 تصادفی {isShuffleNight ? "روشن" : "خاموش"}
+                    </button>
+
+                    {/* دکمه آهنگ بعدی */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        audio.nextTrack();
+                        const tracks = audio.getNightTracks();
+                        const idx = audio.getCurrentTrackIndex();
+                        setCurrentTrackName(tracks[idx]?.title || "تم تاریک");
+                        audio.startNight(1000);
+                      }}
+                      className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition-all active:scale-95"
+                      title="تغییر به ترک بعدی"
+                    >
+                      ⏭️ بعدی
+                    </button>
+                  </div>
+                </div>
               {/* نوار کنترل ترتیبی بیدارباش نقش‌ها در فاز شب */}
               <div className="bg-neutral-950/80 border border-neutral-800 rounded-2xl p-3 space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-neutral-300">
