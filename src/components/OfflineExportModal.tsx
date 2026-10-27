@@ -33,65 +33,56 @@ export const OfflineExportModal: React.FC<OfflineExportModalProps> = ({ isOpen, 
   // 1. Windows Run Batch File
   const windowsBatContent = `@echo off
 chcp 65001 >nul
-title سرور بازی مافیا نوار - شبکه محلی Wi-Fi
-color 0C
-echo ========================================================
-echo       🎭 سرور محلی بازی مافیا (کاملاً آفلاین)
-echo ========================================================
-echo.
+title سرور بازی مافیا (نسخه آفلاین)
+cd /d "%~dp0"
 
-node -v >nul 2>&1
+echo ======================================================
+echo           🎮 در حال آماده‌سازی سرور بازی مافیا
+echo ======================================================
+
+where node >nul 2>&1
 if %errorlevel% neq 0 (
     echo [خطا] برنامه Node.js روی سیستم شما نصب نیست!
-    echo لطفاً برنامه Node.js را از سایت زیر دانلود و نصب نمایید:
-    echo https://nodejs.org
-    echo.
+    echo لطفاً برنامه Node.js نسخه LTS را از سایت https://nodejs.org دانلود و نصب نمایید.
     pause
-    exit /b 1
+    exit /b
 )
 
-echo [1/3] بررسی و نصب بسته‌ها...
 if not exist node_modules (
+    echo [اطلاعیه] پوشه پیش‌نیازها پیدا نشد. در حال نصب پکیج‌ها...
     call npm install
 )
 
-echo.
-echo [2/3] اجرای سرور بازی روی پورت 3000...
-echo.
-echo ========================================================
-echo  گوشی‌های بازیکنان را به همین Wi-Fi وصل کنید و بارکد را اسکن کنید.
-echo ========================================================
-echo.
-
-start http://localhost:3000/?role=god^&key=secret123
+echo [✓] در حال اجرای سرور بازی...
+start "" "http://localhost:3000/?role=god&key=secret123"
 call npm run dev
 pause
 `;
 
   // 2. Linux Bash Script
   const linuxShContent = `#!/bin/bash
-# ========================================================
-#       🎭 سرور محلی بازی مافیا (لینوکس - کاملاً آفلاین)
-# ========================================================
+cd "$(dirname "$0")"
 
-echo "========================================================"
-echo "      🎭 سرور محلی بازی مافیا (Mafia Noir Server)      "
-echo "========================================================"
+echo "======================================================"
+echo "          🎮 در حال راه‌اندازی سرور بازی مافیا"
+echo "======================================================"
 
 if ! command -v node &> /dev/null; then
-    echo "[خطا] Node.js روی لینوکس شما نصب نیست!"
-    echo "برای نصب در اوبونتو یا دبیان دستور زیر را بزنید:"
+    echo "[خطا] برنامه Node.js روی سیستم شما نصب نیست!"
+    echo "لطفاً با دستور زیر آن را نصب کنید:"
     echo "  sudo apt update && sudo apt install -y nodejs npm"
     exit 1
 fi
 
-echo "[1/3] نصب پیش‌نیازها در صورت لزوم..."
 if [ ! -d "node_modules" ]; then
+    echo "[اطلاعیه] در حال نصب پیش‌نیازها با npm..."
     npm install
 fi
 
-echo "[2/3] اجرای سرور محلی..."
-echo "پنل گرداننده: http://localhost:3000/?role=god&key=secret123"
+echo "[✓] در حال اجرای سرور بازی..."
+if command -v xdg-open &> /dev/null; then
+    (sleep 2 && xdg-open "http://localhost:3000/?role=god&key=secret123") &
+fi
 npm run dev
 `;
 
