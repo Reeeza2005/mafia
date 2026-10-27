@@ -164,6 +164,8 @@ class AudioManager {
   private isMuted: boolean = false;
   private customAudioCache: Map<SoundKey, HTMLAudioElement> = new Map();
   private defaultAudioCache: Map<string, HTMLAudioElement> = new Map();
+  private nightAmbientAudio: HTMLAudioElement | null = null;
+  private fadeInterval: any = null;
   private soundPresets: Record<string, string> = {};
   private customSounds: Record<string, string> = {};
 
@@ -173,7 +175,97 @@ class AudioManager {
     this.initUserGestureUnlock();
   }
 
-    private initUserGestureUnlock() {
+  private initDefaultSounds() {
+    if (typeof window === "undefined") return;
+    const defaults: Record<string, string> = {
+      shot: "/voice/shot.mp3",
+      morning: "/voice/morning.mp3",
+      court: "/voice/court.mp3",
+      gavel: "/voice/court.mp3",
+      flip: "/voice/bell.mp3",
+      alarm: "/voice/countdown10.mp3",
+      tick: "/voice/countdown3.mp3",
+      bell: "/voice/bell.mp3",
+      countdown10: "/voice/countdown10.mp3",
+      countdown3: "/voice/countdown3.mp3",
+      night_ambient: "/voice/night_ambient.mp3"
+    };
+
+    Object.entries(defaults).forEach(([k, path]) => {
+      try {
+        const audio = new Audio(path);
+        audio.preload = "auto";
+        this.defaultAudioCache.set(k, audio);
+      } catch {}
+    });
+  }
+
+  public playNightAmbient(volume: number = 0.25) {
+    if (this.isMuted || typeof window === "undefined") return;
+    if (this.nightAmbientAudio && !this.nightAmbientAudio.paused) return;
+    if (this.fadeInterval) {
+      clearInterval(this.fadeInterval);
+      this.fadeInterval = null;
+    }
+    try {
+      if (!this.nightAmbientAudio) {
+        this.nightAmbientAudio = new Audio("/voice/night_ambient.mp3");
+        this.nightAmbientAudio.loop = true;
+      }
+      this.nightAmbientAudio.volume = volume;
+      this.nightAmbientAudio.currentTime = 0;
+      this.nightAmbientAudio.play().catch(() => {});
+    } catch {}
+  }
+
+  public stopNightAmbient(fadeDurationMs: number = 1200) {
+    if (!this.nightAmbientAudio || this.nightAmbientAudio.paused) return;
+    if (this.fadeInterval) {
+      clearInterval(this.fadeInterval);
+    }
+    const startVolume = this.nightAmbientAudio.volume;
+    const steps = 15;
+    const stepTime = fadeDurationMs / steps;
+    let currentStep = 0;
+
+    this.fadeInterval = setInterval(() => {
+      currentStep++;
+      if (this.nightAmbientAudio) {
+        const newVol = Math.max(0, startVolume * (1 - currentStep / steps));
+        this.nightAmbientAudio.volume = newVol;
+      }
+      if (currentStep >= steps) {
+        clearInterval(this.fadeInterval);
+        this.fadeInterval = null;
+        if (this.nightAmbientAudio) {
+          this.nightAmbientAudio.pause();
+          this.nightAmbientAudio.currentTime = 0;
+        }
+      }
+    }, stepTime);
+  }
+
+  public playBell() {
+    this.playCustomTrack("/voice/bell.mp3");
+  }
+
+  public playCountdown10() {
+    this.playCustomTrack("/voice/countdown10.mp3");
+  }
+
+  public playCountdown3() {
+    this.playCustomTrack("/voice/countdown3.mp3");
+  }
+
+  public playCustomTrack(path: string) {
+    if (this.isMuted || typeof window === "undefined") return;
+    try {
+      const a = new Audio(path);
+      a.play().catch(() => {});
+    } catch {}
+  }
+
+  private initUserGestureUnlock() {
     if (typeof window === 'undefined') return;
     const unlock = () => {
       if (this.ctx && this.ctx.state === 'suspended') {
