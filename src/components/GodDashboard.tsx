@@ -2291,7 +2291,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                                 const target2 = item.extraType ? players.find(p => p.id === item.extraType) : null;
                                  setNightActions(prev => ({ ...prev, mafiaShotId: item.targetId, mafiaShotId2: item.extraType || prev.mafiaShotId2 }));
                                 setIncomingNightTargets(prev => prev.filter(t => t.playerId !== item.playerId));
-                                network.sendNightResultToPlayer(item.playerId, `شلیک مافیا روی «${item.targetName}» تایید و ثبت شد 💥`);
+                                audio.playShot();
+                                  network.sendNightResultToPlayer(item.playerId, `شلیک مافیا روی «${item.targetName}» تایید و ثبت شد 💥`);
                                 network.toggleMafiaChat(false);
                                 network.setNightStep(null, roomCode);
                                 setCurrentActiveNightStep(null);
@@ -2438,7 +2439,8 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
 
                                         // ثبت نتیجه در موتور شب و اطلاع به گاد
                                         if (isTargetGodfather) {
-                                          alert("🎯 تیر اسنایپر به پدرخوانده اصابت کرد! جلیقه شکست و زنده می‌ماند. (۱ فشنگ مصرف شد)");
+                                          audio.playShot();
+                                            alert("🎯 تیر اسنایپر به پدرخوانده اصابت کرد! جلیقه شکست و زنده می‌ماند. (۱ فشنگ مصرف شد)");
                                           setNightActions(prev => ({ ...prev, sniperShotId: item.targetId }));
                                         } else if (isSavedByLecter) {
                                           alert(`🛡️ مافیای هدف (${item.targetName}) توسط دکتر لکتر نجات پیدا کرد! (۱ فشنگ مصرف شد)`);

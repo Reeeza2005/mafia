@@ -107,7 +107,7 @@ export class AudioManager {
     this.selectTrack(nextIdx);
   }
 
-  public startNight(fadeInDurationMs: number = 2200) {
+  public startNight(fadeInDurationMs: number = 2000) {
     if (this.isMuted || typeof window === "undefined") return;
 
     if (this.nightFadeInterval) {
@@ -118,30 +118,40 @@ export class AudioManager {
     const track = this.nightTracks[this.currentTrackIndex] || this.nightTracks[0];
     if (!track) return;
 
-    if (!this.nightAudio || !this.nightAudio.src.endsWith(track.src)) {
+    if (!this.nightAudio || !this.nightAudio.src.includes(track.src)) {
       this.nightAudio = new Audio(track.src);
       this.nightAudio.loop = true;
-      this.nightAudio.currentTime = this.nightSavedTime;
     }
 
-    this.nightAudio.volume = 0;
-    this.nightAudio.play().catch(() => {});
+    if (this.nightSavedTime > 0 && Number.isFinite(this.nightSavedTime)) {
+      try {
+        this.nightAudio.currentTime = this.nightSavedTime;
+      } catch {}
+    }
 
-    const steps = 20;
-    const stepTime = fadeInDurationMs / steps;
-    const targetVol = this.nightTargetVolume;
-    let step = 0;
+    const targetVol = Math.max(0.1, this.nightTargetVolume || 0.35);
+    this.nightAudio.volume = 0.05;
 
-    this.nightFadeInterval = setInterval(() => {
-      step++;
-      if (this.nightAudio) {
-        this.nightAudio.volume = Math.min(targetVol, (step / steps) * targetVol);
-      }
-      if (step >= steps) {
-        clearInterval(this.nightFadeInterval);
-        this.nightFadeInterval = null;
-      }
-    }, stepTime);
+    const playPromise = this.nightAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        const steps = 15;
+        const stepTime = Math.max(50, Math.floor(fadeInDurationMs / steps));
+        let step = 1;
+        this.nightFadeInterval = setInterval(() => {
+          step++;
+          if (this.nightAudio) {
+            this.nightAudio.volume = Math.min(targetVol, (step / steps) * targetVol);
+          }
+          if (step >= steps) {
+            clearInterval(this.nightFadeInterval);
+            this.nightFadeInterval = null;
+          }
+        }, stepTime);
+      }).catch((e) => {
+        console.warn("[AudioManager] Night audio play blocked or error:", e);
+      });
+    }
   }
 
   public pauseNightWithFadeOut(onComplete?: () => void, fadeOutDurationMs: number = 1400) {
