@@ -3,6 +3,7 @@
  * بازی مافیا: دستیار و گرداننده آفلاین در شبکه محلی
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useMobileSession } from './hooks/useMobileSession';
 import confetti from 'canvas-confetti';
 import { network } from './services/network';
 import { Player, GameTimer, GameLog, SecretVoteState } from './types/mafia';
@@ -75,6 +76,24 @@ export default function App() {
   // Player state
   const [myPlayer, setMyPlayer] = useState<Player | null>(null);
   const [isJoining, setIsJoining] = useState<boolean>(false);
+  // نگه‌داشتن صفحه گوشی و اتصال مجدد خودکار در آیفون/اندروید
+  const handleAutoRejoin = useCallback(() => {
+    const savedRoom = localStorage.getItem('mafia_room');
+    const savedName = localStorage.getItem('mafia_player_name');
+    if (clientType === 'player' && savedRoom && savedName) {
+      setIsJoining(false);
+      network.joinRoom(savedRoom, 'player', savedName);
+    } else if (clientType === 'god' && savedRoom) {
+      network.joinRoom(savedRoom, 'god', 'گرداننده');
+    }
+  }, [clientType]);
+
+  useMobileSession({
+    roomCode,
+    clientType,
+    onAutoRejoin: handleAutoRejoin,
+  });
+
   const hasJoinedRef = useRef<boolean>(false);
 
   // Modals

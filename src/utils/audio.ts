@@ -29,6 +29,13 @@ export class AudioManager {
   private static instance: AudioManager;
   public isMuted: boolean = false;
   private sfxVolume: number = 0.85;
+  private speechAlertVolume: number = 0.85;
+  private activeAlertSound: 'countdown3' | 'countdown10' | 'bell' | 'mute' = 'countdown3';
+
+  public setSpeechAlertConfig(sound: 'countdown3' | 'countdown10' | 'bell' | 'mute', vol: number) {
+    this.activeAlertSound = sound;
+    this.speechAlertVolume = Math.max(0, Math.min(1, vol));
+  }
 
   private nightAudio: HTMLAudioElement | null = null;
   private nightTracks: NightTrack[] = [];
@@ -271,12 +278,33 @@ export class AudioManager {
 
   
 
-  public playCountdown10() {
-    this.playFile("/voice/countdown10.mp3", 0.85);
+    public playCountdown10(customVol?: number) {
+    if (this.activeAlertSound === 'mute' && customVol === undefined) return;
+    const v = customVol !== undefined ? customVol : this.speechAlertVolume;
+    this.playFile("/voice/countdown10.mp3", v);
   }
 
-  public playCountdown3() {
-    this.playFile("/voice/countdown3.mp3", 0.85);
+  public playCountdown3(customVol?: number) {
+    if (this.activeAlertSound === 'mute' && customVol === undefined) return;
+    const v = customVol !== undefined ? customVol : this.speechAlertVolume;
+    this.playFile("/voice/countdown3.mp3", v);
+  }
+
+  public playBell(volume?: number) {
+    const v = volume !== undefined ? volume : this.speechAlertVolume;
+    this.playFile("/voice/bell.mp3", v);
+  }
+
+  public playSpeechAlert(sound: "countdown3" | "countdown10" | "bell" | "mute", volume?: number) {
+    if (sound === "mute" || this.isMuted || typeof window === "undefined") return;
+    const targetVol = volume !== undefined ? volume : this.speechAlertVolume;
+    if (sound === "countdown10") {
+      this.playCountdown10(targetVol);
+    } else if (sound === "countdown3") {
+      this.playCountdown3(targetVol);
+    } else if (sound === "bell") {
+      this.playBell(targetVol);
+    }
   }
 
   public playByKey(key: SoundKey) {
@@ -295,7 +323,7 @@ export class AudioManager {
     if (this.isMuted || typeof window === "undefined") return;
     try {
       const a = new Audio(path);
-      a.volume = Math.max(0, Math.min(1, volume * this.sfxVolume));
+      a.volume = Math.max(0, Math.min(1, volume));
       a.play().catch(() => {});
     } catch {}
   }
@@ -313,7 +341,7 @@ export class AudioManager {
   public playWakeBuzz() {}
   public playWarningBeep() {}
   public playVictory() {}
-  public playBell() {}
+  
   public playCustomTrack(_p: string) {}
   public triggerVibrate(_p: number[] = []) {}
 }

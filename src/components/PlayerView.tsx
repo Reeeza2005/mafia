@@ -332,9 +332,7 @@ sock.on('game_reset', () => {
           if (prev <= 1) {
             return 0;
           }
-          if (prev === 10) {
-              audio.playCountdown10();
-            } else if (prev <= 5 && prev > 0) {
+          if (prev <= 5 && prev > 0) {
               audio.playTick();
             }
           return prev - 1;

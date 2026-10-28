@@ -79,8 +79,27 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
   const [isDeclareWinnerModalOpen, setIsDeclareWinnerModalOpen] = useState(false);
   const [mafiaChatActive, setMafiaChatActive] = useState(false);
   const [mafiaChatMessages, setMafiaChatMessages] = useState<MafiaChatMessage[]>([]);
+  // Initialize and sync seating order with players list
+  useEffect(() => {
+    setSeatingOrder((prev) => {
+      const existingIds = new Set(prev);
+      const newIds = players.map((p) => p.id).filter((id) => !existingIds.has(id));
+      const validPrev = prev.filter((id) => players.some((p) => p.id === id));
+      return [...validPrev, ...newIds];
+    });
+  }, [players]);
+
   const [isMafiaChatWidgetOpen, setIsMafiaChatWidgetOpen] = useState(false);
-  const [speakerId, setSpeakerId] = useState<string>('');
+    const [speakerId, setSpeakerId] = useState<string>('');
+  const [speechAlertSound, setSpeechAlertSound] = useState<'countdown3' | 'countdown10' | 'bell' | 'mute'>('countdown3');
+  const [speechVolume, setSpeechVolume] = useState<number>(0.85);
+  audio.setSpeechAlertConfig('countdown3', 0.85);
+  const [speechDirection, setSpeechDirection] = useState<'cw' | 'ccw'>('cw');
+  const [seatingOrder, setSeatingOrder] = useState<string[]>([]);
+  const [spokenPlayerIds, setSpokenPlayerIds] = useState<string[]>([]);
+  const [isSeatingModalOpen, setIsSeatingModalOpen] = useState<boolean>(false);
+  const [hasPlayedSpeechAlert, setHasPlayedSpeechAlert] = useState<boolean>(false);
+
   const [localSeconds, setLocalSeconds] = useState(timer.seconds);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -178,16 +197,32 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     };
   }, []);
 
-  // Play audio tick/warning based on server-synced seconds
+    // Play audio tick/warning based on server-synced seconds and user alert preference
   useEffect(() => {
     if (timer.isRunning) {
-      if (timer.seconds > 0 && timer.seconds <= 5) {
+      if (timer.seconds > 10) {
+        setHasPlayedSpeechAlert(false);
+      }
+      
+      if (speechAlertSound === 'countdown10' && timer.seconds === 10 && !hasPlayedSpeechAlert) {
+        setHasPlayedSpeechAlert(true);
+        audio.playSpeechAlert('countdown10', speechVolume);
+      } else if (speechAlertSound === 'countdown3' && timer.seconds === 3 && !hasPlayedSpeechAlert) {
+        setHasPlayedSpeechAlert(true);
+        audio.playSpeechAlert('countdown3', speechVolume);
+      } else if (speechAlertSound === 'bell' && timer.seconds === 0 && !hasPlayedSpeechAlert) {
+        setHasPlayedSpeechAlert(true);
+        audio.playSpeechAlert('bell', speechVolume);
+      } else if (timer.seconds > 0 && timer.seconds <= 5 && speechAlertSound !== 'countdown3') {
         audio.playTick();
-      } else if (timer.seconds === 0) {
+      } else if (timer.seconds === 0 && speechAlertSound !== 'bell' && speechAlertSound !== 'mute') {
         audio.playWarningBeep();
       }
+    } else {
+      setHasPlayedSpeechAlert(false);
     }
-  }, [timer.seconds, timer.isRunning]);
+  }, [timer.seconds, timer.isRunning, speechAlertSound, speechVolume, hasPlayedSpeechAlert]);
+
 
   // Listen to challenge queue updates
   useEffect(() => {
@@ -532,7 +567,7 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     network.endSecretVote();
   };
 
-  const handleStartTimerPreset = (
+    const handleStartTimerPreset = (
     seconds: number,
     type: 'speech' | 'challenge' | 'defense' | 'voting',
     title: string
@@ -542,6 +577,53 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
     const label = currentSpeaker ? `${currentSpeaker.name} (${title})` : title;
     setLocalSeconds(seconds);
     onTimerControl('start', seconds, label, speakerId, type);
+  };
+
+  // Seating and Circular Rotation Helpers
+  const moveSeat = (index: number, direction: 'up' | 'down') => {
+    setSeatingOrder((prev) => {
+      const newOrder = [...prev];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= newOrder.length) return prev;
+      const temp = newOrder[index];
+      newOrder[index] = newOrder[targetIndex];
+      newOrder[targetIndex] = temp;
+      return newOrder;
+    });
+  };
+
+  const handleNextSpeaker = () => {
+    const aliveSeats = seatingOrder
+      .map((id) => players.find((p) => p.id === id))
+      .filter((p): p is NonNullable<typeof p> => !!p && p.isAlive);
+
+    if (aliveSeats.length === 0) return;
+
+    const currentIndex = aliveSeats.findIndex((p) => p.id === speakerId);
+    let nextIndex = 0;
+
+    if (currentIndex !== -1) {
+      nextIndex = speechDirection === 'cw'
+        ? (currentIndex + 1) % aliveSeats.length
+        : (currentIndex - 1 + aliveSeats.length) % aliveSeats.length;
+    }
+
+    const nextSpeaker = aliveSeats[nextIndex];
+    if (nextSpeaker) {
+      setSpeakerId(nextSpeaker.id);
+      setSpokenPlayerIds((prev) => Array.from(new Set([...prev, nextSpeaker.id])));
+      onTimerControl('set', 60, nextSpeaker.name, nextSpeaker.id, 'speech');
+      setLocalSeconds(60);
+      setHasPlayedSpeechAlert(false);
+      audio.playFlip();
+    }
+  };
+
+  const handleResetSpokenList = () => {
+    setSpokenPlayerIds([]);
+    setSpeakerId('');
+    onTimerControl('reset', 60);
+    setLocalSeconds(60);
   };
 
   const handleBuzzPlayer = (playerId: string, name: string) => {
@@ -1048,26 +1130,98 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
                 </span>
               </div>
 
-              {/* Speaker Select */}
-              <select
-                value={speakerId}
-                onChange={(e) => {
-                  setSpeakerId(e.target.value);
-                  const p = players.find((x) => x.id === e.target.value);
-                  onTimerControl('set', 60, p?.name, p?.id, 'speech');
-                  setLocalSeconds(60);
-                }}
-                className="bg-neutral-950 border border-neutral-800 text-neutral-200 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-rose-500 w-full sm:w-48"
-              >
-                <option value="">-- انتخاب بازیکن گوینده --</option>
-                {players
-                  .filter((p) => p.isAlive)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.isSilenced ? '(سایلنت)' : ''}
-                    </option>
-                  ))}
-              </select>
+              {/* Speaker Controls & Seating Rotation */}
+                <div className="flex flex-col gap-2.5 w-full">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={speakerId}
+                      onChange={(e) => {
+                        setSpeakerId(e.target.value);
+                        const p = players.find((x) => x.id === e.target.value);
+                        onTimerControl('set', 60, p?.name, p?.id, 'speech');
+                        setLocalSeconds(60);
+                      }}
+                      className="bg-neutral-950 border border-neutral-800 text-neutral-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-rose-500 flex-1 min-w-[160px]"
+                    >
+                      <option value="">-- شروع‌کننده نوبت صحبت --</option>
+                      {seatingOrder
+                        .map((id) => players.find((x) => x.id === id))
+                        .filter((p): p is NonNullable<typeof p> => !!p && p.isAlive)
+                        .map((p, idx) => (
+                          <option key={p.id} value={p.id}>
+                            صندلی {idx + 1}: {p.name} {p.isSilenced ? '(سایلنت)' : ''} {spokenPlayerIds.includes(p.id) ? '✓' : ''}
+                          </option>
+                        ))}
+                    </select>
+
+                    <button
+                      onClick={() => setSpeechDirection((d) => (d === 'cw' ? 'ccw' : 'cw'))}
+                      className="px-2.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 border border-neutral-700 text-xs font-bold text-neutral-300 flex items-center gap-1 active:scale-95 transition-all"
+                      title={speechDirection === 'cw' ? 'جهت چرخش: راست‌گرد (ساعت‌گرد)' : 'جهت چرخش: چپ‌گرد (پادساعت‌گرد)'}
+                    >
+                      {speechDirection === 'cw' ? '↻ راست‌گرد' : '↺ چپ‌گرد'}
+                    </button>
+
+                    <button
+                      onClick={handleNextSpeaker}
+                      className="px-3 py-2 rounded-xl bg-rose-650 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-rose-950/40 active:scale-95 transition-all"
+                      title="حرکت به نفر زنده بعدی دور میز"
+                    >
+                      <span>نفر بعدی دور میز</span>
+                      <span>⏭</span>
+                    </button>
+
+                    <button
+                      onClick={() => setIsSeatingModalOpen(true)}
+                      className="p-2 rounded-xl bg-neutral-850 hover:bg-neutral-800 border border-neutral-700 text-amber-300 text-xs active:scale-95 transition-all"
+                      title="ترتیب و شماره صندلی‌های دور میز"
+                    >
+                      🪑 صندلی‌ها
+                    </button>
+                  </div>
+
+                  {/* Audio Alert Picker & Volume Slider */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-neutral-950/80 border border-neutral-800/80 text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-neutral-400">🔔 هشدار تایمر:</span>
+                      <select
+                        value={speechAlertSound}
+                        onChange={(e) => setSpeechAlertSound(e.target.value as any)}
+                        className="bg-neutral-900 border border-neutral-750 text-neutral-200 text-[11px] rounded-lg px-2 py-1 focus:outline-none"
+                      >
+                        <option value="countdown3">شمارش ۳ ثانیه</option>
+                        <option value="countdown10">شمارش هیجانی ۱۰ ثانیه</option>
+                        <option value="bell">تک‌زنگ پایان (Bell)</option>
+                        <option value="mute">بی‌صدا (Mute)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-neutral-400">🔊 {Math.round(speechVolume * 100)}%</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={speechVolume}
+                        onChange={(e) => setSpeechVolume(parseFloat(e.target.value))}
+                        className="w-20 accent-rose-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {spokenPlayerIds.length > 0 && (
+                    <div className="flex items-center justify-between text-[11px] text-neutral-450 px-1">
+                      <span>صحبت‌کرده‌ها: {spokenPlayerIds.length} نفر</span>
+                      <button
+                        onClick={handleResetSpokenList}
+                        className="text-amber-400 hover:underline"
+                      >
+                        ریست نوبت‌های امروز
+                      </button>
+                    </div>
+                  )}
+                </div>
             </div>
           </div>
 
@@ -3233,6 +3387,82 @@ export const GodDashboard: React.FC<GodDashboardProps> = ({
           </div>
         </div>
       )}
-</div>
+
+      {/* Seating Arrangement Modal */}
+      {isSeatingModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🪑</span>
+                <h3 className="font-bold text-white text-sm sm:text-base">چینش صندلی‌ها دور میز</h3>
+              </div>
+              <button
+                onClick={() => setIsSeatingModalOpen(false)}
+                className="text-neutral-400 hover:text-white p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-450 leading-relaxed">
+              با دکمه‌های 🔼 و 🔽 ترتیب نشستن بازیکنان را دقیقاً مطابق صندلی‌های فیزیکی دور میز مرتب کنید:
+            </p>
+
+            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+              {seatingOrder.map((playerId, idx) => {
+                const pl = players.find((p) => p.id === playerId);
+                if (!pl) return null;
+                return (
+                  <div
+                    key={pl.id}
+                    className={`flex items-center justify-between p-2 rounded-xl border text-xs ${
+                      pl.isAlive
+                        ? 'bg-neutral-950 border-neutral-800 text-neutral-200'
+                        : 'bg-neutral-950/40 border-neutral-850 text-neutral-500 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-neutral-800 text-neutral-300 font-bold flex items-center justify-center text-[11px]">
+                        {idx + 1}
+                      </span>
+                      <span className="font-semibold">{pl.name}</span>
+                      {!pl.isAlive && <span className="text-[10px] text-rose-500">(کشته‌شده)</span>}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => moveSeat(idx, 'up')}
+                        disabled={idx === 0}
+                        className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-750 disabled:opacity-30 disabled:pointer-events-none text-neutral-200"
+                        title="یک صندلی بالاتر"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => moveSeat(idx, 'down')}
+                        disabled={idx === seatingOrder.length - 1}
+                        className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-750 disabled:opacity-30 disabled:pointer-events-none text-neutral-200"
+                        title="یک صندلی پایین‌تر"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setIsSeatingModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all shadow-lg shadow-rose-950/50"
+            >
+              تأیید و ذخیره چینش میز
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 };
